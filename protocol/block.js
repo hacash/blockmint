@@ -92,7 +92,7 @@ const PredefinitionBlockFormat = {
     //  32 byte, 本区块哈希  =  hash( version + height + difficulty + prevHash + mrklRoot + nonce )
     // hash: Buffer.alloc(32),
     //  32 byte, 父区块哈希
-    prevHash: Buffer.alloc(32),
+    prevMark: Buffer.alloc(32),
     //  32 byte, Merkle树根哈希
     mrklRoot: Buffer.alloc(32),
 
@@ -123,11 +123,11 @@ const PredefinitionBlockFormat = {
             // 收取奖励的地址
             address: "29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM",
             // 奖励数量
-            bill: { // length = 1 byte 数量 255 个以内
-                //   1 byte, 0~255, 单位（后面跟了几个零）
-                unit: 200,
-                //   3 byte, 0~16777216, 奖励金额数量
+            ubill: { // length = 1 byte 数量 255 个以内
+                //   3 byte, 0 ~ 16777215  数量 无符号整形
                 amount: 21,
+                //   1 byte, 0~255, 单位（后面跟了几个零）
+                unit: 248, // 248 240 232 224 216 208 200
             },
             //  16 byte, 区块寄语（末尾用空格补齐）
             message: "hardertodobetter", // string
@@ -140,25 +140,28 @@ const PredefinitionBlockFormat = {
         {
             //   1 byte, 0~255, 交易类型
             type: 1, // t=1 为 普通交易
-            // 手续费可以为负数，从总手续费和 coinbase 里扣除，达成交易的分布式挖矿，让每一笔交易也挖矿，并产生收益
-            // 手续费支付者的签名包含了 fee 和 feeUnit 字段，而本交易hash不包含，实现手续费动态出价
-            fee: {
-                //   1 byte, 手续费单位
-                unit: 8,
-                // 3 byte, 手续费数量（有符号整形）
-                amount: 1234,
-            },
             //   5 byte, 交易生成的<bcc时间戳>（从创世到现在的秒数）
             timestamp: 180,
             //  1 + 34 byte  【可选字段，默认单签名或多重签名列表的唯一一个，如果有多个则必须指定，用以区分手续费签名】  本交易签名地址， 默认地址 和 手续费地址
             address: "29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM",
 
+            // 手续费和附加信息 与 其他账户无关， 改变手续费和附加信息还是同一条交易
+
+            // 手续费可以为负数，从总手续费和 coinbase 里扣除，达成交易的分布式挖矿，让每一笔交易也挖矿，并产生收益
+            // 手续费支付者的签名包含了 fee 和 feeUnit 字段，而本交易hash不包含，实现手续费动态出价
+            fee: {
+                //   2 byte, -32768 ~ 32768  手续费数量（有符号整形）
+                amount: 1234,
+                //   1 byte, 0~255, 单位（后面跟了几个零）
+                unit: 248, // 248 240 232 224 216 208 200
+            },
             // 附录、附件、交易附加
             // min byte = 1, max byte = 1 + 255 * 4 = 16 * 64
             appendixSize: 2,
             appendixs: new Buffer(),
 
-            // 2 byte 功能数量统计
+
+            // 1 byte 功能数量统计
             actionCount: 123,
 
             // 功能、资产列表
@@ -170,13 +173,14 @@ const PredefinitionBlockFormat = {
                     //   2 byte, 0~65535, 资产类型
                     kind: 1, // 普通转账
                     //   1 byte 账单数量统计
-                    billCount: 123,
-                    bills: [{ // length 数量 255 个以内
+                    bill: { // length 数量 255 个以内
+                        //   1 byte   1~127为正,   128~255为负
+                        dist: 1,
+                        //   1~127 byte, 0~16777216   4294967295   1095216660225, 转账金额数量
+                        amount: Buffer.alloc(),
                         //   1 byte, 0~255, 转账单位（后面跟了几个零）
-                        unit: 200,
-                        //   3 byte, 0~16777216   4294967295   1095216660225, 转账金额数量
-                        amount: 1234567,
-                    }],
+                        unit: 248,
+                    },
                     //  34 byte, 转账收款方（地址为33位则末尾为空格）
                     address: "1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD",
                 },
@@ -237,20 +241,37 @@ const PredefinitionBlockFormat = {
                             unit: 8,
                             amount: 1,
                         }], // 多个输入的对象
-                        // 1 byte 数量统计
-                        outputCount: 123,
-                        // 转账收款方
-                        outputs: [{ // length = 1 byte
-                            address: "1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD",
-                            billCount: 123,
-                            bills: [{
-                                unit: 8,
-                                amount: 1,
-                            }],
+                    }],
+                    // 1 byte 数量统计
+                    outputCount: 123,
+                    // 转账收款方
+                    outputs: [{ // length = 1 byte
+                        address: "1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD",
+                        billCount: 123,
+                        bills: [{
+                            unit: 8,
+                            amount: 1,
                         }],
                     }],
-
                 },
+
+                {
+                    // 定额支付混搅
+                    kind: 6,
+                    fee: { // 每一个地址都要收取的服务手续费，可为零，也可为负
+                        amount: 1234,
+                        unit: 248,
+                    },
+                    bill: { // 统一转账数额
+                        dist: 1,
+                        amount: Buffer.alloc(),
+                        unit: 248,
+                    },
+                    addressCount: 100, // 参与混搅地址数量
+                    inputAddresses: ["1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD", "..."], // 多个输入的地址
+                    outputAddresses: ["19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM", "..."], // 多个输出的地址
+                },
+
 
 
                 /////////////////  钻石挖出交易  /////////////////
@@ -267,6 +288,8 @@ const PredefinitionBlockFormat = {
                     diamond: "AAMMKK",
                     //   8 byte, 随机数 用于尝试生成钻石
                     nonce: 289237457,
+                    // 钻石首次获得者
+                    address: "19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM",
                 },
                 {
                     // 钻石交易转移（自己必须拥有）
@@ -274,6 +297,28 @@ const PredefinitionBlockFormat = {
                     diamond: "WWUUYY",
                     // 收钻方
                     address: "19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM",
+                },
+
+
+                /////////////////  防攻击投票  /////////////////
+
+                {
+                    // 用来投票选举链条，让矿工强制转换到大家公认的链条上来
+                    // 以通道锁定资金为票数，达到一定票数（矿工决定）才开启强制转换
+                    // 以此纠正被 51%攻击的分叉，平时不启动，关键时刻才生效
+                    // 只有一个月=8064（三个月=24192）个区块前的有效通道才有资格投票
+                    kind: 9,
+                    // 链条必须包含的区块哈希，一般是分叉起始块
+                    // 必须是本链条历史上已经存在的hash
+                    targetHash: Buffer.alloc(32),
+                    // 通道数量
+                    channelIdCount: 3,
+                    // 参与投票的通道列表
+                    channelIds:[
+                        232353,  // 8 byte
+                        3847658374,
+                        874568376455,
+                    ],
                 },
 
                 /////////////////  时间要求  /////////////////
@@ -388,6 +433,16 @@ const PredefinitionBlockFormat = {
                     }],
                 },
 
+                {
+                    // 向通道补充资金 1+4+5+1+1+(2+8+4)+2+33+64
+                    kind: 16,
+                    channelId: 232353253456,
+                    address: '1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD',
+                    bill: {
+                        unit: 8,
+                        amount: 1234,
+                    },
+                },
 
                 {
                     // 双方确认余额，关闭结算通道
@@ -399,14 +454,32 @@ const PredefinitionBlockFormat = {
                         address: '19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
                         billCount: 1,
                         bills: [{
-                            amount: 1234,
                             unit: 8,
+                            amount: 1234,
                         }],
                     },
                 },
 
-                /**********************  链下结算支持  **********************/
 
+                {
+                    // 开启多方清算体系
+                    kind: 16,
+                    // 8 type 结算id
+                    liquidationId: 232353253456,
+                    // 2 type 最高220天，结算单方终结的锁定期限（区块数量）
+                    parteEndLockHeightNum: 2016, // 约等于于一周
+                    // 1 type 数量必须大于等于3个
+                    bankrollCount: 12,
+                    bankrolls: [{
+                        address: '19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
+                        bill: {
+                            unit: 8,
+                            amount: 1234,
+                        },
+                    }],
+                },
+
+                /**********************  链下结算支持  **********************/
 
                 {
                     // 【链下结算】阶段性余额分配确认
@@ -414,15 +487,17 @@ const PredefinitionBlockFormat = {
                     kind: 13,
                     // 8 type 结算通道自定义id
                     channelId: 232353253456,
-                    //  上一笔确认的通道交易hash（首笔的话本字段为交易通道开启所在交易的hash）
-                    prevTransactionHash: Buffer.alloc(32),
+                    //  上一笔（或多笔）确认的通道交易hash（首笔的话本字段为交易通道开启所在交易的hash）
+                    prevTransactionHashs: Buffer.alloc(32),
+                    // 8 type 通道交易序号，自动增量
+                    autoincrement: 123135,
                     diffConfirm: {
-                        address: '1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD',
-                        billCount: 1,
-                        bills: [{
+                        side: 1, // 正差比方
+                        bill: {
+                            dict: 1,
                             amount: 1234,
                             unit: 8,
-                        }],
+                        },
                     }
                 },
                 {
@@ -435,25 +510,43 @@ const PredefinitionBlockFormat = {
                     // 通道数量
                     channelCount: 4,
                     channels: [{
+                        // 对账类型（1.实时对账  2.延迟对账）
+                        type: 1,
+                        // 资金流向
+                        side: 1, // fund2 => fund1
                         // 8 type 结算通道自定义id
                         channelId: 232353253456,
-                        //  上一笔确认的交易hash
+                        //  上一笔双方确认的交易hash
                         prevTransactionHash: Buffer.alloc(32),
-                        // 4 type 通道交易序号，自动增量
+                        // 8 type 通道交易序号，自动增量
                         autoincrement: 123135,
                         // 通道手续费
                         fee: {
                             unit: 8,
                             amount: 1234,
                         },
-                        // 本比交易完成时的通道差额确认
+                        // 本笔交易完成时的通道差额确认
                         diffConfirm: {
-                            address: '19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
-                            billCount: 1,
-                            bills: [{
+                            side: 1, // 资金正比额方
+                            bill: {
+                                dict: 1,
                                 amount: 1234,
                                 unit: 8,
-                            }],
+                            },
+                        },
+                    },{
+                        // 对账类型（1.实时对账  2.延迟对账）
+                        type: 2,
+                        // 资金流向
+                        side: 2, // fund1 => fund2
+                        // 8 type 结算通道id
+                        channelId: 232353253456,
+                        // 8 type 通道交易流水号，自动增量
+                        autoincrement: 123135,
+                        // 通道手续费
+                        fee: {
+                            unit: 8,
+                            amount: 1234,
                         },
                     }],
                 },
@@ -469,6 +562,8 @@ const PredefinitionBlockFormat = {
                     // 8 type 结算通道自定义id
                     // 此处的 channelId 要与引用的 transaction 内的 channelId 一致
                     channelId: 232353253456,
+                    // 提请人
+                    address: '19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
                     // 引用的交易（ 只可能为 通道支付 和 阶段对账 两个交易 ）（不可递归）
                     transaction: {/****/}
 
@@ -476,23 +571,24 @@ const PredefinitionBlockFormat = {
 
 
                 {
-                    // 【惩罚】单方面用历史（非最新）余额确认来结束锁定通道
-                    // 需要提供 transaction 为 nonce 值更大的通道交易或余额确认交易
+                    // 【惩罚】单方面用历史（非最新）余额确认来结束锁定通道，仲裁结果为最终态
+                    // 需要提供 transaction 的 nonce 值更大的通道交易或余额确认交易
                     // 如果另一方能提供更新的通道余额交易，那么将惩罚性的获取到对方账号下的所有余额（除了开启的其他通道内的额度）
                     kind: 20,
                     // 8 type 结算通道自定义id
                     // 此处的 channelId 要与引用的 transaction 内的 channelId 一致
                     channelId: 232353253456,
-                    // 引用的交易（ 只可能为 通道支付 和 阶段对账 两个交易 ）（不可递归）
+                    // 提请人
+                    address: '1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD',
+                    // 引用的交易（ 只可能为 通道支付 和 阶段对账 两种交易 ）（不可递归）
                     transaction: {/****/}
 
                 },
 
-
                 /////////////////  组合地址  /////////////////
 
                 {
-                    // 生成的地址以 2 版本号 开头
+                    // 生成的地址以 3 版本号 开头
                     // 生成方式为 hash(trsTime validRightsRatio address1 rights1 address2 rights2 ... )
 
                     // 生成组合地址
@@ -503,24 +599,29 @@ const PredefinitionBlockFormat = {
                     // 1 byte 数量统计
                     formCount: 123,
                     forms: [ // length = 1 byte 数量 200 个以内
+                        // 投票权 和 受益权 可以不等比（即同股不同权）
                         {
                             address: '19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
                             //   4 byte, 0~4294967295, 权益数
                             rights: 1,
+                            //   4 byte, 0~4294967295, 投票权
+                            votes: 3,
                         },
                         {
                             // 成员可以为组合地址，条件是【组合地址已经注册】
                             address: '29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
                             rights: 23465,
+                            votes: 38347,
                         },
                         {
                             address: '19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
                             rights: 2,
+                            votes: 3,
                         },
                     ]
                 },
                 {
-                    // 交易发起者必须为 2 版本号开头的组合地址
+                    // 交易发起者必须为 3 版本号开头的组合地址
                     // 组合地址，添加（或覆盖(改票数)）地址
                     kind: 7,
                     // 1 byte 数量统计
@@ -530,12 +631,13 @@ const PredefinitionBlockFormat = {
                             // 成员可以为组合地址，条件是【组合地址已经注册】
                             address: '19aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
                             rights: 3,
+                            votes: 3,
                         },
                     ]
                 },
                 {
-                    // 交易发起者必须为 2 版本号开头的组合地址
-                    // 组合地址，删除地址
+                    // 交易发起者必须为 3 版本号开头的组合地址
+                    // 组合地址，删除地址 （删除不需要抵押费用）
                     kind: 8,
                     // 1 byte 数量统计
                     formCount: 123,
@@ -546,11 +648,37 @@ const PredefinitionBlockFormat = {
                     ]
                 },
                 {
-                    // 交易发起者必须为 2 版本号开头的组合地址
+                    // 交易发起者必须为 3 版本号开头的组合地址
                     // 组合地址，修改生效票数
                     kind: 9,
-                    // 要修改的万分之生效比例
+                    // 要修改的投票生效比例，单位为万分之
                     validRightsRatio: 3456,
+                },
+                {
+                    // 交易发起者必须为 3 版本号开头的组合地址
+                    // 注销地址，提取并转移所有金额
+                    // 注意：注销将删除矿工状态数据库内的股权关系的所有数据
+                    //       将导致所有下游的决议无法产生，如果占股影响决策权的话
+                    kind: 10,
+                    // 锁定的账户保底金额，最终转移的地址
+                    address: '29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
+                },
+                {
+                    // 提出账户保护模式申请，只要有现存的在控制树内的任意一个私钥即可，必须提供1%的锁定资金，锁定半年
+                    // 此时账户即被锁定，如果另外的私钥也来申请保护模式，则保护失效
+                    // 如此即保证所有剩余地址都同意申请保护模式，才能最终成功
+                    // 如果锁定半年后，还是没有人解锁，就可以将资金提取到这个地址上来
+                    // 如果期间有满足投票权的资金操作，则保护自动失效
+                    // 如果期间内没有满足投票权的资金操作，则资金即可提取至这个地址
+                    kind: 11,
+                    // 资金的最终转出的地址
+                    address: '29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
+                },
+                {
+                    // 提取此前已经锁定股权账户的资金
+                    kind: 12,
+                    // 原本被锁定的股权账户的地址
+                    address: '29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM',
                 },
 
                 /////////////////  数据操作  /////////////////

@@ -172,6 +172,8 @@ const PredefinitionBlockFormat = {
                 {
                     //   2 byte, 0~65535, 资产类型
                     kind: 1, // 普通转账
+                    //  34 byte, 转账收款方（地址为33位则末尾为空格）
+                    address: "1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD",
                     //   1 byte 账单数量统计
                     bill: { // length 数量 255 个以内
                         //   1 byte   1~127为正,   128~255为负
@@ -181,8 +183,6 @@ const PredefinitionBlockFormat = {
                         //   1 byte, 0~255, 转账单位（后面跟了几个零）
                         unit: 248,
                     },
-                    //  34 byte, 转账收款方（地址为33位则末尾为空格）
-                    address: "1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD",
                 },
                 {
                     kind: 2, // 请求对方转账给自己

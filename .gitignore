@@ -13,5 +13,5 @@
 
 .git/
 .idea/
-
+.DS_Store
 build/

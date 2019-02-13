@@ -80,7 +80,7 @@ PoW 和 PoS 混合共识
 
 const PredefinitionBlockFormat = {
     //   1 byte, 0~255, 版本号, 应该极度谨慎升级版本
-    version: 0,
+    version: 1,
     //   5 byte, 区块高度, 一分钟一个块可用8100*255年；一秒一个块可用135*255年
     height: 0,
     //   5 byte, 一秒可用135*255年
@@ -132,7 +132,7 @@ const PredefinitionBlockFormat = {
             //  16 byte, 区块寄语（末尾用空格补齐）
             message: "hardertodobetter", // string
             //   5 byte, 区块开始挖掘的<bcc时间戳>（从创世到现在的秒数）
-            timestamp: 0,  // {不接受时间}
+            // timestamp: 0,  // {不接受时间}
         },
 
         ////////  normal trs  ////////

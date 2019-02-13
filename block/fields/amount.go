@@ -2,7 +2,6 @@ package fields
 
 import (
 	"bytes"
-	//"encoding/binary"
 	"math/big"
 )
 

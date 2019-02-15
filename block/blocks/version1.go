@@ -45,6 +45,19 @@ func (block *Block_v1) SerializeHead() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+func (block *Block_v1) SerializeBody() ([]byte, error) {
+
+	var buffer = new(bytes.Buffer)
+	b6, _ := block.Nonce.Serialize() // miner nonce
+	buffer.Write(b6)
+	for i := 0; i < len(block.Transactions); i++ {
+		var bi, _ = block.Transactions[i].Serialize()
+		buffer.Write(bi)
+	}
+	return buffer.Bytes(), nil
+
+}
+
 // 序列化 与 反序列化
 func (block *Block_v1) Serialize() ([]byte, error) {
 
@@ -52,13 +65,9 @@ func (block *Block_v1) Serialize() ([]byte, error) {
 
 	head, _ := block.SerializeHead()
 	buffer.Write(head)
-	b6, _ := block.Nonce.Serialize() // miner nonce
-	buffer.Write(b6)
+	body, _ := block.SerializeBody()
+	buffer.Write(body)
 
-	for i := 0; i < len(block.Transactions); i++ {
-		var bi, _ = block.Transactions[i].Serialize()
-		buffer.Write(bi)
-	}
 	return buffer.Bytes(), nil
 }
 
@@ -76,23 +85,31 @@ func (block *Block_v1) ParseHead(buf []byte, seek uint32) (uint32, error) {
 	return iseek, nil
 }
 
-func (block *Block_v1) Parse(buf []byte, seek uint32) (uint32, error) {
-	// head
-	iseek, _ := block.ParseHead(buf, seek)
-	iseek, _ = block.Nonce.Parse(buf, iseek) // miner nonce
+func (block *Block_v1) ParseBody(buf []byte, seek uint32) (uint32, error) {
+
+	seek, _ = block.Nonce.Parse(buf, seek) // miner nonce
 	// body
 	length := int(block.TransactionCount)
 	for i := 0; i < length; i++ {
-		var trx, sk, err = ParseTransaction(buf, iseek)
+		var trx, sk, err = ParseTransaction(buf, seek)
 
 		block.Transactions = append(block.Transactions, trx)
-		iseek = sk
+		seek = sk
 		if err != nil {
 			break
 		}
 	}
-	return iseek, nil
+	return seek, nil
 }
+
+func (block *Block_v1) Parse(buf []byte, seek uint32) (uint32, error) {
+	// head
+	iseek, _ := block.ParseHead(buf, seek)
+	iseek2, _ := block.ParseBody(buf, iseek)
+	return iseek2, nil
+}
+
+////////////////////////////////////////////////////////////////////////
 
 func NewTransactionByType(ty uint8) (typesblock.Transaction, error) {
 	switch ty {

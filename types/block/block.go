@@ -8,4 +8,7 @@ type Block interface {
 
 	SerializeHead() ([]byte, error)
 	ParseHead([]byte, uint32) (uint32, error)
+
+	SerializeBody() ([]byte, error)
+	ParseBody([]byte, uint32) (uint32, error)
 }

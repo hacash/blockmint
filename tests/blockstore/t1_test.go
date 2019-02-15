@@ -1,11 +1,13 @@
 package blockstore
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/tests"
+	"os"
 	"testing"
 )
 
@@ -32,6 +34,34 @@ func Test_store1(t *testing.T) {
 	fmt.Println(result)
 
 	//fmt.Println((256*3+1)*256*256*256*256 /1024/1024 )
+}
+
+func Test_store2(t *testing.T) {
+
+	var testByteAry = tests.GenTestData_block()
+	var block1, _, _ = blocks.ParseBlock(testByteAry, 0)
+
+	var testpath = "/media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/tests/blockstore/datas"
+	os.Remove(testpath)
+
+	var db1 store.BlockDataDB
+	db1.Init(testpath)
+
+	maxBlockNum := 10000
+	for i := 0; i < maxBlockNum; i++ {
+		one := make([]byte, 32)
+		rand.Read(one)
+		//fmt.Println(one)
+		db1.SaveBlock(one, block1)
+	}
+
+	hashone1, _ := hex.DecodeString("FFFFFFFFFFFFFF01000000000000000000000000000000000000000000000001")
+	fmt.Println(block1.Serialize())
+	db1.SaveBlock(hashone1, block1)
+
+	search := db1.ReadBlock(hashone1)
+	fmt.Println(search.Serialize())
+
 }
 
 func Test_store_loop(t *testing.T) {

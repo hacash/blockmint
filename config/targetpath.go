@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/hacash/blockmint/sys/file"
 	"os"
 	"path"
 	"strings"
@@ -14,31 +15,9 @@ func dealHomeDirBase(dir string) string {
 	}
 }
 
-func GetCnfPathBlocks() (string, string) {
+func GetCnfPathBlocks() string {
 	base := dealHomeDirBase(DirBase)
 	blocks := path.Join(base, DirDataBlock)
-	indexs := path.Join(blocks, "indexs/")
-	createPath(indexs)
-	return blocks, indexs
-}
-
-/*/////////////////////////////////////*/
-
-func isExist(path string) bool {
-	_, err := os.Stat(path) //os.Stat获取文件信息
-	if err != nil {
-		if os.IsExist(err) {
-			return true
-		}
-		return false
-	}
-	return true
-}
-
-func createPath(filePath string) error {
-	if !isExist(filePath) {
-		err := os.MkdirAll(filePath, os.ModePerm)
-		return err
-	}
-	return nil
+	file.CreatePath(blocks)
+	return blocks
 }

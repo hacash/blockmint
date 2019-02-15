@@ -19,6 +19,10 @@ type BlockIndexDB struct {
 	indexfile *os.File
 }
 
+func (db *BlockIndexDB) Init(filename string) {
+	db.filename = filename
+}
+
 func (db *BlockIndexDB) InitForTest(filename string) {
 	db.filename = filename
 	file, err := os.OpenFile(db.filename, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
@@ -37,6 +41,11 @@ func (db *BlockIndexDB) Save(hash []byte, blockLoc *BlockLocation, block block.B
 }
 
 func (db *BlockIndexDB) SaveForce(hash []byte, blockLoc *BlockLocation, block block.Block) error {
+	blockheadbytes, _ := block.SerializeHead()
+	return db.SaveByByteForce(hash, blockLoc, blockheadbytes)
+}
+
+func (db *BlockIndexDB) SaveByByteForce(hash []byte, blockLoc *BlockLocation, blockheadbytes []byte) error {
 
 	db.indexfile, _ = os.OpenFile(db.filename, os.O_RDWR|os.O_CREATE, 0777)
 	defer func() {
@@ -54,15 +63,15 @@ func (db *BlockIndexDB) SaveForce(hash []byte, blockLoc *BlockLocation, block bl
 	// find
 	var itempos = db.findItem(hash, true, false, false)
 	if itempos == nil {
-		//return err.New("SaveForce error")
+		//return err.New("SaveByByteForce error")
 	}
+	isReplaceCoverSet := false // 是否为覆盖旧的区块
 	// new body
 	var bodybyte bytes.Buffer
 	bodybyte.Write(hash)
 	bodybyte.Write(blockLoc.Serialize())
-	bdhead, _ := block.SerializeHead()
-	//fmt.Println(bdhead)
-	bodybyte.Write(bdhead)
+	//fmt.Println(blockheadbytes)
+	bodybyte.Write(blockheadbytes)
 	bodybyte.Write([]byte{0, 0}) // 空余
 	// next ptr
 	var valbyte = make([]byte, 4)
@@ -105,10 +114,17 @@ func (db *BlockIndexDB) SaveForce(hash []byte, blockLoc *BlockLocation, block bl
 		newitem.Write(bytes.Repeat([]byte{0}, itemSizeSet-len(newitem.Bytes())))
 		newitems = append(newitems, newitem)
 	} else if itempos.itemkind == 2 {
-		// 新分叉
-		var tailpos = len(itempos.hashtail) - 1
 
-		db.createDownItem(&newitems, writeNumber+1, ptrNumber, itempos.itemnumber, itempos.Blockhash, hash, uint32(tailpos))
+		// hash是否相同
+		issame := bytes.Compare(hash, itempos.Blockhash) == 0
+		if issame {
+			// 同一个哈希， 覆盖之前的 区块值
+			isReplaceCoverSet = true
+		} else {
+			// 新分叉
+			var tailpos = len(itempos.hashtail) - 1
+			db.createDownItem(&newitems, writeNumber+1, ptrNumber, itempos.itemnumber, itempos.Blockhash, hash, uint32(tailpos))
+		}
 
 	}
 	/*
@@ -156,11 +172,19 @@ func (db *BlockIndexDB) SaveForce(hash []byte, blockLoc *BlockLocation, block bl
 			db.indexfile.WriteAt(bodybyte.Bytes(), filetailseek)
 			db.indexfile.WriteAt(nextptr.Bytes(), itempos.itemoffset) // change ptr
 		} else if itempos.itemkind == 2 {
-			db.indexfile.WriteAt(bodybyte.Bytes(), filetailseek)
-			for i := 0; i < len(newitems); i++ { // 多个item
-				db.indexfile.WriteAt(newitems[i].Bytes(), filetailseek+int64(i+1)*int64(itemSizeSet))
+			if isReplaceCoverSet {
+
+				db.indexfile.WriteAt(bodybyte.Bytes(), int64(itempos.itemnumber*uint32(itemSizeSet))) // recover
+
+			} else {
+
+				db.indexfile.WriteAt(bodybyte.Bytes(), filetailseek)
+				for i := 0; i < len(newitems); i++ { // 多个item
+					db.indexfile.WriteAt(newitems[i].Bytes(), filetailseek+int64(i+1)*int64(itemSizeSet))
+				}
+				db.indexfile.WriteAt(nextptr.Bytes(), itempos.itemoffset) // change ptr
+
 			}
-			db.indexfile.WriteAt(nextptr.Bytes(), itempos.itemoffset) // change ptr
 		}
 	}
 	return nil
@@ -207,7 +231,7 @@ func (db *BlockIndexDB) createDownItem(totalitems *[]bytes.Buffer, tailnumber in
 		*totalitems = *&total
 	} else {
 
-		// 重复
+		// 前缀重复
 		var valbyte1 = make([]byte, 4)
 		binary.BigEndian.PutUint32(valbyte1, uint32(writeNumber))
 		writeItemLi1 := bytes.NewBuffer([]byte{1})

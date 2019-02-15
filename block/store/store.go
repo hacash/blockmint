@@ -23,13 +23,13 @@ func GetBlocksDataStoreInstance() *BlocksDataStore {
 
 //////////////
 
-func (sto *BlocksDataStore) Init(dir string, idxdir string) error {
+func (sto *BlocksDataStore) Init(dir string) error {
 
-	db, err := leveldb.OpenFile(idxdir, nil)
-	if err != nil {
-		return err
-	}
-	sto.db = db
+	//db, err := leveldb.OpenFile(dir, nil)
+	//if err != nil {
+	//	return err
+	//}
+	//sto.db = db
 	return nil
 }
 

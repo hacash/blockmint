@@ -3,8 +3,59 @@ package store
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/hacash/blockmint/sys/err"
 	"github.com/hacash/blockmint/types/block"
+	"os"
 )
+
+type BlockStoreFileHead struct {
+	FileNum uint32
+}
+
+func (loc *BlockStoreFileHead) wideSize() uint32 {
+	return 4
+}
+
+func (this *BlockStoreFileHead) Load(filepath string) error {
+	fileHead, _ := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
+	var size = this.wideSize()
+	var buffer = make([]byte, size)
+	rdlen, e := fileHead.ReadAt(buffer, 0)
+	if e != nil || rdlen != int(size) {
+		return err.New("file read error")
+	}
+	this.Parse(buffer, 0)
+	defer func() {
+		fileHead.Close()
+	}()
+	return nil
+}
+
+func (this *BlockStoreFileHead) Flush(filepath string) error {
+	fileHead, _ := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
+
+	var buffer = this.Serialize()
+
+	fileHead.WriteAt(buffer, 0)
+
+	defer func() {
+		fileHead.Close()
+	}()
+	return nil
+}
+
+func (loc *BlockStoreFileHead) Parse(buf []byte, seek uint32) error {
+	loc.FileNum = binary.BigEndian.Uint32(buf[seek : seek+4])
+	return nil
+}
+
+func (loc *BlockStoreFileHead) Serialize() []byte {
+	var byt1 = make([]byte, 4)
+	binary.BigEndian.PutUint32(byt1, loc.FileNum)
+	var buffer bytes.Buffer
+	buffer.Write(byt1)
+	return buffer.Bytes()
+}
 
 ////////////////////////////////////////////////////
 
@@ -15,9 +66,9 @@ type BlockLocation struct {
 }
 
 func (loc *BlockLocation) Parse(buf []byte, seek uint32) error {
-	loc.BlockFileNum = binary.BigEndian.Uint32(buf[0:4])
-	loc.FileOffset = binary.BigEndian.Uint32(buf[4:8])
-	loc.BlockLen = binary.BigEndian.Uint32(buf[8:12])
+	loc.BlockFileNum = binary.BigEndian.Uint32(buf[seek : seek+4])
+	loc.FileOffset = binary.BigEndian.Uint32(buf[seek+4 : seek+8])
+	loc.BlockLen = binary.BigEndian.Uint32(buf[seek+8 : seek+12])
 	return nil
 }
 

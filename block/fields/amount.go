@@ -6,30 +6,29 @@ import (
 )
 
 type Amount struct {
+	Unit    uint8
 	Dist    int8
 	Numeral []byte
-	Unit    uint8
 }
 
 func (bill *Amount) Serialize() ([]byte, error) {
 	var buffer bytes.Buffer
+	buffer.Write([]byte{bill.Unit})
 	buffer.Write([]byte{byte(bill.Dist)})
 	buffer.Write(bill.Numeral)
-	buffer.Write([]byte{bill.Unit})
 	return buffer.Bytes(), nil
 }
 
-func (bill *Amount) Parse(buf *[]byte, seek int) (int, error) {
-	bill.Dist = int8((*buf)[seek])
+func (bill *Amount) Parse(buf []byte, seek uint32) (uint32, error) {
+	bill.Unit = uint8(buf[seek])
+	bill.Dist = int8(buf[seek+1])
 	var numCount = int(bill.Dist)
 	if bill.Dist < 0 {
 		numCount *= -1
 	}
-	var tailstart = seek + 1 + numCount
-	bill.Numeral = (*buf)[seek+1 : tailstart]
-	bill.Unit = uint8((*buf)[tailstart])
-
-	return tailstart + 1, nil
+	var tail = seek + 2 + uint32(numCount)
+	bill.Numeral = buf[seek+2 : tail]
+	return tail, nil
 }
 
 func (bill *Amount) GetValue() *big.Int {

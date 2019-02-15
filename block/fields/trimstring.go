@@ -13,10 +13,10 @@ type TrimString64 string
 func (elm *TrimString16) Serialize() ([]byte, error) { return trimStringSerialize(string(*elm), 16) }
 func (elm *TrimString64) Serialize() ([]byte, error) { return trimStringSerialize(string(*elm), 64) }
 
-func (elm *TrimString16) Parse(buf *[]byte, seek int) (int, error) {
+func (elm *TrimString16) Parse(buf []byte, seek uint32) (uint32, error) {
 	return trimStringParse(elm, buf, seek, 16)
 }
-func (elm *TrimString64) Parse(buf *[]byte, seek int) (int, error) {
+func (elm *TrimString64) Parse(buf []byte, seek uint32) (uint32, error) {
 	return trimStringParse(elm, buf, seek, 64)
 }
 
@@ -36,8 +36,8 @@ func trimStringSerialize(str string, maxlen int) ([]byte, error) {
 	return []byte(str), nil
 }
 
-func trimStringParse(elm interface{}, buf *[]byte, seek int, maxlen int) (int, error) {
-	var addrbytes = (*buf)[seek : seek+maxlen]
+func trimStringParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32, error) {
+	var addrbytes = buf[seek : seek+maxlen]
 	addrbytes = bytes.Trim(addrbytes, " ")
 	var sd = string(addrbytes)
 	switch a := elm.(type) {

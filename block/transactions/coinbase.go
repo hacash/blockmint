@@ -33,7 +33,7 @@ func (trs *Transaction_0_Coinbase) Serialize() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (trs *Transaction_0_Coinbase) Parse(buf *[]byte, seek int) (int, error) {
+func (trs *Transaction_0_Coinbase) Parse(buf []byte, seek uint32) (uint32, error) {
 
 	m1, _ := trs.Address.Parse(buf, seek)
 	m2, _ := trs.Reward.Parse(buf, m1)

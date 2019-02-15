@@ -28,7 +28,7 @@ func (elm *Action_1_SimpleTransfer) Serialize() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (elm *Action_1_SimpleTransfer) Parse(buf *[]byte, seek int) (int, error) {
+func (elm *Action_1_SimpleTransfer) Parse(buf []byte, seek uint32) (uint32, error) {
 	var moveseek, _ = elm.Address.Parse(buf, seek)
 	var moveseek2, _ = elm.Amount.Parse(buf, moveseek)
 	return moveseek2, nil

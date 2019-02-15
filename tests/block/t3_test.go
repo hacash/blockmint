@@ -4,16 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
+	"github.com/hacash/blockmint/tests"
 	"testing"
 )
 
 func Test_block1(t *testing.T) {
 
-	var testByteAry = GenTestData_trs_block()
+	var testByteAry = tests.GenTestData_block()
 
-	var block1 = new(blocks.Block_v1)
-
-	block1.Parse(&testByteAry, 0)
+	var block1, _, _ = blocks.ParseBlock(testByteAry, 0)
 	var resultByteAry, _ = block1.Serialize()
 
 	//var bignum = block1.Amount.GetValue()

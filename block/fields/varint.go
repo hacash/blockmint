@@ -28,18 +28,34 @@ func (elm *VarInt6) Serialize() ([]byte, error) { return varIntSerialize(uint64(
 func (elm *VarInt7) Serialize() ([]byte, error) { return varIntSerialize(uint64(*elm), 7) }
 func (elm *VarInt8) Serialize() ([]byte, error) { return varIntSerialize(uint64(*elm), 8) }
 
-func (elm *VarInt1) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 1) }
-func (elm *VarInt2) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 2) }
-func (elm *VarInt3) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 3) }
-func (elm *VarInt4) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 4) }
-func (elm *VarInt5) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 5) }
-func (elm *VarInt6) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 6) }
-func (elm *VarInt7) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 7) }
-func (elm *VarInt8) Parse(buf *[]byte, seek int) (int, error) { return varIntParse(elm, buf, seek, 8) }
+func (elm *VarInt1) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 1)
+}
+func (elm *VarInt2) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 2)
+}
+func (elm *VarInt3) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 3)
+}
+func (elm *VarInt4) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 4)
+}
+func (elm *VarInt5) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 5)
+}
+func (elm *VarInt6) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 6)
+}
+func (elm *VarInt7) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 7)
+}
+func (elm *VarInt8) Parse(buf []byte, seek uint32) (uint32, error) {
+	return varIntParse(elm, buf, seek, 8)
+}
 
 ////////////////////////////////////////////////////////
 
-func varIntSerialize(val uint64, maxlen int) ([]byte, error) {
+func varIntSerialize(val uint64, maxlen uint32) ([]byte, error) {
 	var intbytes = make([]byte, 8)
 	binary.BigEndian.PutUint64(intbytes, val)
 	byyy := intbytes[8-maxlen : 8]
@@ -49,11 +65,11 @@ func varIntSerialize(val uint64, maxlen int) ([]byte, error) {
 	return byyy, nil
 }
 
-func varIntParse(elm interface{}, buf *[]byte, seek int, maxlen int) (int, error) {
+func varIntParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32, error) {
 	// fmt.Println("xxx",*buf)
-	intbytes := (*buf)[seek : seek+maxlen]
+	intbytes := buf[seek : seek+maxlen]
 	// fmt.Println(intbytes)
-	padbytes := bytes.Repeat([]byte{0}, 8-maxlen)
+	padbytes := bytes.Repeat([]byte{0}, int(8-maxlen))
 	intbytes = append(padbytes, intbytes...)
 	//addrbytes = bytes.TrimRight(addrbytes, " ")
 	val := binary.BigEndian.Uint64(intbytes)

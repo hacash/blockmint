@@ -13,12 +13,12 @@ func Test_action1(t *testing.T) {
 	// action 1
 	//testbuffer.Write( []byte{ 0, 1 } )
 	testbuffer.Write([]byte("1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD"))
-	testbuffer.Write([]byte{1, 123, 248})
+	testbuffer.Write([]byte{248, 1, 123})
 
 	var testByteAry = testbuffer.Bytes()
 	var act1 = new(actions.Action_1_SimpleTransfer)
 
-	act1.Parse(&testByteAry, 0)
+	act1.Parse(testByteAry, 0)
 
 	fmt.Print(testByteAry)
 

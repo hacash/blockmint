@@ -14,15 +14,19 @@ type Bytes64 []byte
 func (elm *Bytes32) Serialize() ([]byte, error) { return bytesSerialize(string(*elm), 32) }
 func (elm *Bytes64) Serialize() ([]byte, error) { return bytesSerialize(string(*elm), 64) }
 
-func (elm *Bytes32) Parse(buf *[]byte, seek int) (int, error) { return bytesParse(elm, buf, seek, 32) }
-func (elm *Bytes64) Parse(buf *[]byte, seek int) (int, error) { return bytesParse(elm, buf, seek, 64) }
+func (elm *Bytes32) Parse(buf []byte, seek uint32) (uint32, error) {
+	return bytesParse(elm, buf, seek, 32)
+}
+func (elm *Bytes64) Parse(buf []byte, seek uint32) (uint32, error) {
+	return bytesParse(elm, buf, seek, 64)
+}
 
 ////////////////////////////////////////////////////////
 
-func bytesSerialize(str string, maxlen int) ([]byte, error) {
+func bytesSerialize(str string, maxlen uint32) ([]byte, error) {
 	//var str = string(*elm)
 	for {
-		if len(str) < maxlen {
+		if uint32(len(str)) < maxlen {
 			str += " "
 		} else {
 			break
@@ -31,8 +35,8 @@ func bytesSerialize(str string, maxlen int) ([]byte, error) {
 	return []byte(str), nil
 }
 
-func bytesParse(elm interface{}, buf *[]byte, seek int, maxlen int) (int, error) {
-	var addrbytes = (*buf)[seek : seek+maxlen]
+func bytesParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32, error) {
+	var addrbytes = buf[seek : seek+maxlen]
 	//var sd = string(addrbytes)
 	switch a := elm.(type) {
 	case *Bytes32:

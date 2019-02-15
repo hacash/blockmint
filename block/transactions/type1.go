@@ -40,7 +40,7 @@ func (trs *Transaction_1_Simple) Serialize() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (trs *Transaction_1_Simple) Parse(buf *[]byte, seek int) (int, error) {
+func (trs *Transaction_1_Simple) Parse(buf []byte, seek uint32) (uint32, error) {
 	m1, _ := trs.Timestamp.Parse(buf, seek)
 	m2, _ := trs.Address.Parse(buf, m1)
 	m3, _ := trs.Fee.Parse(buf, m2)
@@ -57,6 +57,8 @@ func (trs *Transaction_1_Simple) Parse(buf *[]byte, seek int) (int, error) {
 	return iseek, nil
 }
 
+/* *********************************************************** */
+
 func NewActionByKind(kind uint16) (typesblock.Action, error) {
 	switch kind {
 	////////////////////   ACTIONS   ////////////////////
@@ -67,8 +69,8 @@ func NewActionByKind(kind uint16) (typesblock.Action, error) {
 	return nil, err.New("Cannot find Action kind of " + string(kind))
 }
 
-func ParseAction(buf *[]byte, seek int) (typesblock.Action, int, error) {
-	var kind = binary.BigEndian.Uint16((*buf)[seek : seek+2])
+func ParseAction(buf []byte, seek uint32) (typesblock.Action, uint32, error) {
+	var kind = binary.BigEndian.Uint16(buf[seek : seek+2])
 	var act, _ = NewActionByKind(kind)
 	var mv, err = act.Parse(buf, seek+2)
 	return act, mv, err

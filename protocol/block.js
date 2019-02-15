@@ -74,6 +74,7 @@ PoW 和 PoS 混合共识
  * 预定义的区块数据格式
  * 1 byte = 255
  * 2 byte = 65535
+ * 3 byte = 16777215
  * 4 byte = 4294967295
  * 8 byte = 922 3372 0368 5477 5807
  */
@@ -107,7 +108,7 @@ const PredefinitionBlockFormat = {
     // nonce: 4294967295,
     // ----- 可选END ----- //
 
-    // 4 byte 交易数量
+    // 3 byte 交易数量
     transactionCount: 123,
 
     // 交易

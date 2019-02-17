@@ -62,13 +62,13 @@ func (loc *BlockStoreFileHead) Serialize() []byte {
 type BlockLocation struct {
 	BlockFileNum uint32
 	FileOffset   uint32
-	BlockLen     uint32
+	DataLen      uint32
 }
 
 func (loc *BlockLocation) Parse(buf []byte, seek uint32) error {
 	loc.BlockFileNum = binary.BigEndian.Uint32(buf[seek : seek+4])
 	loc.FileOffset = binary.BigEndian.Uint32(buf[seek+4 : seek+8])
-	loc.BlockLen = binary.BigEndian.Uint32(buf[seek+8 : seek+12])
+	loc.DataLen = binary.BigEndian.Uint32(buf[seek+8 : seek+12])
 	return nil
 }
 
@@ -78,7 +78,7 @@ func (loc *BlockLocation) Serialize() []byte {
 	var byt2 = make([]byte, 4)
 	binary.BigEndian.PutUint32(byt2, loc.FileOffset)
 	var byt3 = make([]byte, 4)
-	binary.BigEndian.PutUint32(byt3, loc.BlockLen)
+	binary.BigEndian.PutUint32(byt3, loc.DataLen)
 	var buffer bytes.Buffer
 	buffer.Write(byt1)
 	buffer.Write(byt2)

@@ -119,9 +119,9 @@ func (db *BlockDataDB) ReadBlock(blockhash []byte) block.Block {
 	tarFileName := db.getPartFileName(loc.BlockFileNum)
 	tarFile, _ := os.OpenFile(tarFileName, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
 
-	var bodyBytes = make([]byte, loc.BlockLen)
+	var bodyBytes = make([]byte, loc.DataLen)
 	rdlen, e := tarFile.ReadAt(bodyBytes, int64(loc.FileOffset))
-	if e != nil || uint32(rdlen) != loc.BlockLen {
+	if e != nil || uint32(rdlen) != loc.DataLen {
 		return nil
 	}
 

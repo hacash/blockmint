@@ -127,37 +127,7 @@ func (db *BlockIndexDB) SaveByByteForce(hash []byte, blockLoc *BlockLocation, bl
 		}
 
 	}
-	/*
-		// item
-		var item bytes.Buffer
-		var tailpos = 31
-		if itempos != nil {
-			tailpos = len(itempos.hashtail)-1
-		}
-		var ipw = uint8((*hash)[tailpos]) % 25
-		var ipwstart = int(ipw)*itemLiWide
-		item.Write( bytes.Repeat([]byte{0}, ipwstart) )
-		var valbyte = make([]byte, 4)
-		writeNumber := filesize / int64(itemSizeSet)
-		if filesize == 0 {
-			writeNumber = 1 // 新文件
-		}
-		var valkind = uint8(2)
-		if itempos == nil {
-		}else if itempos.itemkind == 0 {
-		}else if itempos.itemkind == 2 {
-		}
-		binary.BigEndian.PutUint32(valbyte, uint32(writeNumber))
-		var nextptr = bytes.NewBuffer( []byte{ valkind } )
-		nextptr.Write(valbyte)
-		item.Write( nextptr.Bytes() )
-		item.Write( bytes.Repeat([]byte{0}, itemSizeSet - ipwstart - itemLiWide) )
-		if itempos.itemkind == 2 { // 分支
-			var
-
-		}
-	*/
-	// write
+	// write 区块头数据一旦储存位置不会更改，只会追加新增数据和修改指针
 	var filetailseek = filesize
 	if filesize == 0 {
 		//fmt.Println("filesize == 0")

@@ -23,7 +23,7 @@ func Test_store1(t *testing.T) {
 	loc := &store.BlockLocation{
 		BlockFileNum: uint32(0),
 		FileOffset:   uint32(0),
-		BlockLen:     uint32(0),
+		DataLen:      uint32(0),
 	}
 	fmt.Println(loc)
 	db1.SaveForce(hashbyte, loc, block1)
@@ -75,7 +75,7 @@ func Test_store_loop(t *testing.T) {
 	loc := &store.BlockLocation{
 		BlockFileNum: uint32(0),
 		FileOffset:   uint32(0),
-		BlockLen:     uint32(0),
+		DataLen:      uint32(0),
 	}
 	fmt.Println(loc)
 

@@ -53,6 +53,15 @@ func (elm *VarInt8) Parse(buf []byte, seek uint32) (uint32, error) {
 	return varIntParse(elm, buf, seek, 8)
 }
 
+func (elm *VarInt1) Size() uint32 { return 1 }
+func (elm *VarInt2) Size() uint32 { return 2 }
+func (elm *VarInt3) Size() uint32 { return 3 }
+func (elm *VarInt4) Size() uint32 { return 4 }
+func (elm *VarInt5) Size() uint32 { return 5 }
+func (elm *VarInt6) Size() uint32 { return 6 }
+func (elm *VarInt7) Size() uint32 { return 7 }
+func (elm *VarInt8) Size() uint32 { return 8 }
+
 ////////////////////////////////////////////////////////
 
 func varIntSerialize(val uint64, maxlen uint32) ([]byte, error) {

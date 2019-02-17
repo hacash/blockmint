@@ -41,3 +41,7 @@ func (bill *Amount) GetValue() *big.Int {
 	bignum.Mul(bignum, sign) // do sign
 	return bignum
 }
+
+func (bill *Amount) Size() uint32 {
+	return 1 + 1 + uint32(len(bill.Numeral))
+}

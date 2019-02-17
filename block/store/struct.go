@@ -65,6 +65,10 @@ type BlockLocation struct {
 	DataLen      uint32
 }
 
+func (loc BlockLocation) Size() uint32 {
+	return 3 * 4
+}
+
 func (loc *BlockLocation) Parse(buf []byte, seek uint32) error {
 	loc.BlockFileNum = binary.BigEndian.Uint32(buf[seek : seek+4])
 	loc.FileOffset = binary.BigEndian.Uint32(buf[seek+4 : seek+8])

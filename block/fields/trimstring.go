@@ -20,6 +20,9 @@ func (elm *TrimString64) Parse(buf []byte, seek uint32) (uint32, error) {
 	return trimStringParse(elm, buf, seek, 64)
 }
 
+func (elm *TrimString16) Size() uint32 { return 16 }
+func (elm *TrimString64) Size() uint32 { return 64 }
+
 ////////////////////////////////////////////////////////
 
 func trimStringSerialize(str string, maxlen int) ([]byte, error) {

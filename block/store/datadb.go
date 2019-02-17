@@ -21,7 +21,7 @@ type BlockDataDB struct {
 	filepath string
 
 	fileHeadName  string
-	fileIndexName string
+	filepathIndex string
 
 	fileHead *os.File
 
@@ -32,16 +32,16 @@ type BlockDataDB struct {
 
 func (db *BlockDataDB) getPartFileName(filenum uint32) string {
 	partnum := strconv.Itoa(int(filenum))
-	return path.Join(db.filepath, "part_"+string(partnum)+".dat")
+	return path.Join(db.filepath, "data"+string(partnum)+".dat")
 }
 
 func (db *BlockDataDB) Init(filepath string) {
 
 	db.filepath = filepath
-	db.fileHeadName = path.Join(filepath, "HEAD.dat")
-	db.fileIndexName = path.Join(filepath, "INDEX.dat")
+	db.fileHeadName = path.Join(filepath, "HEAD.hd")
+	db.filepathIndex = path.Join(filepath, "indexs")
 	file.CreatePath(db.filepath)
-	db.indexdb.Init(db.fileIndexName)
+	db.indexdb.Init(db.filepathIndex)
 	//db.fileHead, _ = os.OpenFile(db.fileHeadName, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
 	//db.fileIndex, _ = os.OpenFile(db.fileIndexName, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
 
@@ -100,20 +100,22 @@ func (db *BlockDataDB) SaveBlockByBytes(blockhash []byte, blockbytes []byte) err
 	currentBlockDataFile.WriteAt(blockbody, curFileSize)
 
 	// do store index
-	db.indexdb.SaveByByteForce(blockhash, location, head)
+	db.indexdb.SaveByBlockHeadByte(blockhash, location, head)
 
 	return nil
 
 }
 
-func (db *BlockDataDB) ReadBlock(blockhash []byte) block.Block {
+func (db *BlockDataDB) ReadBlock(blockhash []byte) (block.Block, error) {
 
 	// read index
-	item := db.indexdb.Find(blockhash)
-	if item == nil {
-		return nil
+	loc, blockHead, err := db.indexdb.Find(blockhash)
+	if err != nil {
+		return nil, err
 	}
-	loc := item.Location
+	if loc == nil {
+		return nil, nil
+	}
 
 	// read body
 	tarFileName := db.getPartFileName(loc.BlockFileNum)
@@ -122,12 +124,12 @@ func (db *BlockDataDB) ReadBlock(blockhash []byte) block.Block {
 	var bodyBytes = make([]byte, loc.DataLen)
 	rdlen, e := tarFile.ReadAt(bodyBytes, int64(loc.FileOffset))
 	if e != nil || uint32(rdlen) != loc.DataLen {
-		return nil
+		return nil, nil
 	}
 
 	// parse
-	item.BlockHead.ParseBody(bodyBytes, 0)
+	blockHead.ParseBody(bodyBytes, 0)
 
-	return item.BlockHead
+	return blockHead, nil
 
 }

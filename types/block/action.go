@@ -12,6 +12,7 @@ type Action interface {
 	// 序列化 与 反序列化
 	Serialize() ([]byte, error)
 	Parse([]byte, uint32) (uint32, error)
+	Size() uint32
 
 	// 请求签名地址
 	SignatureRequestAddress() []string

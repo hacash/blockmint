@@ -57,6 +57,14 @@ func (trs *Transaction_1_Simple) Parse(buf []byte, seek uint32) (uint32, error) 
 	return iseek, nil
 }
 
+func (trs *Transaction_1_Simple) Size() uint32 {
+	totalsize := 1 + trs.Timestamp.Size() + trs.Address.Size() + trs.Fee.Size() + trs.ActionCount.Size()
+	for i := 0; i < int(trs.ActionCount); i++ {
+		totalsize += trs.Actions[i].Size()
+	}
+	return totalsize
+}
+
 /* *********************************************************** */
 
 func NewActionByKind(kind uint16) (typesblock.Action, error) {

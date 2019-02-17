@@ -109,6 +109,19 @@ func (block *Block_v1) Parse(buf []byte, seek uint32) (uint32, error) {
 	return iseek2, nil
 }
 
+func (block *Block_v1) Size() uint32 {
+	totalsize := 1 +
+		block.Height.Size() +
+		block.Timestamp.Size() +
+		block.PrevMark.Size() +
+		block.MrklRoot.Size() +
+		block.TransactionCount.Size()
+	for i := uint32(0); i < uint32(block.TransactionCount); i++ {
+		totalsize += block.Transactions[i].Size()
+	}
+	return totalsize
+}
+
 ////////////////////////////////////////////////////////////////////////
 
 func NewTransactionByType(ty uint8) (typesblock.Transaction, error) {

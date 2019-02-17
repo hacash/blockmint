@@ -41,3 +41,7 @@ func (trs *Transaction_0_Coinbase) Parse(buf []byte, seek uint32) (uint32, error
 
 	return m3, nil
 }
+
+func (trs *Transaction_0_Coinbase) Size() uint32 {
+	return trs.Address.Size() + trs.Reward.Size() + trs.Message.Size()
+}

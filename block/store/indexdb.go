@@ -2,26 +2,80 @@ package store
 
 import (
 	"bytes"
-	"encoding/binary"
-	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
+	"github.com/hacash/blockmint/service/hashtreedb"
+	"github.com/hacash/blockmint/sys/err"
 	"github.com/hacash/blockmint/types/block"
-	"os"
 )
 
 var (
-	itemSizeSet = 125
-	itemLiWide  = 5
+	ValueSizeSet = uint32(3*4 + 1 + 5 + 5 + 32 + 32 + 4)
 )
 
 type BlockIndexDB struct {
-	filename  string
-	indexfile *os.File
+	filepath string
+
+	treedb *hashtreedb.HashTreeDB
 }
 
-func (db *BlockIndexDB) Init(filename string) {
-	db.filename = filename
+func (this *BlockIndexDB) Init(filepath string) {
+	this.filepath = filepath
+	this.treedb = hashtreedb.NewHashTreeDB(filepath, ValueSizeSet, 32)
+	this.treedb.KeyReverse = true      // key值倒序
+	this.treedb.FilePartitionLevel = 2 // 文件分区
 }
+
+func (this *BlockIndexDB) Save(hash []byte, blockLoc *BlockLocation, block block.Block) error {
+	blockheadbytes, err := block.SerializeHead()
+	if err != nil {
+		return err
+	}
+	return this.SaveByBlockHeadByte(hash, blockLoc, blockheadbytes)
+}
+
+func (this *BlockIndexDB) SaveByBlockHeadByte(hash []byte, blockLoc *BlockLocation, blockheadbytes []byte) error {
+
+	query, e := this.treedb.CreateQuery(hash)
+	if e != nil {
+		return e
+	}
+	// new body
+	var bodybyte bytes.Buffer
+	bodybyte.Write(blockLoc.Serialize())
+	bodybyte.Write(blockheadbytes)
+	// save
+	e = query.Save(bodybyte.Bytes())
+	if e != nil {
+		return e
+	}
+	query.Close()
+	// ok
+	return nil
+}
+
+func (this *BlockIndexDB) Find(hash []byte) (*BlockLocation, block.Block, error) {
+	query, e1 := this.treedb.CreateQuery(hash)
+	if e1 != nil {
+		return nil, nil, e1
+	}
+	result, e2 := query.Read()
+	if e2 != nil {
+		return nil, nil, e2
+	}
+	if uint32(len(result)) < ValueSizeSet {
+		return nil, nil, err.New("file store error")
+	}
+
+	var loc BlockLocation
+	loc.Parse(result, 0)
+	var block, _, e3 = blocks.ParseBlockHead(result, 3*4)
+	if e3 != nil {
+		return nil, nil, e3
+	}
+	return &loc, block, nil
+}
+
+/*
 
 func (db *BlockIndexDB) InitForTest(filename string) {
 	db.filename = filename
@@ -336,3 +390,5 @@ func invertOrder(hash []byte) []byte {
 	}
 	return hsdt
 }
+
+*/

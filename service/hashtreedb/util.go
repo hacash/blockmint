@@ -1,8 +1,14 @@
 package hashtreedb
 
 func copyCoverBytes(base []byte, cover []byte, seek int) {
-	for i := seek; i < len(cover)+seek && i < len(base)+seek; i++ {
-		base[i] = cover[i]
+	var i = 0
+	for true {
+		if seek >= len(base) || i >= len(cover) {
+			break
+		}
+		base[seek] = cover[i]
+		seek++
+		i++
 	}
 }
 

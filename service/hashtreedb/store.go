@@ -7,6 +7,7 @@ import (
 	"strconv"
 )
 
+// 单个文件大小至少支持 256^4×5×8 MenuWide=8 时约 80GB
 type HashTreeDB struct {
 	HashSize   uint32 // 哈希大小 16,32,64,128,256
 	KeyReverse bool   // key值倒序
@@ -24,12 +25,14 @@ type HashTreeDB struct {
 }
 
 // 创建DataBase
-func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32) *HashTreeDB {
+func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *HashTreeDB {
+
+	menuWide := (MaxValueSize+HashSize)/IndexItemSize + 1 // 最优空间
 
 	return &HashTreeDB{
-		HashSize:           32,
+		HashSize:           HashSize,
 		KeyReverse:         false,
-		MenuWide:           16,
+		MenuWide:           menuWide,
 		FilePartitionLevel: 0,
 		FileName:           "INDEX",
 		FileSuffix:         ".idx",

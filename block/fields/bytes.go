@@ -21,6 +21,9 @@ func (elm *Bytes64) Parse(buf []byte, seek uint32) (uint32, error) {
 	return bytesParse(elm, buf, seek, 64)
 }
 
+func (elm *Bytes32) Size() uint32 { return 32 }
+func (elm *Bytes64) Size() uint32 { return 64 }
+
 ////////////////////////////////////////////////////////
 
 func bytesSerialize(str string, maxlen uint32) ([]byte, error) {

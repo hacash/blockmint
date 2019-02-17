@@ -27,3 +27,7 @@ func (addr *Address) Parse(buf []byte, seek uint32) (uint32, error) {
 	*addr = sd // replace
 	return seek + addressMaxLen, nil
 }
+
+func (addr *Address) Size() uint32 {
+	return addressMaxLen
+}

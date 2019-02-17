@@ -34,6 +34,12 @@ func (elm *Action_1_SimpleTransfer) Parse(buf []byte, seek uint32) (uint32, erro
 	return moveseek2, nil
 }
 
+func (elm *Action_1_SimpleTransfer) Size() uint32 {
+	return 2 + elm.Address.Size() + elm.Amount.Size()
+}
+
+///////////////////////////////////////////////////////////////////////////
+
 func (*Action_1_SimpleTransfer) SignatureRequestAddress() []string {
 	return nil
 }

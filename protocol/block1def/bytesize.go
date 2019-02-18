@@ -1,4 +1,4 @@
-package blockdef
+package block1def
 
 /**
  * block format field byte size define
@@ -6,7 +6,9 @@ package blockdef
  */
 
 var (
-	ByteSizeBlockHead = 1 + 5 + 5 + 32 + 32 + 4
+	ByteSizeBlockHead              = 1 + 5 + 5 + 32 + 32 + 4
+	ByteSizeBlockMeta              = 4
+	ByteSizeBlockBeforeTransaction = ByteSizeBlockHead + ByteSizeBlockMeta
 
 	// block base
 

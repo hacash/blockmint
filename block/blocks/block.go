@@ -1,9 +1,12 @@
 package blocks
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/hacash/blockmint/miner/x16rs"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
+	"go-ethereum-command/crypto/sha3"
 )
 
 func NewBlockByVersion(ty uint8) (typesblock.Block, error) {
@@ -36,4 +39,50 @@ func ParseBlockHead(buf []byte, seek uint32) (typesblock.Block, uint32, error) {
 	}
 	var mv, err = blk.ParseHead(buf, seek+1)
 	return blk, mv, err
+}
+
+//////////////////////////////////
+
+func CalculateBlockHash(block typesblock.Block) []byte {
+	var buffer bytes.Buffer
+	head, _ := block.SerializeHead()
+	meta, _ := block.SerializeMeta()
+	buffer.Write(head)
+	buffer.Write(meta)
+	return x16rs.HashX16RS(buffer.Bytes())
+}
+
+func CalculateMrklRoot(transactions []typesblock.Transaction) []byte {
+	trslen := len(transactions)
+	hashs := make([][]byte, trslen)
+	for i := 0; i < trslen; i++ {
+		hashs[i] = transactions[i].Hash()
+	}
+	for true {
+		if len(hashs) == 1 {
+			return hashs[0]
+		}
+		hashs = hashMerge(hashs) // 两两归并
+	}
+	return nil
+}
+
+func hashMerge(hashs [][]byte) [][]byte {
+	length := len(hashs)
+	mgsize := length / 2
+	if length%2 == 1 {
+		mgsize = (length + 1) / 2
+	}
+	var mergehashs = make([][]byte, mgsize)
+	for m := 0; m < length; m += 2 {
+		b1 := bytes.NewBuffer(hashs[m])
+		h2 := hashs[m]
+		if m+1 < length {
+			h2 = hashs[m+1]
+		}
+		b1.Write(h2)
+		digest := sha3.Sum256(b1.Bytes())
+		mergehashs[m/2] = digest[:]
+	}
+	return mergehashs
 }

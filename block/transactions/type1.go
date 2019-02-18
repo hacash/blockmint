@@ -7,6 +7,8 @@ import (
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
+
+	"golang.org/x/crypto/sha3"
 )
 
 type Transaction_1_Simple struct {
@@ -16,6 +18,9 @@ type Transaction_1_Simple struct {
 
 	ActionCount fields.VarInt1
 	Actions     []typesblock.Action
+
+	// cache data
+	hash []byte
 }
 
 func (trs *Transaction_1_Simple) Type() uint8 {
@@ -63,6 +68,16 @@ func (trs *Transaction_1_Simple) Size() uint32 {
 		totalsize += trs.Actions[i].Size()
 	}
 	return totalsize
+}
+
+// 交易唯一哈希值
+func (trs *Transaction_1_Simple) Hash() []byte {
+	if trs.hash == nil {
+		stuff, _ := trs.Serialize()
+		digest := sha3.Sum256(stuff)
+		trs.hash = digest[:]
+	}
+	return trs.hash
 }
 
 /* *********************************************************** */

@@ -3,6 +3,7 @@ package hashtreedb
 import (
 	"bytes"
 	"github.com/hacash/blockmint/sys/err"
+	"github.com/hacash/blockmint/sys/util"
 	"os"
 	"strconv"
 )
@@ -34,22 +35,22 @@ func (this *QueryInstance) Close() error {
 }
 
 // 储存
-func (this *QueryInstance) Save(value []byte) error {
+func (this *QueryInstance) Save(value []byte) (*IndexItem, error) {
 	item, e1 := this.FindItem(true)
 	if e1 != nil {
-		return e1
+		return nil, e1
 	}
 	return this.Write(item, value)
 }
 
 // 储存写入（hash相同会覆盖）
-func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) error {
+func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem, error) {
 	bodylen := uint32(len(valuebody))
 	segmentsize := this.db.getSegmentSize()
 	hxsize := this.db.HashSize
 	overplussize := segmentsize - (bodylen + hxsize)
 	if overplussize < 0 {
-		return err.New("Value bytes size overflow, max is" + strconv.Itoa(int(segmentsize-hxsize)))
+		return nil, err.New("Value bytes size overflow, max is" + strconv.Itoa(int(segmentsize-hxsize)))
 	}
 	realbodybuf := bytes.NewBuffer(this.operationHash)
 	realbodybuf.Write(valuebody)
@@ -60,16 +61,16 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) error {
 
 	filestat, e2 := this.targetFile.Stat()
 	if e2 != nil {
-		return e2
+		return nil, e2
 	}
 	filesize := filestat.Size()
 	if filesize > 0 && item == nil { // item == nil
-		return err.New("file read error")
+		return nil, err.New("file read error")
 	}
 	if filesize == 0 {
 		_, e3 := this.targetFile.Write(bytes.Repeat([]byte{0}, int(segmentsize))) // init file
 		if e3 != nil {
-			return e3
+			return nil, e3
 		}
 		filesize = int64(segmentsize)
 	}
@@ -81,20 +82,21 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) error {
 	// level index
 	var fileWriteAppendBatch bytes.Buffer
 	var itemIndexType = uint8(2)
+	var returnIndexItem *IndexItem = nil
 	// pos
 	if item != nil && item.Type == 2 {
 		writeCurrentOffsetNum := filesize / int64(segmentsize)
 		// 循环向下比对
 		oldhash := item.ItemHash
-		oldhashkey := this.db.getHashKey(oldhash)
+		oldhashkey := this.db.GetHashKey(oldhash)
 		if 0 == bytes.Compare(oldhash, this.operationHash) {
 			// 覆盖储存
 			_, e := this.targetFile.WriteAt(realvaluebody, int64(item.ValuePtrNum)*int64(segmentsize)) // update ptr
 			if e != nil {
-				return e
+				return nil, e
 			}
 			// ok
-			return nil // isRecoverValue = true
+			return item, nil // isRecoverValue = true
 
 		} else {
 			// 仅key前缀相同
@@ -108,7 +110,7 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) error {
 				if headOld == headInsert { // 向下
 					writeCurrentOffsetNum += 1 // 向后推 1 segment
 					itempath := NewIndexItem(1, uint32(writeCurrentOffsetNum))
-					copyCoverBytes(onebytes, itempath.Serialize(), int(pos1*IndexItemSize))
+					util.BytesCopyCover(onebytes, itempath.Serialize(), int(pos1*IndexItemSize))
 					fileWriteAppendBatch.Write(onebytes)
 					continue
 				} else { // 分支
@@ -116,9 +118,10 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) error {
 					//fmt.Println(pos1)
 					//fmt.Println(pos2)
 					item1 := NewIndexItem(2, item.ValuePtrNum) // old
-					copyCoverBytes(onebytes, item1.Serialize(), int(pos1*IndexItemSize))
+					util.BytesCopyCover(onebytes, item1.Serialize(), int(pos1*IndexItemSize))
 					item2 := NewIndexItem(2, uint32(writeCurrentOffsetNum))
-					copyCoverBytes(onebytes, item2.Serialize(), int(pos2*IndexItemSize))
+					util.BytesCopyCover(onebytes, item2.Serialize(), int(pos2*IndexItemSize))
+					returnIndexItem = item2
 					//fmt.Println(item1.Serialize())
 					//fmt.Println(item2.Serialize())
 					//fmt.Println(onebytes)
@@ -135,17 +138,20 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) error {
 	if len(realwriteappend) > 0 {
 		_, e := this.targetFile.WriteAt(fileWriteAppendBatch.Bytes(), filesize) // append value and indexs
 		if e != nil {
-			return e
+			return nil, e
 		}
 	}
 	// update item
 	itemup := NewIndexItem(itemIndexType, uint32(filesize/int64(segmentsize)))
 	_, e := this.targetFile.WriteAt(itemup.Serialize(), writeUpdateItemOffset) // update ptr
 	if e != nil {
-		return e
+		return nil, e
+	}
+	if returnIndexItem == nil {
+		returnIndexItem = itemup
 	}
 	// ok
-	return nil
+	return returnIndexItem, nil
 }
 
 // 查询

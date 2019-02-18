@@ -4,6 +4,8 @@ import (
 	"bytes"
 	//"fmt"
 	"github.com/hacash/blockmint/block/fields"
+
+	"golang.org/x/crypto/sha3"
 )
 
 type Transaction_0_Coinbase struct {
@@ -44,4 +46,11 @@ func (trs *Transaction_0_Coinbase) Parse(buf []byte, seek uint32) (uint32, error
 
 func (trs *Transaction_0_Coinbase) Size() uint32 {
 	return trs.Address.Size() + trs.Reward.Size() + trs.Message.Size()
+}
+
+// 交易唯一哈希值
+func (trs *Transaction_0_Coinbase) Hash() []byte {
+	stuff, _ := trs.Serialize()
+	digest := sha3.Sum256(stuff)
+	return digest[:]
 }

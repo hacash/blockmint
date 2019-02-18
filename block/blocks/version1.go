@@ -10,18 +10,18 @@ import (
 
 type Block_v1 struct {
 	// Version   fields.VarInt1
-	Height    fields.VarInt5
-	Timestamp fields.VarInt5
-
-	PrevMark fields.Bytes32
-	MrklRoot fields.Bytes32
-
-	Nonce fields.VarInt4 // 挖矿随机值
-
+	Height           fields.VarInt5
+	Timestamp        fields.VarInt5
+	PrevMark         fields.Bytes32
+	MrklRoot         fields.Bytes32
 	TransactionCount fields.VarInt4
-
+	// meta
+	Nonce fields.VarInt4 // 挖矿随机值
 	// body
 	Transactions []typesblock.Transaction
+
+	// cache data
+	hash []byte
 }
 
 func (block *Block_v1) Version() uint8 {
@@ -48,11 +48,41 @@ func (block *Block_v1) SerializeHead() ([]byte, error) {
 func (block *Block_v1) SerializeBody() ([]byte, error) {
 
 	var buffer = new(bytes.Buffer)
-	b6, _ := block.Nonce.Serialize() // miner nonce
-	buffer.Write(b6)
-	for i := 0; i < len(block.Transactions); i++ {
-		var bi, _ = block.Transactions[i].Serialize()
+	b1, e1 := block.SerializeMeta()
+	if e1 != nil {
+		return nil, e1
+	}
+	b2, e2 := block.SerializeTransactions(nil)
+	if e2 != nil {
+		return nil, e2
+	}
+	buffer.Write(b1)
+	buffer.Write(b2)
+	return buffer.Bytes(), nil
+
+}
+
+func (block *Block_v1) SerializeMeta() ([]byte, error) {
+	var buffer = new(bytes.Buffer)
+	b1, _ := block.Nonce.Serialize() // miner nonce
+	buffer.Write(b1)
+	return buffer.Bytes(), nil
+
+}
+
+func (block *Block_v1) SerializeTransactions(itr typesblock.SerializeTransactionsIterator) ([]byte, error) {
+	var buffer = new(bytes.Buffer)
+	var trslen = uint32(len(block.Transactions))
+	if itr != nil { // 迭代器
+		itr.Init(trslen)
+	}
+	for i := uint32(0); i < trslen; i++ {
+		var trs = block.Transactions[i]
+		var bi, _ = trs.Serialize()
 		buffer.Write(bi)
+		if itr != nil { // 迭代器
+			itr.FinishOneTrs(i, trs, bi)
+		}
 	}
 	return buffer.Bytes(), nil
 
@@ -86,20 +116,29 @@ func (block *Block_v1) ParseHead(buf []byte, seek uint32) (uint32, error) {
 }
 
 func (block *Block_v1) ParseBody(buf []byte, seek uint32) (uint32, error) {
+	seek, _ = block.ParseMeta(buf, seek)
+	seek, _ = block.ParseTransactions(buf, seek)
+	return seek, nil
+}
 
+func (block *Block_v1) ParseMeta(buf []byte, seek uint32) (uint32, error) {
 	seek, _ = block.Nonce.Parse(buf, seek) // miner nonce
-	// body
+	return seek, nil
+}
+
+func (block *Block_v1) ParseTransactions(buf []byte, seek uint32) (uint32, error) {
 	length := int(block.TransactionCount)
+	block.Transactions = make([]typesblock.Transaction, length)
 	for i := 0; i < length; i++ {
 		var trx, sk, err = ParseTransaction(buf, seek)
-
-		block.Transactions = append(block.Transactions, trx)
+		block.Transactions[i] = trx
 		seek = sk
 		if err != nil {
-			break
+			return seek, err
 		}
 	}
 	return seek, nil
+
 }
 
 func (block *Block_v1) Parse(buf []byte, seek uint32) (uint32, error) {
@@ -120,6 +159,21 @@ func (block *Block_v1) Size() uint32 {
 		totalsize += block.Transactions[i].Size()
 	}
 	return totalsize
+}
+
+// HASH
+func (block *Block_v1) Hash() []byte {
+	if block.hash == nil {
+		block.hash = CalculateBlockHash(block)
+	}
+	return block.hash
+}
+
+func (block *Block_v1) GetTransactions() []typesblock.Transaction {
+	return block.Transactions
+}
+func (block *Block_v1) AddTransaction(trs typesblock.Transaction) {
+	block.Transactions = append(block.Transactions, trs)
 }
 
 ////////////////////////////////////////////////////////////////////////

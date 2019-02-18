@@ -12,4 +12,21 @@ type Block interface {
 
 	SerializeBody() ([]byte, error)
 	ParseBody([]byte, uint32) (uint32, error)
+
+	SerializeMeta() ([]byte, error)
+	ParseMeta([]byte, uint32) (uint32, error)
+
+	SerializeTransactions(SerializeTransactionsIterator) ([]byte, error)
+	ParseTransactions([]byte, uint32) (uint32, error)
+
+	// HASH
+	Hash() []byte
+
+	GetTransactions() []Transaction
+	AddTransaction(Transaction)
+}
+
+type SerializeTransactionsIterator interface {
+	Init(uint32)
+	FinishOneTrs(uint32, Transaction, []byte)
 }

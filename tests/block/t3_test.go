@@ -19,6 +19,10 @@ func Test_block1(t *testing.T) {
 
 	// resultByteAry = append(resultByteAry, []byte{1}...)
 
+	mkrroot := blocks.CalculateMrklRoot(block1.GetTransactions())
+	fmt.Println(mkrroot)
+	fmt.Println(len(mkrroot))
+
 	fmt.Println(testByteAry)
 	fmt.Println(resultByteAry)
 

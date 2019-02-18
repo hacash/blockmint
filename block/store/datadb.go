@@ -1,7 +1,8 @@
 package store
 
 import (
-	"github.com/hacash/blockmint/protocol/blockdef"
+	"github.com/hacash/blockmint/protocol/block1def"
+	"github.com/hacash/blockmint/sys/err"
 	"os"
 	"path"
 	"strconv"
@@ -20,14 +21,11 @@ var (
 type BlockDataDB struct {
 	filepath string
 
-	fileHeadName  string
-	filepathIndex string
+	fileHeadName string
 
 	fileHead *os.File
 
 	blkf BlockStoreFileHead
-
-	indexdb BlockIndexDB
 }
 
 func (db *BlockDataDB) getPartFileName(filenum uint32) string {
@@ -39,20 +37,9 @@ func (db *BlockDataDB) Init(filepath string) {
 
 	db.filepath = filepath
 	db.fileHeadName = path.Join(filepath, "HEAD.hd")
-	db.filepathIndex = path.Join(filepath, "indexs")
 	file.CreatePath(db.filepath)
-	db.indexdb.Init(db.filepathIndex)
-	//db.fileHead, _ = os.OpenFile(db.fileHeadName, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
-	//db.fileIndex, _ = os.OpenFile(db.fileIndexName, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
 
 	db.blkf.Load(db.fileHeadName) // load
-
-	defer func() {
-		//db.fileHead.Close()
-		//db.fileIndex.Close()
-		//db.fileHead = nil
-		//db.fileIndex = nil
-	}()
 
 }
 
@@ -62,15 +49,14 @@ func (db *BlockDataDB) glowBlockStoreFileNum() error {
 	return nil
 }
 
-func (db *BlockDataDB) SaveBlock(blockhash []byte, block block.Block) error {
+func (db *BlockDataDB) Save(block block.Block) (*BlockLocation, error) {
 	blkbytes, _ := block.Serialize()
-	return db.SaveBlockByBytes(blockhash, blkbytes)
+	blockbody := blkbytes[block1def.ByteSizeBlockHead:]
+	return db.SaveByBodyBytes(blockbody)
 }
 
-func (db *BlockDataDB) SaveBlockByBytes(blockhash []byte, blockbytes []byte) error {
+func (db *BlockDataDB) SaveByBodyBytes(blockbody []byte) (*BlockLocation, error) {
 
-	head := blockbytes[:blockdef.ByteSizeBlockHead]
-	blockbody := blockbytes[blockdef.ByteSizeBlockHead:]
 	bodyLen := len(blockbody)
 
 	var filenum = db.blkf.FileNum
@@ -80,7 +66,7 @@ func (db *BlockDataDB) SaveBlockByBytes(blockhash []byte, blockbytes []byte) err
 	currentBlockDataFile, _ := os.OpenFile(curFileName, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
 	filestat, e := currentBlockDataFile.Stat()
 	if e != nil {
-		return nil
+		return nil, e
 	}
 
 	var curFileSize = filestat.Size()
@@ -97,25 +83,16 @@ func (db *BlockDataDB) SaveBlockByBytes(blockhash []byte, blockbytes []byte) err
 	}
 
 	// do store data
-	currentBlockDataFile.WriteAt(blockbody, curFileSize)
+	_, er := currentBlockDataFile.WriteAt(blockbody, curFileSize)
+	if er != nil {
+		return nil, er
+	}
 
-	// do store index
-	db.indexdb.SaveByBlockHeadByte(blockhash, location, head)
-
-	return nil
+	return location, nil
 
 }
 
-func (db *BlockDataDB) ReadBlock(blockhash []byte) (block.Block, error) {
-
-	// read index
-	loc, blockHead, err := db.indexdb.Find(blockhash)
-	if err != nil {
-		return nil, err
-	}
-	if loc == nil {
-		return nil, nil
-	}
+func (db *BlockDataDB) ReadBlockBody(loc *BlockLocation) ([]byte, error) {
 
 	// read body
 	tarFileName := db.getPartFileName(loc.BlockFileNum)
@@ -123,13 +100,12 @@ func (db *BlockDataDB) ReadBlock(blockhash []byte) (block.Block, error) {
 
 	var bodyBytes = make([]byte, loc.DataLen)
 	rdlen, e := tarFile.ReadAt(bodyBytes, int64(loc.FileOffset))
-	if e != nil || uint32(rdlen) != loc.DataLen {
-		return nil, nil
+	if e != nil {
+		return nil, e
+	}
+	if uint32(rdlen) != loc.DataLen {
+		return nil, err.New("error file size")
 	}
 
-	// parse
-	blockHead.ParseBody(bodyBytes, 0)
-
-	return blockHead, nil
-
+	return bodyBytes, nil
 }

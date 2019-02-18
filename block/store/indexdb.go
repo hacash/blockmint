@@ -3,13 +3,14 @@ package store
 import (
 	"bytes"
 	"github.com/hacash/blockmint/block/blocks"
+	"github.com/hacash/blockmint/protocol/block1def"
 	"github.com/hacash/blockmint/service/hashtreedb"
 	"github.com/hacash/blockmint/sys/err"
 	"github.com/hacash/blockmint/types/block"
 )
 
 var (
-	ValueSizeSet = uint32(3*4 + 1 + 5 + 5 + 32 + 32 + 4)
+	valueSizeSet = BlockLocationSize + uint32(block1def.ByteSizeBlockHead)
 )
 
 type BlockIndexDB struct {
@@ -20,40 +21,53 @@ type BlockIndexDB struct {
 
 func (this *BlockIndexDB) Init(filepath string) {
 	this.filepath = filepath
-	this.treedb = hashtreedb.NewHashTreeDB(filepath, ValueSizeSet, 32)
+	this.treedb = hashtreedb.NewHashTreeDB(filepath, valueSizeSet, 32)
 	this.treedb.KeyReverse = true      // key值倒序
 	this.treedb.FilePartitionLevel = 2 // 文件分区
 }
 
-func (this *BlockIndexDB) Save(hash []byte, blockLoc *BlockLocation, block block.Block) error {
+func (this *BlockIndexDB) Save(hash []byte, blockLoc *BlockLocation, block block.Block) (*hashtreedb.IndexItem, error) {
 	blockheadbytes, err := block.SerializeHead()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return this.SaveByBlockHeadByte(hash, blockLoc, blockheadbytes)
 }
 
-func (this *BlockIndexDB) SaveByBlockHeadByte(hash []byte, blockLoc *BlockLocation, blockheadbytes []byte) error {
+func (this *BlockIndexDB) SaveByBlockHeadByte(hash []byte, blockLoc *BlockLocation, blockheadbytes []byte) (*hashtreedb.IndexItem, error) {
 
 	query, e := this.treedb.CreateQuery(hash)
 	if e != nil {
-		return e
+		return nil, e
 	}
 	// new body
 	var bodybyte bytes.Buffer
 	bodybyte.Write(blockLoc.Serialize())
 	bodybyte.Write(blockheadbytes)
 	// save
-	e = query.Save(bodybyte.Bytes())
-	if e != nil {
-		return e
+	item, e2 := query.Save(bodybyte.Bytes())
+	if e2 != nil {
+		return nil, e2
 	}
 	query.Close()
 	// ok
-	return nil
+	return item, nil
 }
 
 func (this *BlockIndexDB) Find(hash []byte) (*BlockLocation, block.Block, error) {
+	loc, hdbytes, e := this.FindBlockHeadBytes(hash)
+	if e != nil {
+		return nil, nil, e
+	}
+	var block, _, e3 = blocks.ParseBlockHead(hdbytes, 0)
+	if e3 != nil {
+		return nil, nil, e3
+	}
+	return loc, block, nil
+
+}
+
+func (this *BlockIndexDB) FindBlockHeadBytes(hash []byte) (*BlockLocation, []byte, error) {
 	query, e1 := this.treedb.CreateQuery(hash)
 	if e1 != nil {
 		return nil, nil, e1
@@ -62,18 +76,46 @@ func (this *BlockIndexDB) Find(hash []byte) (*BlockLocation, block.Block, error)
 	if e2 != nil {
 		return nil, nil, e2
 	}
-	if uint32(len(result)) < ValueSizeSet {
+	if uint32(len(result)) < valueSizeSet {
 		return nil, nil, err.New("file store error")
 	}
 
 	var loc BlockLocation
 	loc.Parse(result, 0)
-	var block, _, e3 = blocks.ParseBlockHead(result, 3*4)
-	if e3 != nil {
-		return nil, nil, e3
-	}
-	return &loc, block, nil
+	//var block, _, e3 = blocks.ParseBlockHead(result, 3*4)
+	//if e3 != nil {
+	//	return nil, nil, e3
+	//}
+	start := 3 * 4
+	return &loc, result[start : start+block1def.ByteSizeBlockHead], nil
 }
+
+func (this *BlockIndexDB) FindBlockHeadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]byte, error) {
+	valuebytes, e := this.treedb.ReadBytesByPosition(keyprefix, ptrnum)
+	if e != nil {
+		return nil, e
+	}
+	start := this.treedb.HashSize + BlockLocationSize
+	return valuebytes[start : start+uint32(block1def.ByteSizeBlockHead)], nil
+}
+
+/////////////////////////////////////////
+
+func (this *BlockIndexDB) GetPositionLvTwoByHash(hash []byte) [2]byte {
+	key := this.treedb.GetHashKey(hash)
+	return [2]byte{key[0], key[1]}
+
+}
+
+/*
+
+func (this *BlockIndexDB) FindBlockHeadBytesByPosition(keyhead []byte, ptrnum uint32) (*BlockLocation, block.Block, error){
+	readlen := this.
+
+	return nil, nil, nil
+}
+
+*/
 
 /*
 

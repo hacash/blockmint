@@ -9,4 +9,7 @@ type Transaction interface {
 	Serialize() ([]byte, error)
 	Parse([]byte, uint32) (uint32, error)
 	Size() uint32
+
+	// 交易唯一哈希值
+	Hash() []byte
 }

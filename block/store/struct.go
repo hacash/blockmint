@@ -59,14 +59,12 @@ func (loc *BlockStoreFileHead) Serialize() []byte {
 
 ////////////////////////////////////////////////////
 
+var BlockLocationSize = uint32(4 * 3)
+
 type BlockLocation struct {
 	BlockFileNum uint32
 	FileOffset   uint32
 	DataLen      uint32
-}
-
-func (loc BlockLocation) Size() uint32 {
-	return 3 * 4
 }
 
 func (loc *BlockLocation) Parse(buf []byte, seek uint32) error {
@@ -104,3 +102,38 @@ type PositionFindItem struct {
 }
 
 ////////////////////////////////////////////////////
+
+// 交易索引 database
+
+type TrsIdxOneFindItem struct {
+	BlockHeadInfoFilePartition [2]byte        // 区块头信息文件分区标号
+	BlockHeadInfoPtrNumber     uint32         // 区块头信息指针位置
+	location                   *BlockLocation // 交易起始在区块文件中的位置
+}
+
+func (this *TrsIdxOneFindItem) Parse(buf []byte, seek uint32) error {
+	this.BlockHeadInfoFilePartition = [2]byte{buf[seek], buf[seek+1]}
+	this.BlockHeadInfoPtrNumber = binary.BigEndian.Uint32(buf[seek+2 : seek+6])
+	var loc BlockLocation
+	loc.Parse(buf, seek+6)
+	this.location = &loc
+	return nil
+}
+
+func (this *TrsIdxOneFindItem) Serialize() []byte {
+	var buffer = bytes.NewBuffer(this.BlockHeadInfoFilePartition[:])
+	var byt1 = make([]byte, 4)
+	binary.BigEndian.PutUint32(byt1, this.BlockHeadInfoPtrNumber)
+	buffer.Write(byt1)
+	buffer.Write(this.location.Serialize())
+	return buffer.Bytes()
+}
+
+//////////////////////////////////////////////////
+
+type TrsFindResult struct {
+	Location    *BlockLocation    // 交易起始在区块文件中的位置
+	BlockHead   block.Block       // 区块头
+	Transaction block.Transaction // 交易内容
+
+}

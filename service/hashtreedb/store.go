@@ -45,7 +45,7 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 // 建立数据操作
 func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 
-	hashkey := this.getHashKey(hash)
+	hashkey := this.GetHashKey(hash)
 	filename := this.getPartFileName(hashkey)
 	//fmt.Println(filename)
 	//fmt.Println(path.Dir(filename))
@@ -59,13 +59,37 @@ func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 	return NewQueryInstance(this, hash, hashkey, curfile), nil
 }
 
+// 建立数据操作
+func (this *HashTreeDB) ReadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]byte, error) {
+
+	filename := this.getPartFileName(keyprefix)
+	//fmt.Println(filename)
+	//fmt.Println(path.Dir(filename))
+	file.CreatePath(path.Dir(filename))
+	// 打开相应文件
+	curfile, fe := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
+	if fe != nil {
+		return nil, fe
+	}
+	// 读取内容
+	segsize := this.getSegmentSize()
+	var valuebody = make([]byte, segsize)
+	_, e1 := curfile.ReadAt(valuebody, int64(segsize)*int64(ptrnum))
+	if e1 != nil {
+		return nil, e1
+	}
+	curfile.Close()
+	// ok
+	return valuebody, nil
+}
+
 // Segment Size
 func (this *HashTreeDB) getSegmentSize() uint32 {
 	return IndexItemSize * this.MenuWide
 }
 
 // Segment Size
-func (this *HashTreeDB) getHashKey(hash []byte) []byte {
+func (this *HashTreeDB) GetHashKey(hash []byte) []byte {
 	hashkey := hash
 	if this.KeyReverse {
 		hashkey = ReverseHashOrder(hash) // 倒序

@@ -54,15 +54,15 @@ func Test_store2(t *testing.T) {
 		one := make([]byte, 32)
 		rand.Read(one)
 		//fmt.Println(one)
-		db1.SaveBlock(one, block1)
+		db1.Save(block1)
 	}
 
-	hashone1, _ := hex.DecodeString("FFFFFFFFFFFFFF01000000000000000000000000000000000000000000000001")
+	//hashone1, _ := hex.DecodeString("FFFFFFFFFFFFFF01000000000000000000000000000000000000000000000001")
 	fmt.Println(block1.Serialize())
-	db1.SaveBlock(hashone1, block1)
+	db1.Save(block1)
 
-	search, _ := db1.ReadBlock(hashone1)
-	fmt.Println(search.Serialize())
+	//blkbody, _ := db1.ReadBlockBody(hashone1)
+	//fmt.Println(blkbody)
 
 }
 
@@ -154,4 +154,45 @@ func Test_store_loop(t *testing.T) {
 	fmt.Println(blk.Serialize())
 
 	//fmt.Println((256*3+1)*256*256*256*256 /1024/1024 )
+}
+
+func Test_store4(t *testing.T) {
+
+	var testByteAry = tests.GenTestData_block()
+	var block1, _, _ = blocks.ParseBlock(testByteAry, 0)
+	var block1hash = block1.Hash()
+	var trs1 = block1.GetTransactions()[0].Hash()
+	var trs2 = block1.GetTransactions()[1].Hash()
+	fmt.Println("block:", hex.EncodeToString(block1hash))
+	fmt.Println("trs1:", hex.EncodeToString(trs1))
+	fmt.Println("trs2:", hex.EncodeToString(trs2))
+
+	var testpath = "/media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/tests/blockstore/datas"
+	os.Remove(testpath)
+
+	var db1 store.BlocksDataStore
+	db1.Init(testpath)
+
+	//db1.Save(block1)
+
+	var resblk, _ = db1.Read(block1hash)
+	s1, _ := block1.Serialize()
+	fmt.Println(hex.EncodeToString(s1))
+	s2, _ := resblk.Serialize()
+	fmt.Println(hex.EncodeToString(s1))
+	fmt.Println(hex.EncodeToString(s2))
+	//
+	//// div
+	var trsres1, _ = db1.ReadTransaction(trs1, true, true)
+	trsobj1, _ := trsres1.Transaction.Serialize()
+	fmt.Println(trsobj1)
+	fmt.Println(hex.EncodeToString(trsres1.Transaction.Hash()))
+	fmt.Println(hex.EncodeToString(trsobj1))
+
+	var trsres2, _ = db1.ReadTransaction(trs2, true, true)
+	trsobj2, _ := trsres2.Transaction.Serialize()
+	fmt.Println(trsobj2)
+	fmt.Println(hex.EncodeToString(trsres2.Transaction.Hash()))
+	fmt.Println(hex.EncodeToString(trsobj2))
+
 }

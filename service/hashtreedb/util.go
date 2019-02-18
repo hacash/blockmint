@@ -1,17 +1,5 @@
 package hashtreedb
 
-func copyCoverBytes(base []byte, cover []byte, seek int) {
-	var i = 0
-	for true {
-		if seek >= len(base) || i >= len(cover) {
-			break
-		}
-		base[seek] = cover[i]
-		seek++
-		i++
-	}
-}
-
 ///////////////////////////////////////////
 
 func ReverseHashOrder(hash []byte) []byte {

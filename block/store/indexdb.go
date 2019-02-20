@@ -40,6 +40,7 @@ func (this *BlockIndexDB) SaveByBlockHeadByte(hash []byte, blockLoc *BlockLocati
 	if e != nil {
 		return nil, e
 	}
+	defer query.Close()
 	// new body
 	var bodybyte bytes.Buffer
 	bodybyte.Write(blockLoc.Serialize())
@@ -72,7 +73,9 @@ func (this *BlockIndexDB) FindBlockHeadBytes(hash []byte) (*BlockLocation, []byt
 	if e1 != nil {
 		return nil, nil, e1
 	}
-	result, e2 := query.Read()
+	defer query.Close()
+	// read
+	result, _, e2 := query.Read()
 	if e2 != nil {
 		return nil, nil, e2
 	}
@@ -102,7 +105,7 @@ func (this *BlockIndexDB) FindBlockHeadBytesByPosition(keyprefix []byte, ptrnum 
 /////////////////////////////////////////
 
 func (this *BlockIndexDB) GetPositionLvTwoByHash(hash []byte) [2]byte {
-	key := this.treedb.GetHashKey(hash)
+	key := this.treedb.GetQueryHashKey(hash)
 	return [2]byte{key[0], key[1]}
 
 }

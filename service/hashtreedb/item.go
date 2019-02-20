@@ -8,7 +8,7 @@ import (
 var IndexItemSize = uint32(5) // 索引项宽度
 
 type IndexItem struct {
-	PositionOffset int64 // 数据位置数
+	ItemFindOffset int64 // 数据位置数
 
 	Type        uint8  // 0:nil 1:枝 2:叶
 	ValuePtrNum uint32 // 指针位置数 ×seg=offset

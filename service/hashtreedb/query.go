@@ -13,17 +13,19 @@ import (
 type QueryInstance struct {
 	db *HashTreeDB
 
-	keyHash       []byte // key值
+	queryKeyHash  []byte // key值
+	wideKeyHash   []byte // key值
 	operationHash []byte // 要操作的哈希
 
 	targetFile *os.File // 当前正在使用的文件
 
 }
 
-func NewQueryInstance(db *HashTreeDB, hash []byte, key []byte, file *os.File) *QueryInstance {
+func NewQueryInstance(db *HashTreeDB, hash []byte, keyhash []byte, key []byte, file *os.File) *QueryInstance {
 	return &QueryInstance{
 		db,
 		key,
+		keyhash,
 		hash,
 		file,
 	}
@@ -75,20 +77,34 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 		filesize = int64(segmentsize)
 	}
 	// offset
-	writeUpdateItemOffset := (int64(this.keyHash[0]) % int64(this.db.MenuWide)) * int64(IndexItemSize)
+	writeUpdateItemOffset := (int64(this.queryKeyHash[0]) % int64(this.db.MenuWide)) * int64(IndexItemSize)
 	if item != nil {
-		writeUpdateItemOffset = item.PositionOffset
+		writeUpdateItemOffset = item.ItemFindOffset
 	}
 	// level index
 	var fileWriteAppendBatch bytes.Buffer
 	var itemIndexType = uint8(2)
 	var returnIndexItem *IndexItem = nil
+	// gc
+	var hasUseGC bool = false
+	var gcPtrNum = uint32(0)
 	// pos
+	if item != nil && item.Type == 0 {
+		// 使用gc
+		gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
+		if gcmng != nil && e1 == nil {
+			gcptr, ok, e := gcmng.Release()
+			if gcptr > 0 && ok && e == nil {
+				gcPtrNum = gcptr
+				hasUseGC = true
+			}
+		}
+	}
 	if item != nil && item.Type == 2 {
 		writeCurrentOffsetNum := filesize / int64(segmentsize)
 		// 循环向下比对
 		oldhash := item.ItemHash
-		oldhashkey := this.db.GetHashKey(oldhash)
+		oldhashkey := this.db.GetQueryHashKey(oldhash)
 		if 0 == bytes.Compare(oldhash, this.operationHash) {
 			// 覆盖储存
 			_, e := this.targetFile.WriteAt(realvaluebody, int64(item.ValuePtrNum)*int64(segmentsize)) // update ptr
@@ -101,9 +117,13 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 		} else {
 			// 仅key前缀相同
 			itemIndexType = 1
-			for i := item.searchLevel + 1; i < uint32(hxsize)-item.searchLevel; i++ {
+			//fmt.Println(oldhashkey)
+			//fmt.Println(this.queryKeyHash)
+			for i := item.searchLevel + 1; i < uint32(hxsize)-item.searchLevel && i < uint32(len(oldhashkey)) && i < uint32(len(this.queryKeyHash)); i++ {
+				//fmt.Println("------", i, len(oldhashkey))
 				headOld := oldhashkey[i]
-				headInsert := this.keyHash[i]
+				headInsert := this.queryKeyHash[i]
+				//fmt.Println(headOld, headInsert)
 				pos1 := uint32(headOld) % this.db.MenuWide
 				pos2 := uint32(headInsert) % this.db.MenuWide
 				var onebytes = make([]byte, segmentsize)
@@ -132,17 +152,28 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 		}
 	}
 	// write file
-	fileWriteAppendBatch.Write(realvaluebody)
+	if !hasUseGC {
+		fileWriteAppendBatch.Write(realvaluebody) // 没有采用gc空间时，追加写入value
+	}
 	realwriteappend := fileWriteAppendBatch.Bytes()
 	// fmt.Println(realwriteappend)
 	if len(realwriteappend) > 0 {
-		_, e := this.targetFile.WriteAt(fileWriteAppendBatch.Bytes(), filesize) // append value and indexs
+		_, e := this.targetFile.WriteAt(realwriteappend, filesize) // append value and indexs
 		if e != nil {
 			return nil, e
 		}
 	}
 	// update item
-	itemup := NewIndexItem(itemIndexType, uint32(filesize/int64(segmentsize)))
+	itemupptrnum := uint32(filesize / int64(segmentsize))
+	if hasUseGC {
+		itemupptrnum = gcPtrNum // 采用gc空间，覆盖写入
+		_, e := this.targetFile.WriteAt(realvaluebody, int64(gcPtrNum)*int64(segmentsize))
+		if e != nil {
+			return nil, e
+		}
+	}
+	// update ptr
+	itemup := NewIndexItem(itemIndexType, itemupptrnum)
 	_, e := this.targetFile.WriteAt(itemup.Serialize(), writeUpdateItemOffset) // update ptr
 	if e != nil {
 		return nil, e
@@ -158,8 +189,8 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 func (this *QueryInstance) FindItem(getvalue bool) (*IndexItem, error) {
 	var segmentsize = this.db.getSegmentSize()
 	var fileoffset = int64(0)
-	for i := 0; i < len(this.keyHash); i++ {
-		headpos := uint32(this.keyHash[i]) % this.db.MenuWide
+	for i := 0; i < len(this.queryKeyHash); i++ {
+		headpos := uint32(this.queryKeyHash[i]) % this.db.MenuWide
 		readseek := fileoffset + int64(headpos)*int64(IndexItemSize)
 		itembytes := make([]byte, IndexItemSize)
 		rdlen, e := this.targetFile.ReadAt(itembytes, readseek)
@@ -176,7 +207,7 @@ func (this *QueryInstance) FindItem(getvalue bool) (*IndexItem, error) {
 
 		var item IndexItem
 		item.Parse(itembytes, 0)
-		item.PositionOffset = readseek
+		item.ItemFindOffset = readseek
 		item.searchLevel = uint32(i) // 查询次数
 		it := item.Type
 		if it == 0 {
@@ -202,24 +233,62 @@ func (this *QueryInstance) FindItem(getvalue bool) (*IndexItem, error) {
 }
 
 // 读取
-func (this *QueryInstance) Read() ([]byte, error) {
+func (this *QueryInstance) Read() ([]byte, *IndexItem, error) {
 
 	item, e1 := this.FindItem(true)
 	if e1 != nil {
-		return nil, e1 // error
+		return nil, nil, e1 // error
+	}
+	if item == nil {
+		return nil, nil, nil // not find
 	}
 	if item.Type == 0 {
-		return []byte{}, nil // not find
+		return nil, nil, nil // not find
 	}
 	if item.Type == 2 {
 		// fmt.Println(item.ItemHash)
 		if 0 == bytes.Compare(this.operationHash, item.ItemHash) {
-			return item.ValueBody, nil
+			return item.ValueBody, item, nil
 		} else {
-			return []byte{}, nil // not find
+			return nil, nil, nil // not find
 		}
 	}
-	return nil, err.New("Not find item type")
+	return nil, nil, err.New("Not find item type")
+}
+
+// 删除
+func (this *QueryInstance) Remove() error {
+
+	item, e1 := this.FindItem(true)
+	if e1 != nil {
+		return e1 // error
+	}
+	if item != nil && item.Type == 2 {
+		// fmt.Println(item.ItemHash)
+		if 0 == bytes.Compare(this.operationHash, item.ItemHash) {
+			return this.Delete(item) // 删除
+		} else {
+			return nil // not find
+		}
+	}
+	return nil
+}
+
+// 删除
+func (this *QueryInstance) Delete(item *IndexItem) error {
+	tarptr := item.ValuePtrNum
+	// 使用gc
+	gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
+	if e1 == nil && gcmng != nil {
+		gcmng.Collect(tarptr) // gc collect
+	}
+	// 修改指针删除
+	empty := bytes.Repeat([]byte{0}, 5)
+	_, e := this.targetFile.WriteAt(empty, item.ItemFindOffset)
+	if e != nil {
+		return e
+	}
+	return nil
 }
 
 /////////////////////////////////////////////////////

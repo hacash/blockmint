@@ -167,13 +167,16 @@ func Test_store4(t *testing.T) {
 	fmt.Println("trs1:", hex.EncodeToString(trs1))
 	fmt.Println("trs2:", hex.EncodeToString(trs2))
 
+	fmt.Println(testByteAry)
+	fmt.Println(block1.Serialize())
+
 	var testpath = "/media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/tests/blockstore/datas"
 	os.Remove(testpath)
 
 	var db1 store.BlocksDataStore
 	db1.Init(testpath)
 
-	//db1.Save(block1)
+	db1.Save(block1)
 
 	var resblk, _ = db1.Read(block1hash)
 	s1, _ := block1.Serialize()

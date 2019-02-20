@@ -30,7 +30,7 @@ type BlockDataDB struct {
 
 func (db *BlockDataDB) getPartFileName(filenum uint32) string {
 	partnum := strconv.Itoa(int(filenum))
-	return path.Join(db.filepath, "data"+string(partnum)+".dat")
+	return path.Join(db.filepath, "blk"+string(partnum)+".dat")
 }
 
 func (db *BlockDataDB) Init(filepath string) {

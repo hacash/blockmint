@@ -21,7 +21,7 @@ func (this *TrsIdxDB) Init(filepath string) {
 	this.filepath = filepath
 	this.treedb = hashtreedb.NewHashTreeDB(filepath, trsIdxItemSizeSet, 32)
 	this.treedb.FilePartitionLevel = 4 // 文件分区层级
-	this.treedb.FileName = "TRS"
+	this.treedb.FileName = "trs"
 }
 
 func (this *TrsIdxDB) Save(hash []byte, saveval *TrsIdxOneFindItem) (*hashtreedb.IndexItem, error) {
@@ -29,6 +29,7 @@ func (this *TrsIdxDB) Save(hash []byte, saveval *TrsIdxOneFindItem) (*hashtreedb
 	if e != nil {
 		return nil, e
 	}
+	defer query.Close()
 	// save
 	item, e1 := query.Save(saveval.Serialize())
 	if e1 != nil {
@@ -44,7 +45,9 @@ func (this *TrsIdxDB) Find(hash []byte) (*TrsIdxOneFindItem, error) {
 	if e1 != nil {
 		return nil, e1
 	}
-	result, e2 := query.Read()
+	defer query.Close()
+	// read
+	result, _, e2 := query.Read()
 	if e2 != nil {
 		return nil, e2
 	}

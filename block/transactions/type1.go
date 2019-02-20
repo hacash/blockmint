@@ -19,6 +19,12 @@ type Transaction_1_Simple struct {
 	ActionCount fields.VarInt1
 	Actions     []typesblock.Action
 
+	SignCount fields.VarInt2
+	Signs     []fields.Sign
+
+	MultisignCount fields.VarInt1
+	Multisigns     []fields.Multisign
+
 	// cache data
 	hash []byte
 }
@@ -28,7 +34,7 @@ func (trs *Transaction_1_Simple) Type() uint8 {
 }
 
 func (trs *Transaction_1_Simple) Serialize() ([]byte, error) {
-	var buffer bytes.Buffer
+	var buffer = new(bytes.Buffer)
 	b1, _ := trs.Timestamp.Serialize()
 	b2, _ := trs.Address.Serialize()
 	b3, _ := trs.Fee.Serialize()

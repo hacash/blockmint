@@ -22,6 +22,9 @@ type HashTreeDB struct {
 	FileName    string // 保存文件的名称
 	FileSuffix  string // 保存文件后缀名 .idx
 
+	//gc *GarbageCollectionDB
+	gcPool       map[string]*GarbageCollectionDB // gc管理器
+	MaxNumGCPool int
 }
 
 // 创建DataBase
@@ -36,6 +39,8 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 		FilePartitionLevel: 0,
 		FileName:           "INDEX",
 		FileSuffix:         ".idx",
+		MaxNumGCPool:       64,
+		gcPool:             make(map[string]*GarbageCollectionDB),
 
 		FileAbsPath:  FileAbsPath,
 		MaxValueSize: MaxValueSize,
@@ -43,10 +48,38 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 }
 
 // 建立数据操作
-func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
+func (this *HashTreeDB) GetGcService(keyhash []byte) (*GarbageCollectionDB, error) {
+	gcfile := this.getPartFileNameEx(keyhash, ".gc")
+	gc, got := this.gcPool[gcfile]
+	if got {
+		return gc, nil
+	}
+	if len(this.gcPool) >= this.MaxNumGCPool {
+		// remove one
+		for k := range this.gcPool {
+			this.gcPool[k].Close()
+			delete(this.gcPool, k)
+			break
+		}
+	}
+	// create
+	gc, e := NewGarbageCollectionDB(gcfile)
+	if e != nil {
+		panic("NewGarbageCollectionDB error ！")
+	}
+	this.gcPool[gcfile] = gc
+	return gc, nil
+}
 
-	hashkey := this.GetHashKey(hash)
-	filename := this.getPartFileName(hashkey)
+// 建立数据操作
+func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
+	keyhash := hash
+	if this.KeyReverse {
+		keyhash = ReverseHashOrder(hash) // 倒序
+	}
+	filename := this.getPartFileName(keyhash)
+	//fmt.Println(hash)
+	//fmt.Println(keyhash)
 	//fmt.Println(filename)
 	//fmt.Println(path.Dir(filename))
 	file.CreatePath(path.Dir(filename))
@@ -56,7 +89,7 @@ func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 		return nil, fe
 	}
 	// 返回
-	return NewQueryInstance(this, hash, hashkey, curfile), nil
+	return NewQueryInstance(this, hash, keyhash, this.GetQueryHashKey(hash), curfile), nil
 }
 
 // 建立数据操作
@@ -89,7 +122,7 @@ func (this *HashTreeDB) getSegmentSize() uint32 {
 }
 
 // Segment Size
-func (this *HashTreeDB) GetHashKey(hash []byte) []byte {
+func (this *HashTreeDB) GetQueryHashKey(hash []byte) []byte {
 	hashkey := hash
 	if this.KeyReverse {
 		hashkey = ReverseHashOrder(hash) // 倒序
@@ -99,6 +132,11 @@ func (this *HashTreeDB) GetHashKey(hash []byte) []byte {
 
 // 获取打开的文件名
 func (this *HashTreeDB) getPartFileName(hash []byte) string {
+	return this.getPartFileNameEx(hash, this.FileSuffix)
+}
+
+// 获取打开的文件名
+func (this *HashTreeDB) getPartFileNameEx(hash []byte, ffix string) string {
 
 	var partPath = "" // 路径分区
 	var partNum = ""  // 文件编号
@@ -143,5 +181,5 @@ func (this *HashTreeDB) getPartFileName(hash []byte) string {
 
 	}
 
-	return path.Join(this.FileAbsPath, partPath, this.FileName+partNum+this.FileSuffix)
+	return path.Join(this.FileAbsPath, partPath, this.FileName+partNum+ffix)
 }

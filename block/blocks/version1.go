@@ -78,7 +78,10 @@ func (block *Block_v1) SerializeTransactions(itr typesblock.SerializeTransaction
 	}
 	for i := uint32(0); i < trslen; i++ {
 		var trs = block.Transactions[i]
-		var bi, _ = trs.Serialize()
+		var bi, e = trs.Serialize()
+		if e != nil {
+			return nil, e
+		}
 		buffer.Write(bi)
 		if itr != nil { // 迭代器
 			itr.FinishOneTrs(i, trs, bi)

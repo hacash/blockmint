@@ -10,8 +10,8 @@ func GenTestData_block() []byte {
 	testbuffer.Write([]byte{1})                                  // version
 	testbuffer.Write([]byte{0, 0, 0, 0, 8})                      // height
 	testbuffer.Write([]byte{0, 0, 0, 0, 9})                      // timestamp
-	testbuffer.Write([]byte("oooooooooooooooooooooooooooooo00")) // prevMark 32
-	testbuffer.Write([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx00")) // mrklRoot 32
+	testbuffer.Write([]byte("oooooooooooooooooooooooooooooooo")) // prevMark 32
+	testbuffer.Write([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")) // mrklRoot 32
 	testbuffer.Write([]byte{0, 0, 0, 2})                         // transactionCount
 	// head end
 
@@ -28,10 +28,10 @@ func GenTestData_block() []byte {
 func GenTestData_trs_coinbase() []byte {
 	var testbuffer bytes.Buffer
 
-	testbuffer.Write([]byte{0})                                    // kind
-	testbuffer.Write([]byte("29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM")) // address
-	testbuffer.Write([]byte{248, 1, 1})                            // reward
-	testbuffer.Write([]byte("########        "))                   // message hardertodobetter
+	testbuffer.Write([]byte{0})                       // kind
+	testbuffer.Write([]byte("addrass0000000addrass")) // address
+	testbuffer.Write([]byte{248, 1, 1})               // reward
+	testbuffer.Write([]byte("########        "))      // message hardertodobetter
 
 	return testbuffer.Bytes()
 }
@@ -39,11 +39,11 @@ func GenTestData_trs_coinbase() []byte {
 func GenTestData_trs_simple() []byte {
 	var testbuffer bytes.Buffer
 
-	testbuffer.Write([]byte{1})                                    // kind
-	testbuffer.Write([]byte{99, 99, 99, 99, 99})                   // Timestamp
-	testbuffer.Write([]byte("29aqbMhiK6F2s53gNp2ghoT4EezFFPpXuM")) // address
-	testbuffer.Write([]byte{248, 1, 77})                           // fee
-	testbuffer.Write([]byte{1})                                    // actionCount
+	testbuffer.Write([]byte{1})                       // kind
+	testbuffer.Write([]byte{99, 99, 99, 99, 99})      // Timestamp
+	testbuffer.Write([]byte("addrass1111111addrass")) // address
+	testbuffer.Write([]byte{248, 1, 77})              // fee
+	testbuffer.Write([]byte{1})                       // actionCount
 
 	testbuffer.Write(GenTestData_action_transfer())
 
@@ -53,9 +53,9 @@ func GenTestData_trs_simple() []byte {
 func GenTestData_action_transfer() []byte {
 	var testbuffer bytes.Buffer
 
-	testbuffer.Write([]byte{0, 1})                                 // kind
-	testbuffer.Write([]byte("1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD")) // addrass
-	testbuffer.Write([]byte{248, 1, 88})                           // amount
+	testbuffer.Write([]byte{0, 1})                    // kind
+	testbuffer.Write([]byte("addrass2222222addrass")) // addrass
+	testbuffer.Write([]byte{248, 1, 88})              // amount
 
 	return testbuffer.Bytes()
 }

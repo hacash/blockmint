@@ -1,33 +1,28 @@
 package fields
 
-import "bytes"
-
-type Address string
-
-var (
-	addressMaxLen = uint32(34)
+import (
+	"encoding/hex"
+	"github.com/anaskhan96/base58check"
+	"github.com/hacash/blockmint/sys/err"
 )
 
-func (addr *Address) Serialize() ([]byte, error) {
-	var str = string(*addr)
-	for {
-		if uint32(len(str)) < addressMaxLen {
-			str += " "
-		} else {
-			break
-		}
+type AddressReadable = TrimString34
+type Address = Bytes21
+
+// 检查地址合法性
+func CheckReadableAddress(readable string) (*Address, error) {
+	if len(readable) > 34 {
+		return nil, err.New("Address format error")
 	}
-	return []byte(str), nil
-}
-
-func (addr *Address) Parse(buf []byte, seek uint32) (uint32, error) {
-	var addrbytes = buf[seek : seek+addressMaxLen]
-	addrbytes = bytes.TrimRight(addrbytes, " ")
-	var sd = Address(string(addrbytes))
-	*addr = sd // replace
-	return seek + addressMaxLen, nil
-}
-
-func (addr *Address) Size() uint32 {
-	return addressMaxLen
+	hashhex, e1 := base58check.Decode(readable)
+	if e1 != nil {
+		return nil, err.New("Address format error")
+	}
+	addrhash, _ := hex.DecodeString(hashhex)
+	version := uint8(addrhash[0])
+	if version > 2 {
+		return nil, err.New("Address version error")
+	}
+	addr := Address(addrhash)
+	return &addr, nil
 }

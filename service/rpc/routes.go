@@ -51,12 +51,12 @@ func getBalance(params map[string]string) map[string]string {
 		return result
 	}
 	if finditem != nil {
-		result["amount"] = finditem.Amount.ToAccountingString()
+		result["amount"] = finditem.Amount.ToFinString()
 		return result
 	}
 
 	// 0
-	result["amount"] = fields.AmountToZeroAccountingString()
+	result["amount"] = fields.AmountToZeroFinString()
 	return result
 
 }

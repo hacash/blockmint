@@ -54,3 +54,23 @@ func (trs *Transaction_0_Coinbase) Hash() []byte {
 	digest := sha3.Sum256(stuff)
 	return digest[:]
 }
+
+func (trs *Transaction_0_Coinbase) HashNoFee() []byte {
+	return trs.Hash()
+}
+
+// 从 actions 拿出需要签名的地址
+
+func (trs *Transaction_0_Coinbase) RequestSignAddrs() ([][]byte, error) {
+	return make([][]byte, 0), nil
+}
+
+// 填充签名
+func (trs *Transaction_0_Coinbase) FillNeedSigns(map[string][]byte) error {
+	return nil
+}
+
+// 验证需要的签名
+func (trs *Transaction_0_Coinbase) VerifyNeedSigns() (bool, error) {
+	return true, nil
+}

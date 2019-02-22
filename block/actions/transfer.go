@@ -12,6 +12,13 @@ type Action_1_SimpleTransfer struct {
 	Amount  fields.Amount
 }
 
+func NewAction_1_SimpleTransfer(addr fields.Address, amt fields.Amount) *Action_1_SimpleTransfer {
+	return &Action_1_SimpleTransfer{
+		Address: addr,
+		Amount:  amt,
+	}
+}
+
 func (elm *Action_1_SimpleTransfer) Kind() uint16 {
 	return 1
 }
@@ -40,8 +47,8 @@ func (elm *Action_1_SimpleTransfer) Size() uint32 {
 
 ///////////////////////////////////////////////////////////////////////////
 
-func (*Action_1_SimpleTransfer) SignatureRequestAddress() []string {
-	return nil
+func (*Action_1_SimpleTransfer) RequestSignAddrs() [][]byte {
+	return make([][]byte, 0) // 无需签名
 }
 
 func (*Action_1_SimpleTransfer) ChangeChainState(*store.ChainStateDB) {

@@ -15,7 +15,7 @@ type Action interface {
 	Size() uint32
 
 	// 请求签名地址
-	SignatureRequestAddress() []string
+	RequestSignAddrs() [][]byte
 
 	// 修改余额数据库状态
 	ChangeChainState(*store.ChainStateDB)

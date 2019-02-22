@@ -1,8 +1,8 @@
 package fields
 
 import (
-	"encoding/hex"
-	"github.com/anaskhan96/base58check"
+	"bytes"
+	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/blockmint/sys/err"
 )
 
@@ -18,11 +18,25 @@ func CheckReadableAddress(readable string) (*Address, error) {
 	if e1 != nil {
 		return nil, err.New("Address format error")
 	}
-	addrhash, _ := hex.DecodeString(hashhex)
-	version := uint8(addrhash[0])
+	version := uint8(hashhex[0])
 	if version > 2 {
 		return nil, err.New("Address version error")
 	}
-	addr := Address(addrhash)
+	addr := Address(hashhex)
 	return &addr, nil
+}
+
+// 有效的地址
+func (this *Address) IsValid() bool {
+	if this == nil {
+		return false
+	}
+	if len(*this) != 21 {
+		return false
+	}
+	if 0 == bytes.Compare(*this, bytes.Repeat([]byte{0}, 21)) {
+		return false
+	}
+	// ok
+	return true
 }

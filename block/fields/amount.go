@@ -2,8 +2,10 @@ package fields
 
 import (
 	"bytes"
+	"github.com/hacash/blockmint/sys/err"
 	"math/big"
 	"strconv"
+	"strings"
 )
 
 type Amount struct {
@@ -12,7 +14,30 @@ type Amount struct {
 	Numeral []byte
 }
 
-func NewAmountByBigInt(bignum *big.Int) *Amount {
+func NewAmountNum0() *Amount {
+	return &Amount{
+		Unit:    0,
+		Dist:    0,
+		Numeral: []byte{},
+	}
+}
+
+func NewAmountNumOneCoin() *Amount {
+	return &Amount{
+		Unit:    248,
+		Dist:    1,
+		Numeral: []byte{1},
+	}
+}
+
+func NewAmountByBigIntWithUnit(bignum *big.Int, unit int) (*Amount, error) {
+	var unitint = new(big.Int).Exp(big.NewInt(int64(10)), big.NewInt(int64(unit)), big.NewInt(int64(0)))
+	//fmt.Println(bignum.String())
+	//fmt.Println(unitint.String())
+	return NewAmountByBigInt(bignum.Mul(bignum, unitint))
+}
+
+func NewAmountByBigInt(bignum *big.Int) (*Amount, error) {
 	longnumstrary := []byte(bignum.String())
 	strlen := len(longnumstrary)
 	unit := 0
@@ -29,19 +54,18 @@ func NewAmountByBigInt(bignum *big.Int) *Amount {
 	numeralstr := string(longnumstrary[0 : strlen-unit])
 	numeralbigint, ok1 := new(big.Int).SetString(numeralstr, 10)
 	if !ok1 {
-		panic("Amount too big")
+		return nil, err.New("Amount too big")
 	}
 	numeralbytes := numeralbigint.Bytes()
 	dist := len(numeralbytes)
 	if dist > 127 {
-		panic("Amount too big")
+		return nil, err.New("Amount too big")
 	}
 	return &Amount{
 		Unit:    uint8(unit),
 		Dist:    int8(dist),
 		Numeral: numeralbytes,
-	}
-	return nil
+	}, nil
 }
 
 func NewAmount(unit uint8, num []byte) *Amount {
@@ -104,18 +128,87 @@ func (bill *Amount) GetValue() *big.Int {
 	var bignum = new(big.Int)
 	bignum.SetBytes(bill.Numeral)
 	var sign = big.NewInt(int64(big.NewInt(int64(bill.Dist)).Sign()))
-	var unit = new(big.Int)
-	unit.Exp(big.NewInt(int64(10)), big.NewInt(int64(bill.Unit)), big.NewInt(int64(0)))
+	var unit = new(big.Int).Exp(big.NewInt(int64(10)), big.NewInt(int64(bill.Unit)), big.NewInt(int64(0)))
 	bignum.Mul(bignum, unit)
 	bignum.Mul(bignum, sign) // do sign
 	return bignum
 }
 
-func AmountToZeroAccountingString() string {
+func AmountToZeroFinString() string {
 	return "ㄜ0:0"
 }
 
-func (bill *Amount) ToAccountingString() string {
+// 从记账单位创建
+func NewAmountFromFinString(finstr string) (*Amount, error) {
+	finstr = strings.ToUpper(finstr)
+	var sig = 1
+	if strings.HasPrefix(finstr, "HCX") {
+		finstr = string([]byte(finstr)[3:])
+	}
+	if strings.HasPrefix(finstr, "ㄜ") {
+		finstr = string([]byte(finstr)[3:])
+	}
+	if strings.HasPrefix(finstr, "-") {
+		finstr = string([]byte(finstr)[1:])
+		sig = -1 // 负数
+	}
+	var main, dum, unit string
+	var main_num, dum_num *big.Int
+	var unit_num int
+	var e error
+	var ok bool
+	part := strings.Split(finstr, ":")
+	if len(part) != 2 {
+		return nil, err.New("format error")
+	}
+	unit = part[1]
+	unit_num, e = strconv.Atoi(unit)
+	if e != nil {
+		return nil, err.New("format error")
+	}
+	if unit_num < 0 || unit_num > 255 {
+		return nil, err.New("format error")
+	}
+	part2 := strings.Split(part[0], ":")
+	if len(part2) < 1 || len(part2) > 2 {
+		return nil, err.New("format error")
+	}
+
+	main = part2[0]
+	main_num, ok = new(big.Int).SetString(main, 10)
+	if !ok {
+		return nil, err.New("format error")
+	}
+	if len(part2) == 2 {
+		dum = part2[1]
+		dum_num, ok = new(big.Int).SetString(dum, 10)
+		if !ok {
+			return nil, err.New("format error")
+		}
+	}
+	// 处理小数部分
+	bigint0, _ := new(big.Int).SetString("0", 10)
+	bigint1, _ := new(big.Int).SetString("1", 10)
+	bigint10, _ := new(big.Int).SetString("10", 10)
+	dum_wide10 := 0
+	if dum_num != nil && dum_num.Cmp(bigint0) == 1 {
+		mover := dum_num.Div(dum_num, bigint10).Add(dum_num, bigint1)
+		dum_wide10 = int(mover.Int64())
+		if unit_num-dum_wide10 < 0 {
+			return nil, err.New("format error")
+		}
+		main_num = main_num.Sub(main_num, mover)
+		unit_num = unit_num - int(dum_wide10)
+	}
+	// 负数
+	if sig == -1 {
+		main_num = main_num.Neg(main_num)
+	}
+	// 转换
+	return NewAmountByBigIntWithUnit(main_num, unit_num)
+}
+
+func (bill *Amount) ToFinString() string {
 	unitStr := strconv.Itoa(int(bill.Unit)) // string(bytes.Repeat([]byte{48}, int(bill.Unit)))
 	numStr := new(big.Int).SetBytes(bill.Numeral).String()
 	sig := ""
@@ -172,7 +265,7 @@ func (bill *Amount) EllipsisDecimalFor23SizeStore() *Amount {
 }
 
 // 加法
-func (bill *Amount) Add(amt *Amount) *Amount {
+func (bill *Amount) Add(amt *Amount) (*Amount, error) {
 	add1 := bill.GetValue()
 	add2 := amt.GetValue()
 	add1 = add1.Add(add1, add2)
@@ -180,7 +273,7 @@ func (bill *Amount) Add(amt *Amount) *Amount {
 }
 
 // 减法
-func (bill *Amount) Sub(amt *Amount) *Amount {
+func (bill *Amount) Sub(amt *Amount) (*Amount, error) {
 	add1 := bill.GetValue()
 	add2 := amt.GetValue()
 	add1 = add1.Sub(add1, add2)

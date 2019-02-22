@@ -21,7 +21,7 @@ func Test_state1(t *testing.T) {
 
 	myamt, _ := db1.Read(address)
 
-	fmt.Println(myamt.Amount.ToAccountingString())
+	fmt.Println(myamt.Amount.ToFinString())
 
 }
 
@@ -46,15 +46,15 @@ func Test_state2(t *testing.T) {
 	db1.SaveAmountByClearCreate(address5, fields.NewAmountSmall(5, 248))
 
 	myamt1, _ := db1.Read(address1)
-	fmt.Println(myamt1.Amount.ToAccountingString())
+	fmt.Println(myamt1.Amount.ToFinString())
 	myamt2, _ := db1.Read(address2)
-	fmt.Println(myamt2.Amount.ToAccountingString())
+	fmt.Println(myamt2.Amount.ToFinString())
 	myamt3, _ := db1.Read(address3)
-	fmt.Println(myamt3.Amount.ToAccountingString())
+	fmt.Println(myamt3.Amount.ToFinString())
 	myamt4, _ := db1.Read(address4)
-	fmt.Println(myamt4.Amount.ToAccountingString())
+	fmt.Println(myamt4.Amount.ToFinString())
 	myamt5, _ := db1.Read(address5)
-	fmt.Println(myamt5.Amount.ToAccountingString())
+	fmt.Println(myamt5.Amount.ToFinString())
 
 	// DELETE
 	//db1.Remove(address1)

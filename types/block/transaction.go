@@ -12,4 +12,12 @@ type Transaction interface {
 
 	// 交易唯一哈希值
 	Hash() []byte
+	HashNoFee() []byte // 无手续费的哈希
+
+	// 从 actions 拿出需要签名的地址
+	RequestSignAddrs() ([][]byte, error)
+	// 填充签名
+	FillNeedSigns(map[string][]byte) error
+	// 验证需要的签名
+	VerifyNeedSigns() (bool, error)
 }

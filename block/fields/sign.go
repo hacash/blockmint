@@ -64,9 +64,13 @@ func (this *Multisign) Parse(buf []byte, seek uint32) (uint32, error) {
 	this.PublicKeyList = make([]Bytes33, length2)
 	this.SignatureInds = make([]uint8, length1)
 	this.SignatureList = make([]Bytes64, length1)
+	var e error
 	for i := 0; i < length2; i++ {
 		var b Bytes33
-		b.Parse(buf, seek)
+		seek, e = b.Parse(buf, seek)
+		if e != nil {
+			return 0, e
+		}
 		this.PublicKeyList[i] = b
 		seek += b.Size()
 	}
@@ -76,7 +80,10 @@ func (this *Multisign) Parse(buf []byte, seek uint32) (uint32, error) {
 	}
 	for i := 0; i < length1; i++ {
 		var b Bytes64
-		b.Parse(buf, seek)
+		seek, e = b.Parse(buf, seek)
+		if e != nil {
+			return 0, e
+		}
 		this.SignatureList[i] = b
 		seek += b.Size()
 	}

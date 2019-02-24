@@ -20,4 +20,8 @@ type Transaction interface {
 	FillNeedSigns(map[string][]byte) error
 	// 验证需要的签名
 	VerifyNeedSigns() (bool, error)
+
+	// 其他
+	FeePurity() uint64 // 手续费含量
+
 }

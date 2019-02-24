@@ -11,9 +11,8 @@ import (
 	"github.com/hacash/blockmint/core/account"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
-	"time"
-
 	"golang.org/x/crypto/sha3"
+	"math/big"
 )
 
 type Transaction_1_Simple struct {
@@ -38,7 +37,7 @@ func NewEmptyTransaction_1_Simple(master fields.Address) (*Transaction_1_Simple,
 	if !master.IsValid() {
 		return nil, err.New("Master Address is InValid ")
 	}
-	timeUnix := time.Now().Unix()
+	timeUnix := 1550839748 //time.Now().Unix()
 	return &Transaction_1_Simple{
 		Timestamp:      fields.VarInt5(uint64(timeUnix)),
 		Address:        master,
@@ -315,6 +314,19 @@ func verifyOneSignature(allSigns map[string]fields.Sign, address fields.Address,
 	}
 	// ok
 	return true, nil
+}
+
+// 手续费含量 每byte的含有多少烁代币
+func (trs *Transaction_1_Simple) FeePurity() uint64 {
+
+	bigfee := trs.Fee.GetValue()
+	bigfee = bigfee.Div(bigfee, fields.NewAmountNumOneByUnit(232).GetValue())
+	bigfee = bigfee.Div(bigfee, new(big.Int).SetUint64(uint64(trs.Size())))
+	maxUint64 := uint64(18446744073709551615)
+	if bigfee.Cmp(new(big.Int).SetUint64(maxUint64)) == 1 {
+		return maxUint64
+	}
+	return bigfee.Uint64()
 }
 
 /* *********************************************************** */

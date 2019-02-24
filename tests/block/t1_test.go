@@ -12,7 +12,7 @@ func Test_action1(t *testing.T) {
 
 	// action 1
 	//testbuffer.Write( []byte{ 0, 1 } )
-	testbuffer.Write([]byte("1313Rta8Ce99H7N5iKbGq7xp13BbAdQHmD"))
+	testbuffer.Write([]byte("address0000000address"))
 	testbuffer.Write([]byte{248, 1, 123})
 
 	var testByteAry = testbuffer.Bytes()

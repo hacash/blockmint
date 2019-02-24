@@ -16,7 +16,10 @@ func GenTestData_block() []byte {
 	// head end
 
 	testbuffer.Write([]byte{1, 2, 3, 4}) // miner nonce
+	testbuffer.Write([]byte{6, 7, 8, 9}) // Difficulty
+	testbuffer.Write([]byte{0, 0})       // WitnessStage
 
+	// transactions
 	testbuffer.Write(GenTestData_trs_coinbase())
 	testbuffer.Write(GenTestData_trs_simple())
 
@@ -32,6 +35,7 @@ func GenTestData_trs_coinbase() []byte {
 	testbuffer.Write([]byte("addrass0000000addrass")) // address
 	testbuffer.Write([]byte{248, 1, 1})               // reward
 	testbuffer.Write([]byte("########        "))      // message hardertodobetter
+	testbuffer.Write([]byte{0})                       // witness count
 
 	return testbuffer.Bytes()
 }
@@ -46,6 +50,9 @@ func GenTestData_trs_simple() []byte {
 	testbuffer.Write([]byte{0, 1})                    // actionCount
 
 	testbuffer.Write(GenTestData_action_transfer())
+
+	testbuffer.Write([]byte{0, 0}) // SignCount
+	testbuffer.Write([]byte{0, 0}) // MultiSignCount
 
 	return testbuffer.Bytes()
 }

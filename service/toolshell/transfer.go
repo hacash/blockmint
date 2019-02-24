@@ -10,6 +10,7 @@ import (
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/transactions"
 	"github.com/tidwall/gjson"
+	"strconv"
 )
 
 // 创建一笔交易
@@ -89,7 +90,7 @@ func genTxSimpleTransfer(params []gjson.Result) {
 	fmt.Println("transaction create success! ")
 	fmt.Println("hash: <" + hex.EncodeToString(newTrs.Hash()) + ">")
 	fmt.Println("hash_no_fee: <" + hex.EncodeToString(newTrs.HashNoFee()) + ">")
-	fmt.Println("the transaction hex body is:")
+	fmt.Println("body length is " + strconv.Itoa(len(bodybytes)) + " bytes, hex body is:")
 	fmt.Println("-------- TRANSACTION BODY START --------")
 	fmt.Println(hex.EncodeToString(bodybytes))
 	//fmt.Println( hex.EncodeToString( bodybytes2 ) )

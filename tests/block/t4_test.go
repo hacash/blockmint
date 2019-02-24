@@ -105,11 +105,12 @@ func Test_6(t *testing.T) {
 	fmt.Println(addr)
 
 	add := account.CreateAccountByPassword("yangjie19920203+liyang19940622+14079340")
+
 	fmt.Println(add.AddressReadable)
 	fmt.Println(len(add.AddressReadable))
-	fmt.Println(add.Addrass)
-	fmt.Println(len(add.Addrass))
-	fmt.Println(hex.EncodeToString(add.Addrass))
+	fmt.Println(add.Address)
+	fmt.Println(len(add.Address))
+	fmt.Println(hex.EncodeToString(add.Address))
 
 	fmt.Println(add.PublicKey)
 	fmt.Println(hex.EncodeToString(add.PublicKey))

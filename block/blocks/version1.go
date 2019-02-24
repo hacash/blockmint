@@ -16,7 +16,10 @@ type Block_v1 struct {
 	MrklRoot         fields.Bytes32
 	TransactionCount fields.VarInt4
 	// meta
-	Nonce fields.VarInt4 // 挖矿随机值
+	Nonce        fields.VarInt4 // 挖矿随机值
+	Difficulty   fields.VarInt4 // 目标难度值
+	WitnessStage fields.VarInt2 // 见证数量级别
+
 	// body
 	Transactions []typesblock.Transaction
 
@@ -65,7 +68,11 @@ func (block *Block_v1) SerializeBody() ([]byte, error) {
 func (block *Block_v1) SerializeMeta() ([]byte, error) {
 	var buffer = new(bytes.Buffer)
 	b1, _ := block.Nonce.Serialize() // miner nonce
+	b2, _ := block.Difficulty.Serialize()
+	b3, _ := block.WitnessStage.Serialize()
 	buffer.Write(b1)
+	buffer.Write(b2)
+	buffer.Write(b3)
 	return buffer.Bytes(), nil
 
 }
@@ -126,6 +133,8 @@ func (block *Block_v1) ParseBody(buf []byte, seek uint32) (uint32, error) {
 
 func (block *Block_v1) ParseMeta(buf []byte, seek uint32) (uint32, error) {
 	seek, _ = block.Nonce.Parse(buf, seek) // miner nonce
+	seek, _ = block.Difficulty.Parse(buf, seek)
+	seek, _ = block.WitnessStage.Parse(buf, seek)
 	return seek, nil
 }
 

@@ -30,6 +30,13 @@ func (this *Sign) Size() uint32 {
 
 //////////////////////////////////////////////////////////////////
 
+type Multisign2 struct {
+	CondElem          uint8     // 分子
+	CondBase          uint8     // 分母
+	SignatureInds     []VarInt2 // 签名位置
+	BasePublicKeyInds []VarInt2 // 公钥基础位置
+}
+
 type Multisign struct {
 	CondElem      uint8 // 分子
 	CondBase      uint8 // 分母

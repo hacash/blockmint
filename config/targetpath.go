@@ -25,3 +25,9 @@ func GetCnfPathChainState() string {
 	states := path.Join(base, DirDataChainState)
 	return states
 }
+
+func GetCnfPathMinerState() string {
+	base := dealHomeDirBase(DirBase)
+	states := path.Join(base, DirDataMinerState)
+	return states
+}

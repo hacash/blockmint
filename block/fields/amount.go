@@ -30,6 +30,14 @@ func NewAmountNumOneCoin() *Amount {
 	}
 }
 
+func NewAmountNumOneByUnit(unit uint8) *Amount {
+	return &Amount{
+		Unit:    unit,
+		Dist:    1,
+		Numeral: []byte{1},
+	}
+}
+
 func NewAmountByBigIntWithUnit(bignum *big.Int, unit int) (*Amount, error) {
 	var unitint = new(big.Int).Exp(big.NewInt(int64(10)), big.NewInt(int64(unit)), big.NewInt(int64(0)))
 	//fmt.Println(bignum.String())
@@ -141,6 +149,7 @@ func AmountToZeroFinString() string {
 // 从记账单位创建
 func NewAmountFromFinString(finstr string) (*Amount, error) {
 	finstr = strings.ToUpper(finstr)
+	finstr = strings.Replace(finstr, " ", "", -1)
 	var sig = 1
 	if strings.HasPrefix(finstr, "HCX") {
 		finstr = string([]byte(finstr)[3:])

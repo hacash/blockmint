@@ -12,9 +12,10 @@ type Transaction_0_Coinbase struct {
 	Address fields.Address
 	Reward  fields.Amount
 	Message fields.TrimString16
-
 	// nonce fields.VarInt8
-
+	WitnessCount fields.VarInt1 // 投票见证人数量
+	WitnessSigs  []uint8        // 见证人指定哈希尾数
+	Witnesses    []fields.Sign  // 对prev区块hash的签名，投票分叉
 }
 
 func (trs *Transaction_0_Coinbase) Type() uint8 {
@@ -32,20 +33,60 @@ func (trs *Transaction_0_Coinbase) Serialize() ([]byte, error) {
 	buffer.Write(b1)
 	buffer.Write(b2)
 	buffer.Write(b3)
+	// 见证人
+	witnessCount := uint8(trs.WitnessCount)
+	buffer.Write([]byte{witnessCount})
+	for i := uint8(0); i < witnessCount; i++ {
+		b := trs.WitnessSigs[i]
+		buffer.Write([]byte{b})
+	}
+	for i := uint8(0); i < witnessCount; i++ {
+		b := trs.Witnesses[i]
+		s1, e := b.Serialize()
+		if e != nil {
+			return nil, e
+		}
+		buffer.Write(s1)
+	}
 	return buffer.Bytes(), nil
 }
 
 func (trs *Transaction_0_Coinbase) Parse(buf []byte, seek uint32) (uint32, error) {
-
-	m1, _ := trs.Address.Parse(buf, seek)
-	m2, _ := trs.Reward.Parse(buf, m1)
-	m3, _ := trs.Message.Parse(buf, m2)
-
-	return m3, nil
+	var e error
+	seek, e = trs.Address.Parse(buf, seek)
+	seek, e = trs.Reward.Parse(buf, seek)
+	seek, e = trs.Message.Parse(buf, seek)
+	// 见证人
+	seek, _ = trs.WitnessCount.Parse(buf, seek)
+	if trs.WitnessCount > 0 {
+		len := int(trs.WitnessCount)
+		trs.WitnessSigs = make([]uint8, len)
+		trs.Witnesses = make([]fields.Sign, len)
+		for i := 0; i < len; i++ {
+			trs.WitnessSigs[i] = buf[seek]
+			seek++
+		}
+		for i := 0; i < len; i++ {
+			var sign fields.Sign
+			seek, e = sign.Parse(buf, seek)
+			if e != nil {
+				return 0, e
+			}
+			trs.Witnesses[i] = sign
+		}
+	}
+	return seek, nil
 }
 
 func (trs *Transaction_0_Coinbase) Size() uint32 {
-	return trs.Address.Size() + trs.Reward.Size() + trs.Message.Size()
+	base := trs.Address.Size() + trs.Reward.Size() + trs.Message.Size()
+	base += 1
+	length := int(trs.WitnessCount)
+	base += uint32(length)
+	for i := 0; i < length; i++ {
+		base += trs.Witnesses[i].Size()
+	}
+	return base
 }
 
 // 交易唯一哈希值
@@ -73,4 +114,9 @@ func (trs *Transaction_0_Coinbase) FillNeedSigns(map[string][]byte) error {
 // 验证需要的签名
 func (trs *Transaction_0_Coinbase) VerifyNeedSigns() (bool, error) {
 	return true, nil
+}
+
+// 手续费含量
+func (trs *Transaction_0_Coinbase) FeePurity() uint64 {
+	return 0
 }

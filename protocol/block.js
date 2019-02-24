@@ -76,7 +76,7 @@ PoW 和 PoS 混合共识
  * 2 byte = 65535
  * 3 byte = 16777215
  * 4 byte = 4294967295
- * 8 byte = 9223372036854775807
+ * 8 byte = 18446744073709551615
  */
 
 const PredefinitionBlockFormat = {

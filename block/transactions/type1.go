@@ -11,6 +11,7 @@ import (
 	"github.com/hacash/blockmint/core/account"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
+	"github.com/hacash/blockmint/types/state"
 	"golang.org/x/crypto/sha3"
 	"math/big"
 )
@@ -41,7 +42,7 @@ func NewEmptyTransaction_1_Simple(master fields.Address) (*Transaction_1_Simple,
 	return &Transaction_1_Simple{
 		Timestamp:      fields.VarInt5(uint64(timeUnix)),
 		Address:        master,
-		Fee:            *fields.NewAmountNum0(),
+		Fee:            fields.NewEmptyAmount(),
 		ActionCount:    fields.VarInt2(0),
 		SignCount:      fields.VarInt2(0),
 		MultisignCount: fields.VarInt2(0),
@@ -316,6 +317,33 @@ func verifyOneSignature(allSigns map[string]fields.Sign, address fields.Address,
 	return true, nil
 }
 
+// 需要的余额检查
+func (trs *Transaction_1_Simple) RequestAddressBalance() ([][]byte, []big.Int, error) {
+	return nil, nil, nil
+}
+
+// 修改 / 恢复 状态数据库
+func (trs *Transaction_1_Simple) ChangeChainState(state state.ChainStateOperation) error {
+
+	for i := 0; i < len(trs.Actions); i++ {
+		e := trs.Actions[i].ChangeChainState(state)
+		if e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
+func (trs *Transaction_1_Simple) RecoverChainState(state state.ChainStateOperation) error {
+	for i := len(trs.Actions) - 1; i <= 0; i-- {
+		e := trs.Actions[i].ChangeChainState(state)
+		if e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
 // 手续费含量 每byte的含有多少烁代币
 func (trs *Transaction_1_Simple) FeePurity() uint64 {
 
@@ -327,6 +355,11 @@ func (trs *Transaction_1_Simple) FeePurity() uint64 {
 		return maxUint64
 	}
 	return bigfee.Uint64()
+}
+
+// 查询
+func (trs *Transaction_1_Simple) GetAddress() []byte {
+	return trs.Address
 }
 
 /* *********************************************************** */

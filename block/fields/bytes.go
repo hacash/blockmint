@@ -7,6 +7,7 @@ import (
 	"github.com/hacash/blockmint/sys/err"
 )
 
+var EmptyZeroBytes32 = bytes.Repeat([]byte{0}, 32)
 var EmptyZeroBytes512 = bytes.Repeat([]byte{0}, 512)
 
 type Bytes21 []byte

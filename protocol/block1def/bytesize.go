@@ -7,7 +7,7 @@ package block1def
 
 var (
 	ByteSizeBlockHead              = 1 + 5 + 5 + 32 + 32 + 4
-	ByteSizeBlockMeta              = 4
+	ByteSizeBlockMeta              = 4 + 4 + 2
 	ByteSizeBlockBeforeTransaction = ByteSizeBlockHead + ByteSizeBlockMeta
 
 	// block base

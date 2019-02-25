@@ -3,6 +3,7 @@ package blocks
 import (
 	"bytes"
 	"fmt"
+	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/miner/x16rs"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
@@ -49,11 +50,17 @@ func CalculateBlockHash(block typesblock.Block) []byte {
 	meta, _ := block.SerializeMeta()
 	buffer.Write(head)
 	buffer.Write(meta)
-	return x16rs.HashX16RS(buffer.Bytes())
+	//fmt.Println( hex.EncodeToString( meta ) )
+	hashbase := sha3.Sum256(buffer.Bytes())
+	//fmt.Println( hex.EncodeToString( hashbase[:] ) )
+	return x16rs.HashX16RS(hashbase[:])
 }
 
 func CalculateMrklRoot(transactions []typesblock.Transaction) []byte {
 	trslen := len(transactions)
+	if trslen == 0 {
+		return fields.EmptyZeroBytes32
+	}
 	hashs := make([][]byte, trslen)
 	for i := 0; i < trslen; i++ {
 		hashs[i] = transactions[i].Hash()

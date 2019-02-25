@@ -14,19 +14,19 @@ type Amount struct {
 	Numeral []byte
 }
 
-func NewAmountNum0() *Amount {
-	return &Amount{
+func NewEmptyAmount() Amount {
+	return Amount{
 		Unit:    0,
 		Dist:    0,
 		Numeral: []byte{},
 	}
 }
 
-func NewAmountNumOneCoin() *Amount {
+func NewAmountNumSmallCoin(num uint8) *Amount {
 	return &Amount{
 		Unit:    248,
 		Dist:    1,
-		Numeral: []byte{1},
+		Numeral: []byte{num},
 	}
 }
 
@@ -140,6 +140,10 @@ func (bill *Amount) GetValue() *big.Int {
 	bignum.Mul(bignum, unit)
 	bignum.Mul(bignum, sign) // do sign
 	return bignum
+}
+
+func (bill *Amount) IsEmpty() bool {
+	return bill.Dist == int8(0) || len(bill.Numeral) == 0
 }
 
 func AmountToZeroFinString() string {

@@ -88,17 +88,23 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 	// gc
 	var hasUseGC bool = false
 	var gcPtrNum = uint32(0)
-	// pos
+	// pos  0:null 3:delete
 	if item != nil && item.Type == 0 {
 		// 使用gc
-		gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
-		if gcmng != nil && e1 == nil {
-			gcptr, ok, e := gcmng.Release()
-			if gcptr > 0 && ok && e == nil {
-				gcPtrNum = gcptr
-				hasUseGC = true
+		if this.db.OpenGc {
+			gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
+			if gcmng != nil && e1 == nil {
+				gcptr, ok, e := gcmng.Release()
+				if gcptr > 0 && ok && e == nil {
+					gcPtrNum = gcptr
+					hasUseGC = true
+				}
 			}
 		}
+	}
+	if item != nil && item.Type == 3 && item.ValuePtrNum > 0 {
+		gcPtrNum = item.ValuePtrNum
+		hasUseGC = true
 	}
 	if item != nil && item.Type == 2 {
 		writeCurrentOffsetNum := filesize / int64(segmentsize)
@@ -171,6 +177,9 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 		if e != nil {
 			return nil, e
 		}
+	}
+	if bodylen == 0 {
+		itemIndexType = 3 // delete mark
 	}
 	// update ptr
 	itemup := NewIndexItem(itemIndexType, itemupptrnum)
@@ -267,9 +276,11 @@ func (this *QueryInstance) Remove() error {
 		// fmt.Println(item.ItemHash)
 		if 0 == bytes.Compare(this.operationHash, item.ItemHash) {
 			return this.Delete(item) // 删除
-		} else {
-			return nil // not find
 		}
+	}
+	// delete mark
+	if item != nil && this.db.DeleteMark {
+		this.Write(item, []byte{}) // mark
 	}
 	return nil
 }
@@ -277,14 +288,19 @@ func (this *QueryInstance) Remove() error {
 // 删除
 func (this *QueryInstance) Delete(item *IndexItem) error {
 	tarptr := item.ValuePtrNum
-	// 使用gc
-	gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
-	if e1 == nil && gcmng != nil {
-		gcmng.Collect(tarptr) // gc collect
+	if this.db.OpenGc {
+		// 使用gc
+		gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
+		if e1 == nil && gcmng != nil {
+			gcmng.Collect(tarptr) // gc collect
+		}
+		item.Type = uint8(0)
+		item.ValuePtrNum = 0
+	} else {
+		item.Type = uint8(3) // type = delete
 	}
 	// 修改指针删除
-	empty := bytes.Repeat([]byte{0}, 5)
-	_, e := this.targetFile.WriteAt(empty, item.ItemFindOffset)
+	_, e := this.targetFile.WriteAt(item.Serialize(), item.ItemFindOffset)
 	if e != nil {
 		return e
 	}

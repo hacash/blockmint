@@ -3,13 +3,17 @@ package actions
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/hacash/blockmint/block/fields"
-	"github.com/hacash/blockmint/types/store"
+	"github.com/hacash/blockmint/types/block"
+	"github.com/hacash/blockmint/types/state"
 )
 
 type Action_1_SimpleTransfer struct {
 	Address fields.Address
 	Amount  fields.Amount
+	// 所属交易
+	trs block.Transaction
 }
 
 func NewAction_1_SimpleTransfer(addr fields.Address, amt fields.Amount) *Action_1_SimpleTransfer {
@@ -51,7 +55,76 @@ func (*Action_1_SimpleTransfer) RequestSignAddrs() [][]byte {
 	return make([][]byte, 0) // 无需签名
 }
 
-func (*Action_1_SimpleTransfer) ChangeChainState(*store.ChainStateDB) {
+func (act *Action_1_SimpleTransfer) ChangeChainState(state state.ChainStateOperation) error {
+	if act.trs == nil {
+		panic("Action belong to transaction not be nil !")
+	}
+	// 转移
+	return DoSimpleTransferFromChainState(state, act.trs.GetAddress(), act.Address, act.Amount)
+}
+
+func (act *Action_1_SimpleTransfer) RecoverChainState(state state.ChainStateOperation) error {
+	if act.trs == nil {
+		panic("Action belong to transaction not be nil !")
+	}
+	// 回退
+	return DoSimpleTransferFromChainState(state, act.Address, act.trs.GetAddress(), act.Amount)
+}
+
+func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 fields.Address, addr2 fields.Address, amt fields.Amount) error {
+
+	if bytes.Compare(addr1, addr2) == 0 {
+		return nil // 自己转给自己
+	}
+	amt1 := state.Balance(addr1)
+	if amt1.LessThan(&amt) {
+		return fmt.Errorf("balance not enough")
+	}
+	amt2 := state.Balance(addr2)
+	// add
+	amtsub, e1 := amt1.Sub(&amt)
+	if e1 != nil {
+		return e1
+	}
+	amtadd, e2 := amt2.Add(&amt)
+	if e2 != nil {
+		return e2
+	}
+	amtsub1 := amtsub.EllipsisDecimalFor23SizeStore()
+	amtadd1 := amtadd.EllipsisDecimalFor23SizeStore()
+	if &amtsub1 != &amtsub || &amtadd1 != &amtadd {
+		return fmt.Errorf("amount can not to store")
+	}
+	if amtsub1.IsEmpty() {
+		state.BalanceDel(addr1) // 归零
+	} else {
+		state.BalanceSet(addr1, *amtsub1)
+	}
+	state.BalanceSet(addr2, *amtadd1)
+	return nil
+}
+
+func DoAddBalanceFromChainState(state state.ChainStateOperation, addr fields.Address, amt fields.Amount) error {
+	baseamt := state.Balance(addr)
+	amtnew, e1 := baseamt.Add(&amt)
+	if e1 != nil {
+		return e1
+	}
+	state.BalanceSet(addr, *amtnew.EllipsisDecimalFor23SizeStore())
+	return nil
+}
+
+func DoSubBalanceFromChainState(state state.ChainStateOperation, addr fields.Address, amt fields.Amount) error {
+	baseamt := state.Balance(addr)
+	if baseamt.LessThan(&amt) {
+		return fmt.Errorf("balance not enough")
+	}
+	amtnew, e1 := baseamt.Sub(&amt)
+	if e1 != nil {
+		return e1
+	}
+	state.BalanceSet(addr, *amtnew.EllipsisDecimalFor23SizeStore())
+	return nil
 }
 
 /*************************************************************************/

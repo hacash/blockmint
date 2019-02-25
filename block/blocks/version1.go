@@ -6,13 +6,14 @@ import (
 	"github.com/hacash/blockmint/block/transactions"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
+	"time"
 )
 
 type Block_v1 struct {
 	// Version   fields.VarInt1
 	Height           fields.VarInt5
 	Timestamp        fields.VarInt5
-	PrevMark         fields.Bytes32
+	PrevHash         fields.Bytes32
 	MrklRoot         fields.Bytes32
 	TransactionCount fields.VarInt4
 	// meta
@@ -27,6 +28,25 @@ type Block_v1 struct {
 	hash []byte
 }
 
+func NewEmptyBlock_v1(prevBlockHead typesblock.Block) *Block_v1 {
+	curt := time.Now().Unix()
+	empty := &Block_v1{
+		Height:           0,
+		Timestamp:        fields.VarInt5(curt),
+		PrevHash:         fields.EmptyZeroBytes32,
+		MrklRoot:         fields.EmptyZeroBytes32,
+		TransactionCount: 0,
+		Nonce:            0,
+		Difficulty:       0,
+		WitnessStage:     0,
+	}
+	if prevBlockHead != nil {
+		empty.PrevHash = prevBlockHead.Hash()
+		empty.Height = fields.VarInt5(prevBlockHead.GetHeight() + 1)
+	}
+	return empty
+}
+
 func (block *Block_v1) Version() uint8 {
 	return 1
 }
@@ -37,7 +57,7 @@ func (block *Block_v1) SerializeHead() ([]byte, error) {
 	buffer.Write([]byte{block.Version()})
 	b2, _ := block.Height.Serialize()
 	b3, _ := block.Timestamp.Serialize()
-	b4, _ := block.PrevMark.Serialize()
+	b4, _ := block.PrevHash.Serialize()
 	b5, _ := block.MrklRoot.Serialize()
 	b6, _ := block.TransactionCount.Serialize()
 	buffer.Write(b2)
@@ -118,7 +138,7 @@ func (block *Block_v1) ParseHead(buf []byte, seek uint32) (uint32, error) {
 	//m1, _ := block.Version.Parse(buf, seek)
 	m2, _ := block.Height.Parse(buf, seek)
 	m3, _ := block.Timestamp.Parse(buf, m2)
-	m4, _ := block.PrevMark.Parse(buf, m3)
+	m4, _ := block.PrevHash.Parse(buf, m3)
 	m5, _ := block.MrklRoot.Parse(buf, m4)
 	m6, _ := block.TransactionCount.Parse(buf, m5)
 	iseek := m6
@@ -164,7 +184,7 @@ func (block *Block_v1) Size() uint32 {
 	totalsize := 1 +
 		block.Height.Size() +
 		block.Timestamp.Size() +
-		block.PrevMark.Size() +
+		block.PrevHash.Size() +
 		block.MrklRoot.Size() +
 		block.TransactionCount.Size()
 	for i := uint32(0); i < uint32(block.TransactionCount); i++ {
@@ -176,9 +196,25 @@ func (block *Block_v1) Size() uint32 {
 // HASH
 func (block *Block_v1) Hash() []byte {
 	if block.hash == nil {
-		block.hash = CalculateBlockHash(block)
+		block.hash = block.HashFresh()
 	}
 	return block.hash
+}
+func (block *Block_v1) HashFresh() []byte {
+	block.hash = CalculateBlockHash(block)
+	return block.hash
+}
+func (block *Block_v1) GetHeight() uint64 {
+	return uint64(block.Height)
+}
+func (block *Block_v1) GetDifficulty() uint32 {
+	return uint32(block.Difficulty)
+}
+func (block *Block_v1) SetMrklRoot(root []byte) {
+	block.MrklRoot = root
+}
+func (block *Block_v1) SetNonce(n uint32) {
+	block.Nonce = fields.VarInt4(n)
 }
 
 func (block *Block_v1) GetTransactions() []typesblock.Transaction {

@@ -1,8 +1,6 @@
 package block
 
-import (
-	"github.com/hacash/blockmint/types/store"
-)
+import . "github.com/hacash/blockmint/types/state"
 
 type Action interface {
 
@@ -17,8 +15,9 @@ type Action interface {
 	// 请求签名地址
 	RequestSignAddrs() [][]byte
 
-	// 修改余额数据库状态
-	ChangeChainState(*store.ChainStateDB)
+	// 修改 / 恢复 状态数据库
+	ChangeChainState(ChainStateOperation) error
+	RecoverChainState(ChainStateOperation) error
 
 	//
 

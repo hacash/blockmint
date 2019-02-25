@@ -1,5 +1,7 @@
 package block
 
+import . "github.com/hacash/blockmint/types/state"
+
 type Transaction interface {
 
 	// 交易类型
@@ -21,7 +23,13 @@ type Transaction interface {
 	// 验证需要的签名
 	VerifyNeedSigns() (bool, error)
 
+	// 修改 / 恢复 状态数据库
+	ChangeChainState(ChainStateOperation) error
+	RecoverChainState(ChainStateOperation) error
+
 	// 其他
 	FeePurity() uint64 // 手续费含量
 
+	// 查询
+	GetAddress() []byte
 }

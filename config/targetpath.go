@@ -1,6 +1,7 @@
 package config
 
 import (
+	"math/rand"
 	"os"
 	"path"
 	"strings"
@@ -30,4 +31,15 @@ func GetCnfPathMinerState() string {
 	base := dealHomeDirBase(DirBase)
 	states := path.Join(base, DirDataMinerState)
 	return states
+}
+func GetCnfPathTemporaryState() string {
+	base := dealHomeDirBase(DirBase)
+	states := path.Join(base, DirDataTemporaryState)
+	return states
+}
+
+func GetRandomMinerRewardAddress() string {
+	length := len(MinerRewardAddress)
+	idx := rand.Intn(length)
+	return MinerRewardAddress[idx]
 }

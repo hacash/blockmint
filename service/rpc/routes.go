@@ -2,8 +2,9 @@ package rpc
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hacash/blockmint/block/fields"
-	"github.com/hacash/blockmint/chain/store"
+	"github.com/hacash/blockmint/chain/state/db"
 	"net/http"
 )
 
@@ -30,6 +31,17 @@ func routeQueryRequest(action string, params map[string]string, w http.ResponseW
 	}
 }
 
+func routeOperateRequest(w http.ResponseWriter, opcode uint32, value []byte) {
+	switch opcode {
+	/////////////////////////////
+	case 1:
+		addTxToPool(w, value)
+	/////////////////////////////
+	default:
+		w.Write([]byte(fmt.Sprint("not find opcode %d", opcode)))
+	}
+}
+
 //////////////////////////////////////////////////////////////
 
 func getBalance(params map[string]string) map[string]string {
@@ -44,7 +56,7 @@ func getBalance(params map[string]string) map[string]string {
 		result["err"] = e.Error()
 		return result
 	}
-	blcdb := store.GetGlobalInstanceChainStateBalanceDB()
+	blcdb := db.GetGlobalInstanceBalanceDB()
 	finditem, e1 := blcdb.Read(*addrhash)
 	if e1 != nil {
 		result["err"] = "find error"

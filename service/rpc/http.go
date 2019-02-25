@@ -1,7 +1,9 @@
 package rpc
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -31,8 +33,11 @@ func dealQuery(response http.ResponseWriter, request *http.Request) {
 
 func dealOperate(response http.ResponseWriter, request *http.Request) {
 
-	//request.Body.Read()
-
+	bodybytes, e1 := ioutil.ReadAll(request.Body)
+	if e1 != nil {
+		response.Write([]byte("body error"))
+	}
+	routeOperateRequest(response, binary.BigEndian.Uint32(bodybytes[0:4]), bodybytes[4:])
 }
 
 func RunHttpRpcService() {

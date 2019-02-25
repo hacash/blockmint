@@ -25,6 +25,18 @@ type MemTxPool struct {
 	Size   uint64
 }
 
+var GlobalInstanceMemTxPool *MemTxPool = nil
+
+func GetGlobalInstanceMemTxPool() *MemTxPool {
+	if GlobalInstanceMemTxPool == nil {
+		GlobalInstanceMemTxPool = &MemTxPool{
+			Length: 0,
+			Size:   0,
+		}
+	}
+	return GlobalInstanceMemTxPool
+}
+
 func (this *MemTxPool) AddTx(tx block.Transaction) error {
 
 	if this.Length > MemTxPoolMaxLimit {

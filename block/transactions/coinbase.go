@@ -2,6 +2,10 @@ package transactions
 
 import (
 	"bytes"
+	"github.com/hacash/blockmint/block/actions"
+	"github.com/hacash/blockmint/types/state"
+	"math/big"
+
 	//"fmt"
 	"github.com/hacash/blockmint/block/fields"
 
@@ -16,6 +20,12 @@ type Transaction_0_Coinbase struct {
 	WitnessCount fields.VarInt1 // 投票见证人数量
 	WitnessSigs  []uint8        // 见证人指定哈希尾数
 	Witnesses    []fields.Sign  // 对prev区块hash的签名，投票分叉
+}
+
+func NewTransaction_0_Coinbase() *Transaction_0_Coinbase {
+	return &Transaction_0_Coinbase{
+		WitnessCount: 0,
+	}
 }
 
 func (trs *Transaction_0_Coinbase) Type() uint8 {
@@ -116,7 +126,25 @@ func (trs *Transaction_0_Coinbase) VerifyNeedSigns() (bool, error) {
 	return true, nil
 }
 
+// 需要的余额检查
+func (trs *Transaction_0_Coinbase) RequestAddressBalance() ([][]byte, []big.Int, error) {
+	return nil, nil, nil
+}
+
+// 修改 / 恢复 状态数据库
+func (trs *Transaction_0_Coinbase) ChangeChainState(state state.ChainStateOperation) error {
+	return actions.DoAddBalanceFromChainState(state, trs.Address, trs.Reward)
+}
+func (trs *Transaction_0_Coinbase) RecoverChainState(state state.ChainStateOperation) error {
+	return actions.DoSubBalanceFromChainState(state, trs.Address, trs.Reward)
+}
+
 // 手续费含量
 func (trs *Transaction_0_Coinbase) FeePurity() uint64 {
 	return 0
+}
+
+// 查询
+func (trs *Transaction_0_Coinbase) GetAddress() []byte {
+	return []byte{}
 }

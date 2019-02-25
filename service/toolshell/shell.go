@@ -30,6 +30,8 @@ setPrivateKey("XXXX") | setPrivateKeyByPassword("XXXX") | showAccounts()
 --------
 genTxSimpleTransfer("FROM ADDRESS", "TO ADDRESS", "AMOUNT", "FEE")
 --------
+sendTxToMiner("TXBODY", "MINER_ADDR")
+--------
 quit, quit(), exit, exit()
 --------
 Continue to enter anything:
@@ -88,6 +90,8 @@ func RunToolShell() {
 			setPrivateKeyByPassword(params)
 		case "genTxSimpleTransfer":
 			genTxSimpleTransfer(params)
+		case "sendTxToMiner":
+			sendTxToMiner(params)
 		/*****************************************************/
 		default:
 			fmt.Println("Sorry, undefined call: " + function + "(...)")

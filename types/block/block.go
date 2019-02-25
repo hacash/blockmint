@@ -21,9 +21,14 @@ type Block interface {
 
 	// HASH
 	Hash() []byte
+	HashFresh() []byte
 
 	GetTransactions() []Transaction
 	AddTransaction(Transaction)
+	GetHeight() uint64
+	GetDifficulty() uint32
+	SetMrklRoot([]byte)
+	SetNonce(uint32)
 }
 
 type SerializeTransactionsIterator interface {

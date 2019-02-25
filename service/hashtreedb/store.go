@@ -1,6 +1,7 @@
 package hashtreedb
 
 import (
+	"encoding/binary"
 	"github.com/hacash/blockmint/sys/file"
 	"os"
 	"path"
@@ -22,7 +23,9 @@ type HashTreeDB struct {
 	FileName    string // 保存文件的名称
 	FileSuffix  string // 保存文件后缀名 .idx
 
+	DeleteMark bool // 删除也会保存key标记
 	//gc *GarbageCollectionDB
+	OpenGc       bool                            // 是否开启gc
 	gcPool       map[string]*GarbageCollectionDB // gc管理器
 	MaxNumGCPool int
 }
@@ -40,6 +43,7 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 		FileName:           "INDEX",
 		FileSuffix:         ".idx",
 		MaxNumGCPool:       64,
+		OpenGc:             true,
 		gcPool:             make(map[string]*GarbageCollectionDB),
 
 		FileAbsPath:  FileAbsPath,
@@ -182,4 +186,75 @@ func (this *HashTreeDB) getPartFileNameEx(hash []byte, ffix string) string {
 	}
 
 	return path.Join(this.FileAbsPath, partPath, this.FileName+partNum+ffix)
+}
+
+// 遍历拷贝
+// 只能是单文件数据库
+func (this *HashTreeDB) TraversalCopy(get *HashTreeDB) error {
+	if get.FilePartitionLevel > 0 {
+		panic("unsupported operations for TraversalCopy: FilePartitionLevel must be 0")
+	}
+	filename := get.getPartFileName([]byte{})
+	file.CreatePath(path.Dir(filename))
+	curfile, fe := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
+	if fe != nil {
+		panic("unsupported operations for TraversalCopy: file '" + filename + "' must be existence")
+	}
+	// do copy
+	recursTraversalCopy(curfile, 0, get.getSegmentSize(), get, this.doCallTraversalCopy)
+	return nil
+}
+
+func (this *HashTreeDB) doCallTraversalCopy(ty uint8, itembytes []byte, get *HashTreeDB) {
+	if ty == 0 {
+		return // do nothing
+	}
+	if ty != 2 && ty != 3 {
+		return // do nothing
+	}
+	if len(itembytes) != int(get.getSegmentSize()) {
+		return // do nothing
+	}
+	key := itembytes[0:get.HashSize]
+	query, _ := this.CreateQuery(key)
+	if ty == 2 {
+		// copy
+		query.Save(itembytes[get.HashSize:])
+	} else if ty == 3 {
+		// delete
+		query.Save([]byte{}) // save empty = delete mark
+	}
+}
+
+func recursTraversalCopy(file *os.File, fileseek int64, segmentSize uint32, get *HashTreeDB, docall func(uint8, []byte, *HashTreeDB)) {
+	segment := make([]byte, segmentSize)
+	rdlen, e := file.ReadAt(segment, fileseek)
+	if e != nil || uint32(rdlen) != segmentSize {
+		return // end
+	}
+	// down
+	for i := 0; i < int(segmentSize/5)-1; i++ {
+		start := i * 5
+		//fmt.Println(segment)
+		//fmt.Println(len(segment))
+		//fmt.Println(start)
+		//fmt.Println(start+1+4)
+		ty := segment[start]
+		fileseek = int64(binary.BigEndian.Uint32(segment[start+1:start+1+4])) * int64(segmentSize)
+		if ty == 1 {
+			recursTraversalCopy(file, fileseek, segmentSize, get, docall)
+			continue
+		} else {
+			itembytes := []byte{}
+			if fileseek > 0 {
+				itembytes = make([]byte, segmentSize)
+				rdlen, e := file.ReadAt(itembytes, fileseek)
+				if e != nil && rdlen != int(segmentSize) {
+					itembytes = []byte{}
+				}
+			}
+			docall(ty, itembytes, get)
+		}
+	}
+
 }

@@ -16,7 +16,7 @@ var (
 	oneLsh256 = new(big.Int).Lsh(bigOne, 256)
 
 	//
-	LowestCompact = uint32(537000000)
+	LowestCompact = uint32(550000000)
 )
 
 // HashToBig converts a chainhash.Hash into a big.Int that can be used to

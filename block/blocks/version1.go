@@ -53,7 +53,6 @@ func (block *Block_v1) Version() uint8 {
 
 func (block *Block_v1) SerializeHead() ([]byte, error) {
 	var buffer = new(bytes.Buffer)
-	//b1, _ := block.Version.Serialize()
 	buffer.Write([]byte{block.Version()})
 	b2, _ := block.Height.Serialize()
 	b3, _ := block.Timestamp.Serialize()

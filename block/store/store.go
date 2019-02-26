@@ -20,7 +20,7 @@ type BlocksDataStore struct {
 
 var blockStoreInstance *BlocksDataStore = nil
 
-func GetBlocksDataStoreInstance() *BlocksDataStore {
+func GetGlobalInstanceBlocksDataStore() *BlocksDataStore {
 	if blockStoreInstance != nil {
 		return blockStoreInstance
 	}
@@ -51,7 +51,15 @@ func (this *FinishOneTrsItIteratorSaveTrs) SaveAll(partnum [2]byte, headptrnum u
 	for i := uint32(0); i < this.total; i++ {
 		trs := this.trslist[i]
 		trslen := uint32(len(this.byteslist[i]))
-		_, e := this.db.trsdb.Save(trs.Hash(), &TrsIdxOneFindItem{
+		/*
+			if this.total > 1 {
+				fmt.Println("Save trs "+hex.EncodeToString(trs.HashNoFee()))
+			}
+			if this.total > 1 {
+				fmt.Println(trs.HashNoFee())
+			}
+		*/
+		_, e := this.db.trsdb.Save(trs.HashNoFee(), &TrsIdxOneFindItem{
 			partnum,
 			headptrnum,
 			&BlockLocation{
@@ -192,4 +200,17 @@ func (this *BlocksDataStore) ReadTransaction(hash []byte, getbody bool, getblock
 	}
 	// ok
 	return &restrs, nil
+}
+
+// 检查交易是否存在
+func (this *BlocksDataStore) CheckTransactionExist(hashNoFee []byte) (bool, error) {
+	res, e := this.ReadTransaction(hashNoFee, false, false)
+	if e != nil {
+		return false, e
+	}
+	if res != nil && res.Location != nil && res.Location.DataLen > uint32(0) {
+		return true, nil
+	}
+	return false, nil
+
 }

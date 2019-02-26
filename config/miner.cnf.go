@@ -3,14 +3,15 @@ package config
 var (
 
 	// dir
-	DirBase               = "~/.hacash/"
+	//DirBase               = "~/.hacash/"
+	DirBase               = "/media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/database"
 	DirDataBlock          = "blocks/"
 	DirDataChainState     = "chainstate/"
 	DirDataMinerState     = "minerstate/"
 	DirDataTemporaryState = "tempstate/" // 临时状态，最好是内存文件系统
 
 	// mining
-	MinimalFees = int64(10000 * 10000 * 100) // 0.000001枚 // 最低手续费比值 每byte收取多少烁代币 （枚铢烁埃渺）
+	MinimalFeePurity = int64(10000 * 10000 * 100) // 0.000001枚 // 最低手续费比值 每byte收取多少烁代币 （枚铢烁埃渺）
 	// 矿工手续费奖励地址，越多越好
 	MinerRewardAddress = []string{
 		"129877upotaKLajSRhmBwczeehmjXCPndG",

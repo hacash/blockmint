@@ -1,6 +1,8 @@
 package state
 
-import "github.com/hacash/blockmint/block/fields"
+import (
+	"github.com/hacash/blockmint/block/fields"
+)
 
 ////////////////////  query  /////////////////////
 
@@ -23,6 +25,7 @@ func (this *ChainState) BalanceDel(addr fields.Address) {
 }
 
 func (this *ChainState) BalanceSet(addr fields.Address, amt fields.Amount) {
+	//fmt.Println("BalanceSet address " + hex.EncodeToString(addr))
 	blc, e := this.balanceDB.Read(addr)
 	if e != nil || blc == nil || blc.Locitem == nil {
 		this.balanceDB.SaveAmountByClearCreate(addr, amt)

@@ -35,7 +35,6 @@ func (this *TrsIdxDB) Save(hash []byte, saveval *TrsIdxOneFindItem) (*hashtreedb
 	if e1 != nil {
 		return nil, e1
 	}
-	query.Close()
 	// ok
 	return item, nil
 }
@@ -51,7 +50,11 @@ func (this *TrsIdxDB) Find(hash []byte) (*TrsIdxOneFindItem, error) {
 	if e2 != nil {
 		return nil, e2
 	}
-	if uint32(len(result)) < trsIdxItemSizeSet {
+	rdlen := uint32(len(result))
+	if rdlen == 0 {
+		return nil, nil // empty file
+	}
+	if rdlen < trsIdxItemSizeSet {
 		return nil, err.New("file store error")
 	}
 

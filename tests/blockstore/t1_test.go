@@ -28,14 +28,12 @@ func Test_store1(t *testing.T) {
 		FileOffset:   uint32(0),
 		DataLen:      uint32(0),
 	}
-	//fmt.Println(loc)
 	db1.Save(hashbyte, loc, block1)
 
 	result, blockhead, _ := db1.Find(hashbyte)
 	fmt.Println(result.FileOffset)
 	fmt.Println(blockhead.SerializeHead())
 
-	//fmt.Println((256*3+1)*256*256*256*256 /1024/1024 )
 }
 
 func Test_store2(t *testing.T) {

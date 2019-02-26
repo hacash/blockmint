@@ -17,22 +17,30 @@ type QueryInstance struct {
 	wideKeyHash   []byte // key值
 	operationHash []byte // 要操作的哈希
 
-	targetFile *os.File // 当前正在使用的文件
+	targetFile     *os.File // 当前正在使用的文件
+	targetFileName *string  // 当前正在使用的文件
 
 }
 
-func NewQueryInstance(db *HashTreeDB, hash []byte, keyhash []byte, key []byte, file *os.File) *QueryInstance {
+func NewQueryInstance(db *HashTreeDB, hash []byte, keyhash []byte, key []byte, file *os.File, filename *string) *QueryInstance {
 	return &QueryInstance{
 		db,
 		key,
 		keyhash,
 		hash,
 		file,
+		filename,
 	}
 }
 
 // 关闭
 func (this *QueryInstance) Close() error {
+	defer func() {
+		if lock, has := this.db.FileLock[*this.targetFileName]; has {
+			//fmt.Println("Unlock file " + *this.targetFileName)
+			lock.Unlock()
+		}
+	}()
 	return this.targetFile.Close()
 }
 

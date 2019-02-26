@@ -9,12 +9,15 @@ import (
 	"github.com/hacash/blockmint/types/block"
 	"os"
 	"path"
+	"sync"
 )
 
 var distFileSize = block1def.ByteSizeBlockBeforeTransaction
 
 type MinerState struct {
 	prevBlockHead block.Block
+
+	lock sync.Mutex
 }
 
 func NewMinerState() *MinerState {
@@ -30,6 +33,9 @@ func (this *MinerState) getDistFile() *os.File {
 }
 
 func (this *MinerState) FlushSave() {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
 	head := new(bytes.Buffer)
 	b1, _ := this.prevBlockHead.SerializeHead()
 	b2, _ := this.prevBlockHead.SerializeMeta()
@@ -38,18 +44,23 @@ func (this *MinerState) FlushSave() {
 	//
 	file := this.getDistFile()
 
-	//fmt.Println( "miner state: " + hex.EncodeToString(head.Bytes()) )
+	//fmt.Println( "miner state save: " + hex.EncodeToString(head.Bytes()) )
 	file.Write(head.Bytes())
 	file.Close()
 }
 
 func (this *MinerState) DistLoad() {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
 	file := this.getDistFile()
 	valuebytes := make([]byte, distFileSize)
 	rdlen, e := file.Read(valuebytes)
-	if e != nil && rdlen == distFileSize {
+	if e == nil && rdlen == distFileSize {
 		this.prevBlockHead = blocks.NewEmptyBlock_v1(nil)
-		seek, _ := this.prevBlockHead.ParseHead(valuebytes, 0)
+		seek, _ := this.prevBlockHead.ParseHead(valuebytes, 1)
 		seek, _ = this.prevBlockHead.ParseMeta(valuebytes, seek)
 	}
+	//fmt.Println("123")
+	return
 }

@@ -31,7 +31,8 @@ type Transaction_1_Simple struct {
 	Multisigns     []fields.Multisign
 
 	// cache data
-	hash []byte
+	hash      []byte
+	hashnofee []byte
 }
 
 func NewEmptyTransaction_1_Simple(master fields.Address) (*Transaction_1_Simple, error) {
@@ -108,9 +109,15 @@ func (trs *Transaction_1_Simple) SerializeNoSignEx(nofee bool) ([]byte, error) {
 	}
 	buffer.Write(b4)
 	for i := 0; i < len(trs.Actions); i++ {
-		var bi, _ = trs.Actions[i].Serialize()
+		var bi, e = trs.Actions[i].Serialize()
+		if e != nil {
+			return nil, e
+		}
 		buffer.Write(bi)
 	}
+	//if nofee {
+	//	fmt.Println( "SerializeNoSignEx: " + hex.EncodeToString(buffer.Bytes()))
+	//}
 	return buffer.Bytes(), nil
 }
 
@@ -180,10 +187,17 @@ func (trs *Transaction_1_Simple) HashFresh() []byte {
 }
 
 func (trs *Transaction_1_Simple) HashNoFee() []byte {
+	if trs.hashnofee == nil {
+		return trs.HashNoFeeFresh()
+	}
+	return trs.hashnofee
+}
+func (trs *Transaction_1_Simple) HashNoFeeFresh() []byte {
 	notFee := true
 	stuff, _ := trs.SerializeNoSignEx(notFee)
 	digest := sha3.Sum256(stuff)
-	return digest[:]
+	trs.hashnofee = digest[:]
+	return trs.hashnofee
 }
 
 func (trs *Transaction_1_Simple) AppendAction(action typesblock.Action) error {
@@ -324,24 +338,29 @@ func (trs *Transaction_1_Simple) RequestAddressBalance() ([][]byte, []big.Int, e
 
 // 修改 / 恢复 状态数据库
 func (trs *Transaction_1_Simple) ChangeChainState(state state.ChainStateOperation) error {
-
+	// actions
 	for i := 0; i < len(trs.Actions); i++ {
+		trs.Actions[i].SetBelongTrs(trs)
 		e := trs.Actions[i].ChangeChainState(state)
 		if e != nil {
 			return e
 		}
 	}
-	return nil
+	// 扣除手续费
+	return actions.DoSubBalanceFromChainState(state, trs.Address, trs.Fee)
 }
 
 func (trs *Transaction_1_Simple) RecoverChainState(state state.ChainStateOperation) error {
+	// actions
 	for i := len(trs.Actions) - 1; i <= 0; i-- {
+		trs.Actions[i].SetBelongTrs(trs)
 		e := trs.Actions[i].ChangeChainState(state)
 		if e != nil {
 			return e
 		}
 	}
-	return nil
+	// 回退手续费
+	return actions.DoAddBalanceFromChainState(state, trs.Address, trs.Fee)
 }
 
 // 手续费含量 每byte的含有多少烁代币
@@ -360,6 +379,11 @@ func (trs *Transaction_1_Simple) FeePurity() uint64 {
 // 查询
 func (trs *Transaction_1_Simple) GetAddress() []byte {
 	return trs.Address
+}
+
+func (trs *Transaction_1_Simple) GetFee() []byte {
+	feebts, _ := trs.Fee.Serialize()
+	return feebts
 }
 
 /* *********************************************************** */

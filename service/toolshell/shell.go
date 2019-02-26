@@ -39,12 +39,21 @@ Continue to enter anything:
 
 func RunTest() {
 
-	acc := account.CreateAccountByPassword("HACASH+HCX+3500+161660245")
+	addrs := []string{
+		"hardertodobetter1116350",   // 127717zvZWFjEghjEpyyRSnitEEbnMuuLn
+		"hardertodobetter156439106", // 1969418WSUCXPBSyGeLytkAqKUspDZJYWt
+		"hardertodobetter2363390",   // 135361CpCMxbfLEEPdVrmudJKQnQpPKZJv
+	}
+	for i := 0; i < len(addrs); i++ {
+		acc := account.CreateAccountByPassword(addrs[i])
+		printLoadAddress(acc)
+	}
 
-	printLoadAddress(acc)
-
-	params := gjson.Parse("[\"11122377dCWTAyvcwMazczgPaJWsbmFomq\",\"1969418WSUCXPBSyGeLytkAqKUspDZJYWt\",\"HCX1:248\",\"HCX1:240\"]").Array()
+	params := gjson.Parse("[\"1969418WSUCXPBSyGeLytkAqKUspDZJYWt\",\"135361CpCMxbfLEEPdVrmudJKQnQpPKZJv\",\"HCX1:244\",\"HCX1:244\"]").Array()
 	genTxSimpleTransfer(params)
+
+	params2 := gjson.Parse("[\"01005c6fefc40058b9ceaea0e0bd4cfcca96ef2cec052234a5e6d3f40101000100010016b3a82d6bd43c0dd145f405062a080a582ceeb3f40101000102bc40e9ca301b81e4aa914465098ba43b065d3d4e88d809c8a6fdf81294117a4bb30988e477a37219898e00c93d902d0d83097fe80cb102ccb779969bf44f937114d9fc6130647ceb900b77775caeedecb19ee3741e2df5e7f75aa8d0656aa1ef0000\",\"127.0.0.1:3334\"]").Array()
+	sendTxToMiner(params2)
 
 }
 

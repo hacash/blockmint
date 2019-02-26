@@ -20,6 +20,9 @@ type Transaction_0_Coinbase struct {
 	WitnessCount fields.VarInt1 // 投票见证人数量
 	WitnessSigs  []uint8        // 见证人指定哈希尾数
 	Witnesses    []fields.Sign  // 对prev区块hash的签名，投票分叉
+
+	// cache data
+	TotalFee fields.Amount // 区块总交易手续费
 }
 
 func NewTransaction_0_Coinbase() *Transaction_0_Coinbase {
@@ -133,10 +136,12 @@ func (trs *Transaction_0_Coinbase) RequestAddressBalance() ([][]byte, []big.Int,
 
 // 修改 / 恢复 状态数据库
 func (trs *Transaction_0_Coinbase) ChangeChainState(state state.ChainStateOperation) error {
-	return actions.DoAddBalanceFromChainState(state, trs.Address, trs.Reward)
+	rwd, _ := trs.Reward.Add(&trs.TotalFee)
+	return actions.DoAddBalanceFromChainState(state, trs.Address, *rwd)
 }
 func (trs *Transaction_0_Coinbase) RecoverChainState(state state.ChainStateOperation) error {
-	return actions.DoSubBalanceFromChainState(state, trs.Address, trs.Reward)
+	rwd, _ := trs.Reward.Add(&trs.TotalFee)
+	return actions.DoSubBalanceFromChainState(state, trs.Address, *rwd)
 }
 
 // 手续费含量
@@ -147,4 +152,9 @@ func (trs *Transaction_0_Coinbase) FeePurity() uint64 {
 // 查询
 func (trs *Transaction_0_Coinbase) GetAddress() []byte {
 	return []byte{}
+}
+
+func (trs *Transaction_0_Coinbase) GetFee() []byte {
+	bts, _ := trs.TotalFee.Serialize()
+	return bts
 }

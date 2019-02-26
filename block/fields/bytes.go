@@ -55,7 +55,6 @@ func bytesParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32
 	case *Bytes64:
 		*a = (Bytes64(addrbytes))
 	default:
-		//fmt.Println("")
 		return 0, err.New("not find type")
 	}
 	//elm = sd // replace

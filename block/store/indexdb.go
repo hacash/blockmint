@@ -50,7 +50,6 @@ func (this *BlockIndexDB) SaveByBlockHeadByte(hash []byte, blockLoc *BlockLocati
 	if e2 != nil {
 		return nil, e2
 	}
-	query.Close()
 	// ok
 	return item, nil
 }

@@ -1,8 +1,10 @@
 package txpool
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/hacash/blockmint/types/block"
+	"sync"
 )
 
 var (
@@ -23,6 +25,8 @@ type MemTxPool struct {
 	TxHead *MemTxItem
 	Length int
 	Size   uint64
+
+	mulk sync.Mutex // 互斥锁
 }
 
 var GlobalInstanceMemTxPool *MemTxPool = nil
@@ -37,7 +41,44 @@ func GetGlobalInstanceMemTxPool() *MemTxPool {
 	return GlobalInstanceMemTxPool
 }
 
+func (this *MemTxPool) Lock() {
+	//fmt.Println("MemTxPool Lock +++++++++++")
+	this.mulk.Lock()
+}
+func (this *MemTxPool) Unlock() {
+	//fmt.Println("MemTxPool Unlock ---------")
+	this.mulk.Unlock()
+}
+
+// 检查交易是否已经存在
+func (this *MemTxPool) CheckTxExist(block.Transaction) bool {
+	panic("func not ok !")
+	return false
+}
+
+func (this *MemTxPool) pickUpTrs(hashnofee []byte) *MemTxItem {
+	if this.TxHead == nil {
+		return nil
+	}
+	prev := this.TxHead
+	next := this.TxHead
+	for true {
+		if next == nil {
+			break
+		}
+		if bytes.Compare(next.HashNoFee, hashnofee) == 0 {
+			prev.next = next.next
+			return next // 返回
+		}
+		prev = next
+		next = next.next
+	}
+	return nil
+}
+
 func (this *MemTxPool) AddTx(tx block.Transaction) error {
+	this.Lock()
+	defer this.Unlock()
 
 	if this.Length > MemTxPoolMaxLimit {
 		return fmt.Errorf("Mem Tx Pool Over Max Limit %d", MemTxPoolMaxLimit)
@@ -54,6 +95,12 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 		HashNoFee: tx.HashNoFee(),
 		Tx:        tx,
 		next:      nil,
+	}
+	hashave := this.pickUpTrs(tx.HashNoFee())
+	if hashave != nil {
+		if txItem.FeePer <= hashave.FeePer { // 手续费不能比原有的低
+			return fmt.Errorf("Tx FeePurity value equal or less than the exist")
+		}
 	}
 	// append
 	this.Size += uint64(txsize)
@@ -89,6 +136,9 @@ func (this *MemTxPool) RemoveTx(hashNoFee []byte) error {
 
 // 弹出手续费最高的一笔交易
 func (this *MemTxPool) PopTxByHighestFee() block.Transaction {
+	this.Lock()
+	defer this.Unlock()
+
 	if this.TxHead == nil {
 		return nil
 	}

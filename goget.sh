@@ -1,15 +1,8 @@
 # go get all
 
 
-#go get github.com/syndtr/goleveldb/leveldb
-
-
-
 # json
 go get github.com/tidwall/gjson
-
-
-
 
 # x16rs
 go get github.com/hacash/x16rs

@@ -2,10 +2,14 @@ package hashtreedb
 
 import (
 	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"github.com/hacash/blockmint/sys/file"
 	"os"
 	"path"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 // 单个文件大小至少支持 256^4×5×8 MenuWide=8 时约 80GB
@@ -28,6 +32,9 @@ type HashTreeDB struct {
 	OpenGc       bool                            // 是否开启gc
 	gcPool       map[string]*GarbageCollectionDB // gc管理器
 	MaxNumGCPool int
+
+	// fileLock
+	FileLock map[string]*sync.Mutex
 }
 
 // 创建DataBase
@@ -48,6 +55,8 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 
 		FileAbsPath:  FileAbsPath,
 		MaxValueSize: MaxValueSize,
+
+		FileLock: make(map[string]*sync.Mutex),
 	}
 }
 
@@ -77,11 +86,25 @@ func (this *HashTreeDB) GetGcService(keyhash []byte) (*GarbageCollectionDB, erro
 
 // 建立数据操作
 func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
+	//
 	keyhash := hash
 	if this.KeyReverse {
 		keyhash = ReverseHashOrder(hash) // 倒序
 	}
 	filename := this.getPartFileName(keyhash)
+	// 文件操作锁
+	lock, has := this.FileLock[filename]
+	if !has {
+		lock = new(sync.Mutex)
+		this.FileLock[filename] = lock
+	}
+	//fmt.Println("LOCK FILE - "+filename)
+	lock.Lock()
+
+	if strings.Compare("c58527e77a879cfbfb8109b813b5e4aded443fd3f27a521e251bb2288b924b1e", hex.EncodeToString(hash)) == 0 {
+		fmt.Println("c58527e77a879cfbfb8109b813b5e4aded443fd3f27a521e251bb2288b924b1e => " + filename)
+	}
+
 	//fmt.Println(hash)
 	//fmt.Println(keyhash)
 	//fmt.Println(filename)
@@ -93,7 +116,7 @@ func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 		return nil, fe
 	}
 	// 返回
-	return NewQueryInstance(this, hash, keyhash, this.GetQueryHashKey(hash), curfile), nil
+	return NewQueryInstance(this, hash, keyhash, this.GetQueryHashKey(hash), curfile, &filename), nil
 }
 
 // 建立数据操作
@@ -216,9 +239,14 @@ func (this *HashTreeDB) doCallTraversalCopy(ty uint8, itembytes []byte, get *Has
 		return // do nothing
 	}
 	key := itembytes[0:get.HashSize]
-	query, _ := this.CreateQuery(key)
+	query, e := this.CreateQuery(key)
+	if e != nil {
+		return // do nothing
+	}
+	defer query.Close()
 	if ty == 2 {
 		// copy
+		//fmt.Println(hex.EncodeToString(key) + " => " + hex.EncodeToString(itembytes[get.HashSize:]))
 		query.Save(itembytes[get.HashSize:])
 	} else if ty == 3 {
 		// delete

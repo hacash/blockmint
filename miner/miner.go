@@ -48,7 +48,7 @@ func (this *HacashMiner) Start() error {
 			return e1
 		}
 		// 已挖到，保存状态数据
-		store.GetBlocksDataStoreInstance().Save(targetBlk)
+		store.GetGlobalInstanceBlocksDataStore().Save(targetBlk)
 		state.GetGlobalInstanceChainState().TraversalCopy(this.CurrentActiveChainState)
 		this.CurrentActiveChainState.Destroy()
 		// 修改矿工状态信息，开始下一个区块挖矿
@@ -65,6 +65,8 @@ func (this *HacashMiner) Start() error {
 func (this *HacashMiner) CalculateTargetHash(block block.Block) ([]byte, error) {
 
 	for i := uint32(0); i < uint32(4294967295); i++ {
+		// 休眠 0.777 秒
+		time.Sleep(time.Duration(1777) * time.Millisecond)
 		//fmt.Println(i)
 		block.SetNonce(i)
 		tarhash := block.HashFresh()
@@ -75,13 +77,9 @@ func (this *HacashMiner) CalculateTargetHash(block block.Block) ([]byte, error) 
 			// OK !!!!!!!!!!!!!!!
 			return tarhash, nil
 		}
-		// 休眠 0.777 秒
-		time.Sleep(time.Duration(777) * time.Millisecond)
 	}
 	// 尝试次数已达上限， 切换 coinbase
-	this.CurrentActiveCoinbase.RecoverChainState(this.CurrentActiveChainState)
-	this.SwitchBlockMinerAddress(block) // 切换
-	this.CurrentActiveCoinbase.ChangeChainState(this.CurrentActiveChainState)
+	this.SwitchBlockMinerAddress(block)
 	return this.CalculateTargetHash(block)
 	// 尝试次数已达上限
 	//return nil, fmt.Errorf("CalculateTargetHash Attempts to reach the upper limit")
@@ -104,11 +102,18 @@ func (this *HacashMiner) CreateBlock() (block.Block, error) {
 	nextblock.Transactions = append(nextblock.Transactions, nil)
 	this.CurrentActiveChainState = state.NewTempChainState(nil)
 	// 添加交易
+	stoblk := store.GetGlobalInstanceBlocksDataStore()
 	blockSize := uint32(block1def.ByteSizeBlockBeforeTransaction)
+	blockTotalFee := fields.NewEmptyAmount()
 	for true {
 		trs := this.TxPool.PopTxByHighestFee()
 		if trs == nil {
 			break
+		}
+		hashnofee := trs.HashNoFee()
+		ext, e2 := stoblk.CheckTransactionExist(hashnofee)
+		if e2 != nil || ext {
+			break // trs already exist
 		}
 		blockSize += trs.Size()
 		if int64(blockSize) > config.MaximumBlockSize {
@@ -122,19 +127,23 @@ func (this *HacashMiner) CreateBlock() (block.Block, error) {
 			break // error
 		}
 		// ok copy state
+		//fmt.Println("ok copy hxstate state ======================")
 		this.CurrentActiveChainState.TraversalCopy(hxstate)
 		hxstate.Destroy()
 		nextblock.Transactions = append(nextblock.Transactions, trs)
 		nextblock.TransactionCount += 1
+		var fee fields.Amount
+		fee.Parse(trs.GetFee(), 0)
+		blockTotalFee.Add(&fee)
 	}
 	// coinbase
-	this.SwitchBlockMinerAddress(nextblock)
-	this.CurrentActiveCoinbase.ChangeChainState(this.CurrentActiveChainState)
+	coinbase, _ := this.CreateBlockMinerAddress(nextblock, blockTotalFee)
+	coinbase.ChangeChainState(this.CurrentActiveChainState) // 加上奖励和手续费
 	// ok
 	return nextblock, nil
 }
 
-func (this *HacashMiner) SwitchBlockMinerAddress(block block.Block) (block.Transaction, error) {
+func (this *HacashMiner) CreateBlockMinerAddress(block block.Block, totalFee fields.Amount) (block.Transaction, error) {
 
 	// coinbase
 	addrreadble := config.GetRandomMinerRewardAddress()
@@ -145,13 +154,26 @@ func (this *HacashMiner) SwitchBlockMinerAddress(block block.Block) (block.Trans
 	coinbase := transactions.NewTransaction_0_Coinbase()
 	coinbase.Address = *addr
 	coinbase.Reward = *(coin.BlockCoinBaseReward(uint64(block.GetHeight())))
+	coinbase.TotalFee = totalFee
 	block.GetTransactions()[0] = coinbase
 	// 默克尔树
 	root := blocks.CalculateMrklRoot(block.GetTransactions())
 	block.SetMrklRoot(root)
-	fmt.Println("miner coinbase: " + addrreadble + ", reward:" + coinbase.Reward.ToFinString())
+	fmt.Printf("block height: %d, coinbase miner: %s, reward: %s \n", int(block.GetHeight()), addrreadble, coinbase.Reward.ToFinString())
 	//
 	this.CurrentActiveCoinbase = coinbase
 	// ok
 	return coinbase, nil
+}
+
+func (this *HacashMiner) SwitchBlockMinerAddress(block block.Block) (block.Transaction, error) {
+	if this.CurrentActiveCoinbase == nil {
+		panic("CurrentActiveCoinbase is nil")
+	}
+	var totalFee fields.Amount
+	totalFee.Parse(this.CurrentActiveCoinbase.GetFee(), 0)
+	this.CurrentActiveCoinbase.RecoverChainState(this.CurrentActiveChainState) // 回退
+	coinbase, e := this.CreateBlockMinerAddress(block, totalFee)
+	coinbase.ChangeChainState(this.CurrentActiveChainState) // 切换
+	return coinbase, e
 }

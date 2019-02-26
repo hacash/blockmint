@@ -19,6 +19,6 @@ type Action interface {
 	ChangeChainState(ChainStateOperation) error
 	RecoverChainState(ChainStateOperation) error
 
-	//
-
+	// 设置所属 trs
+	SetBelongTrs(Transaction)
 }

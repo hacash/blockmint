@@ -59,6 +59,14 @@ func (act *Action_1_SimpleTransfer) ChangeChainState(state state.ChainStateOpera
 	if act.trs == nil {
 		panic("Action belong to transaction not be nil !")
 	}
+	//fmt.Println("address - - - - - - - "+hex.EncodeToString( act.Address))
+	//fmt.Println( act.Address[3] )
+
+	//fmt.Println("addr2 - - - - - - - "+hex.EncodeToString( act.Address ))
+	//addr2 := make([]byte, 21)
+	//copy(addr2, act.Address)
+	//fmt.Println("addr2 - - - - - - - "+hex.EncodeToString( addr2 ))
+
 	// 转移
 	return DoSimpleTransferFromChainState(state, act.trs.GetAddress(), act.Address, act.Amount)
 }
@@ -69,6 +77,11 @@ func (act *Action_1_SimpleTransfer) RecoverChainState(state state.ChainStateOper
 	}
 	// 回退
 	return DoSimpleTransferFromChainState(state, act.Address, act.trs.GetAddress(), act.Amount)
+}
+
+// 设置所属 trs
+func (act *Action_1_SimpleTransfer) SetBelongTrs(trs block.Transaction) {
+	act.trs = trs
 }
 
 func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 fields.Address, addr2 fields.Address, amt fields.Amount) error {
@@ -90,17 +103,18 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 	if e2 != nil {
 		return e2
 	}
-	amtsub1 := amtsub.EllipsisDecimalFor23SizeStore()
-	amtadd1 := amtadd.EllipsisDecimalFor23SizeStore()
-	if &amtsub1 != &amtsub || &amtadd1 != &amtadd {
+	amtsub = amtsub.EllipsisDecimalFor23SizeStore()
+	amtadd = amtadd.EllipsisDecimalFor23SizeStore()
+	/*if amtsub1 != amtsub || amtadd1 != amtadd {
 		return fmt.Errorf("amount can not to store")
-	}
-	if amtsub1.IsEmpty() {
+	}*/
+	state.BalanceSet(addr2, *amtadd)
+	if amtsub.IsEmpty() {
 		state.BalanceDel(addr1) // 归零
 	} else {
-		state.BalanceSet(addr1, *amtsub1)
+		state.BalanceSet(addr1, *amtsub)
 	}
-	state.BalanceSet(addr2, *amtadd1)
+	//fmt.Println(addr1)
 	return nil
 }
 

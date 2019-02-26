@@ -7,6 +7,7 @@ import (
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/transactions"
 	"github.com/hacash/blockmint/types/block"
+	"strings"
 	"time"
 )
 
@@ -34,12 +35,27 @@ func GetGenesisBlock() block.Block {
 	//fmt.Println( hex.EncodeToString(root) )
 	genesis.SetMrklRoot(root)
 	// check data
-	hash := genesis.Hash()
-	//fmt.Println( hex.EncodeToString(hash) )
-	check_str := "7c256d39d8be6aa35587b687116198da0bad0d2f9d2fa030fd8f1afa080a05b3"
-	check, _ := hex.DecodeString(check_str)
+	/*for i:=0; i<1000; i++ {
+		hash := genesis.HashFresh()
+		fmt.Printf("%d %s \n", i, hex.EncodeToString(hash) )
+		time.Sleep(time.Duration(100) * time.Millisecond)
+	}*/
+	hash := genesis.HashFresh()
+	bodybytes, e := genesis.Serialize()
+	if e != nil {
+		panic(e)
+	}
+	bdbts := hex.EncodeToString(bodybytes)
+	check_bdbts := "010000000000005c57b08c0000000000000000000000000000000000000000000000000000000000000000ad557702fc70afaf70a855e7b8a4400159643cb5a7fc8a89ba2bce6f818a9b01000000010000000000000000000000000c1aaa4e6007cc58cfb932052ac0ec25ca356183f80101686172646572746f646f62657474657200"
+	//fmt.Println( bdbts )
+	//fmt.Println( check_bdbts )
+	if 0 != strings.Compare(bdbts, check_bdbts) {
+		panic("Genesis Block Data Error: need " + check_bdbts + ", but give " + bdbts)
+	}
+	check_hash := "57cef097f9a7cc0c45bcac6325b5b6e58199c8197763734cac6664e8d2b8e63e"
+	check, _ := hex.DecodeString(check_hash)
 	if 0 != bytes.Compare(hash, check) {
-		panic("Genesis Block Data Error: need " + check_str + " but give " + hex.EncodeToString(hash))
+		panic("Genesis Block Hash Error: need " + check_hash + ", but give " + hex.EncodeToString(hash))
 	}
 	return genesis
 }

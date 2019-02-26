@@ -37,6 +37,7 @@ func sendTxToMiner(params []gjson.Result) {
 	}
 	// post 发送
 	body := new(bytes.Buffer)
+	body.Write([]byte{0, 0, 0, 1}) // opcode
 	body.Write(txbytes)
 	req, e3 := http.NewRequest("POST", "http://"+minerAddress+"/operate", body)
 	if e3 != nil {

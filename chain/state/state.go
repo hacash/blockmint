@@ -2,7 +2,6 @@ package state
 
 import (
 	"github.com/hacash/blockmint/chain/state/db"
-	"github.com/hacash/blockmint/config"
 	"math/rand"
 	"os"
 	"path"
@@ -37,7 +36,7 @@ func NewTempChainState(base *ChainState) *ChainState {
 	if base == nil {
 		base = GetGlobalInstanceChainState()
 	}
-	tmpdir := config.GetCnfPathMinerState() + "/temp" + strconv.Itoa(rand.Int())
+	tmpdir := path.Join(os.TempDir(), "/hacash_state_temp"+strconv.Itoa(rand.Int()))
 
 	newBalanceDB := db.NewBalanceDB(path.Join(tmpdir, "balance"))
 	newBalanceDB.Treedb.DeleteMark = true
@@ -60,7 +59,10 @@ func (this *ChainState) TraversalCopy(get *ChainState) {
 
 // 销毁临时状态
 func (this *ChainState) Destroy() {
+	//fmt.Println("os.RemoveAll " + this.tempdir)
 	if this.tempdir != "" {
 		os.RemoveAll(this.tempdir) // 删除所有文件
+		this.tempdir = ""
 	}
+	//fmt.Println("os.RemoveAll --------- " + this.tempdir)
 }

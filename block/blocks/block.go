@@ -7,7 +7,8 @@ import (
 	"github.com/hacash/blockmint/miner/x16rs"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
-	"go-ethereum-command/crypto/sha3"
+
+	"golang.org/x/crypto/sha3"
 )
 
 func NewBlockByVersion(ty uint8) (typesblock.Block, error) {

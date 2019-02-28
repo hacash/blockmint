@@ -40,6 +40,10 @@ func GetCnfPathTemporaryState() string {
 
 func GetRandomMinerRewardAddress() string {
 	length := len(MinerRewardAddress)
+	if length == 0 {
+		panic("Miner Reward Address must be give !")
+	}
 	idx := rand.Intn(length)
+	//fmt.Println(idx)
 	return MinerRewardAddress[idx]
 }

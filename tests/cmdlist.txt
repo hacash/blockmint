@@ -1,0 +1,5 @@
+
+## 清空测试数据目录
+rm -rf .hacash/ && rm -rf /tmp/hacash* && rm -rf /media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/database
+
+

@@ -49,10 +49,14 @@ func RunTest() {
 		printLoadAddress(acc)
 	}
 
-	params := gjson.Parse("[\"1969418WSUCXPBSyGeLytkAqKUspDZJYWt\",\"135361CpCMxbfLEEPdVrmudJKQnQpPKZJv\",\"HCX1:244\",\"HCX1:244\"]").Array()
-	genTxSimpleTransfer(params)
+	//params := gjson.Parse("[\"127717zvZWFjEghjEpyyRSnitEEbnMuuLn\",\"1969418WSUCXPBSyGeLytkAqKUspDZJYWt\",\"HCX1:248\",\"HCX1:244\"]").Array()
+	//genTxSimpleTransfer(params)
+	//params := gjson.Parse("[\"1969418WSUCXPBSyGeLytkAqKUspDZJYWt\",\"135361CpCMxbfLEEPdVrmudJKQnQpPKZJv\",\"HCX1:244\",\"HCX1:244\"]").Array()
+	//genTxSimpleTransfer(params)
 
-	params2 := gjson.Parse("[\"01005c6fefc40058b9ceaea0e0bd4cfcca96ef2cec052234a5e6d3f40101000100010016b3a82d6bd43c0dd145f405062a080a582ceeb3f40101000102bc40e9ca301b81e4aa914465098ba43b065d3d4e88d809c8a6fdf81294117a4bb30988e477a37219898e00c93d902d0d83097fe80cb102ccb779969bf44f937114d9fc6130647ceb900b77775caeedecb19ee3741e2df5e7f75aa8d0656aa1ef0000\",\"127.0.0.1:3334\"]").Array()
+	//tx1 := "01005c6fefc4000c1fa1c032d90fd7afc54deb03941e87b4c59756f40101000100010058b9ceaea0e0bd4cfcca96ef2cec052234a5e6d3f801010001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d5a887a3a45bf5652259b6538ef546adef58a101ec25a3cd4e3729383e1430307f79ab68398e97b82296f78e36e54f66b009fb04e9f0774fe1d21ba8f6438ae7890000"
+	tx2 := "01005c6fefc40058b9ceaea0e0bd4cfcca96ef2cec052234a5e6d3f40101000100010016b3a82d6bd43c0dd145f405062a080a582ceeb3f40101000102bc40e9ca301b81e4aa914465098ba43b065d3d4e88d809c8a6fdf81294117a4bb30988e477a37219898e00c93d902d0d83097fe80cb102ccb779969bf44f937114d9fc6130647ceb900b77775caeedecb19ee3741e2df5e7f75aa8d0656aa1ef0000"
+	params2 := gjson.Parse("[\"" + tx2 + "\",\"127.0.0.1:3334\"]").Array()
 	sendTxToMiner(params2)
 
 }

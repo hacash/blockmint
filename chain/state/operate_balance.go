@@ -31,6 +31,7 @@ func (this *ChainState) BalanceSet(addr fields.Address, amt fields.Amount) {
 		this.balanceDB.SaveAmountByClearCreate(addr, amt)
 		return // new insert
 	}
+	//fmt.Println("BalanceSet address ", blc.LockHeight)
 	blc.Amount = amt
 	this.balanceDB.Save(addr, blc)
 }

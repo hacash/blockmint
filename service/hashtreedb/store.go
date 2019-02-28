@@ -2,13 +2,10 @@ package hashtreedb
 
 import (
 	"encoding/binary"
-	"encoding/hex"
-	"fmt"
 	"github.com/hacash/blockmint/sys/file"
 	"os"
 	"path"
 	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -41,6 +38,9 @@ type HashTreeDB struct {
 func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *HashTreeDB {
 
 	menuWide := (MaxValueSize+HashSize)/IndexItemSize + 1 // 最优空间
+	if (MaxValueSize+HashSize)%IndexItemSize == 0 {
+		menuWide -= 1 // 刚好合适
+	}
 
 	return &HashTreeDB{
 		HashSize:           HashSize,
@@ -100,11 +100,6 @@ func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 	}
 	//fmt.Println("LOCK FILE - "+filename)
 	lock.Lock()
-
-	if strings.Compare("c58527e77a879cfbfb8109b813b5e4aded443fd3f27a521e251bb2288b924b1e", hex.EncodeToString(hash)) == 0 {
-		fmt.Println("c58527e77a879cfbfb8109b813b5e4aded443fd3f27a521e251bb2288b924b1e => " + filename)
-	}
-
 	//fmt.Println(hash)
 	//fmt.Println(keyhash)
 	//fmt.Println(filename)
@@ -246,7 +241,9 @@ func (this *HashTreeDB) doCallTraversalCopy(ty uint8, itembytes []byte, get *Has
 	defer query.Close()
 	if ty == 2 {
 		// copy
-		//fmt.Println(hex.EncodeToString(key) + " => " + hex.EncodeToString(itembytes[get.HashSize:]))
+		//fmt.Println(get.HashSize)
+		//fmt.Println(len(itembytes) - int(get.HashSize))
+		//fmt.Println("copy save " + hex.EncodeToString(key) + "(" +address.NewAddressReadableFromAddress(key) + ") => " + hex.EncodeToString(itembytes[get.HashSize:]))
 		query.Save(itembytes[get.HashSize:])
 	} else if ty == 3 {
 		// delete
@@ -281,7 +278,9 @@ func recursTraversalCopy(file *os.File, fileseek int64, segmentSize uint32, get 
 					itembytes = []byte{}
 				}
 			}
-			docall(ty, itembytes, get)
+			//fmt.Println("segmentSize :: ", segmentSize)
+			//fmt.Println("segmentSize :: ", hex.EncodeToString(itembytes))
+			docall(ty, itembytes[:], get)
 		}
 	}
 

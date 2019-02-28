@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/hacash/blockmint/block/fields"
+	"github.com/hacash/blockmint/chain/state"
 	"github.com/hacash/blockmint/core/account"
 	"math/big"
 	"testing"
@@ -125,5 +126,60 @@ func Test_loop_nice(t *testing.T) {
 	//account.FindNiceAccounts("yangjie19920203+liyang19940622+", 4, 0)
 
 	fmt.Println([]byte("ㄜ"))
+
+}
+
+func Test_7(t *testing.T) {
+
+	one := fields.NewAmountNumSmallCoin(1)
+	base := fields.NewAmountNumSmallCoin(1)
+
+	var e error
+	for i := 2; i < 1000000000; i++ {
+		base, e = base.Add(one)
+		if e != nil {
+			panic(e)
+		}
+		fmt.Println(i, base.ToFinString())
+	}
+
+}
+
+func Test_8(t *testing.T) {
+
+	acc1 := account.CreateAccountByPassword("121")
+	acc2 := account.CreateAccountByPassword("122")
+	acc3 := account.CreateAccountByPassword("123")
+	acc4 := account.CreateAccountByPassword("124")
+
+	oneamt := fields.NewAmountNumSmallCoin(1)
+	baseamt := fields.NewAmountNumSmallCoin(0)
+
+	basestate := state.NewTempChainState(nil)
+
+	for i := uint64(0); ; i++ {
+		tmpstate := state.NewTempChainState(basestate)
+		bbamt1 := tmpstate.Balance(acc1.Address)
+		bbamt2 := tmpstate.Balance(acc2.Address)
+		bbamt3 := tmpstate.Balance(acc3.Address)
+		bbamt4 := tmpstate.Balance(acc4.Address)
+		if !bbamt1.Equal(baseamt) ||
+			!bbamt2.Equal(baseamt) ||
+			!bbamt3.Equal(baseamt) ||
+			!bbamt4.Equal(baseamt) {
+			fmt.Println(baseamt.ToFinString() + " but get " + bbamt1.ToFinString())
+			panic("")
+		}
+		if i%1000 == 0 {
+			fmt.Println(i, baseamt.ToFinString())
+		}
+		baseamt, _ = baseamt.Add(oneamt)
+		tmpstate.BalanceSet(acc1.Address, *baseamt)
+		tmpstate.BalanceSet(acc2.Address, *baseamt)
+		tmpstate.BalanceSet(acc3.Address, *baseamt)
+		tmpstate.BalanceSet(acc4.Address, *baseamt)
+		basestate.TraversalCopy(tmpstate)
+		tmpstate.Destroy()
+	}
 
 }

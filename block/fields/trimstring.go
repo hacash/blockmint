@@ -32,7 +32,9 @@ func (elm *TrimString64) Size() uint32 { return 64 }
 ////////////////////////////////////////////////////////
 
 func trimStringParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32, error) {
-	var addrbytes = buf[seek : seek+maxlen]
+	var nnnold = buf[seek : seek+maxlen]
+	var addrbytes = make([]byte, len(nnnold))
+	copy(addrbytes, nnnold)
 	addrbytes = bytes.Trim(addrbytes, " ")
 	var sd = string(addrbytes)
 	switch a := elm.(type) {

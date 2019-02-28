@@ -16,7 +16,7 @@ var (
 	oneLsh256 = new(big.Int).Lsh(bigOne, 256)
 
 	//
-	LowestCompact = uint32(550000000)
+	LowestCompact = uint32(521000000) // 508000000
 )
 
 // HashToBig converts a chainhash.Hash into a big.Int that can be used to
@@ -156,32 +156,45 @@ func CalcNextRequiredDifficulty(prevCompact uint32, totalSecond uint32) uint32 {
 var (
 	bigOneValue = big.NewInt(1)
 	// 最大难度：00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff，2^224，0x1d00ffff
-	MaxPowLimit       = new(big.Int).Sub(new(big.Int).Lsh(bigOneValue, 224), bigOneValue)
-	powTargetTimespan = time.Hour * 24 * 7 // 一周
+	MaxPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOneValue, 224), bigOneValue)
+	//powTargetTimespan =  // time.Hour * 24 * 7 // 一周
 )
 
+// 计算下一阶段区块难度
 func CalculateNextWorkTarget(currentBits uint32, currentHeight uint64, prevTimestamp uint64, lastTimestamp uint64) uint32 {
-	// 如果新区块(+1)不是2016的整数倍，则不需要更新，仍然是最后一个区块的 bits
-	if currentHeight%2016 != 0 {
+
+	powTargetTimespan := time.Minute * 1 * 288 // 一天
+	// 如果新区块height不是 288 的整数倍，则不需要更新，仍然是最后一个区块的 bits
+	if currentHeight%288 != 0 {
 		return currentBits
 	}
 	prev2016blockTimestamp := time.Unix(int64(prevTimestamp), 0)
 	lastBlockTimestamp := time.Unix(int64(lastTimestamp), 0)
-	// 计算 2016个区块出块时间
+	// 计算 288 个区块出块时间
 	actualTimespan := lastBlockTimestamp.Sub(prev2016blockTimestamp)
-	if actualTimespan < powTargetTimespan/4 {
-		actualTimespan = powTargetTimespan / 4
-	} else if actualTimespan > powTargetTimespan*4 {
-		// 如果超过4周，则按4周计算
-		actualTimespan = powTargetTimespan * 4
+	if actualTimespan < powTargetTimespan/8 {
+		// 如果小于1/8天，则按1/8天计算
+		actualTimespan = powTargetTimespan / 8
+	} else if actualTimespan > powTargetTimespan*8 {
+		// 如果超过8天，则按8天计算
+		actualTimespan = powTargetTimespan * 8
 	}
+
 	lastTarget := CompactToBig(currentBits)
 	// 计算公式： target = lastTarget * actualTime / expectTime
-	newTarget := new(big.Int).Mul(lastTarget, big.NewInt(int64(actualTimespan.Seconds())))
-	newTarget.Div(newTarget, big.NewInt(int64(powTargetTimespan.Seconds())))
+	newTarget := lastTarget.Mul(lastTarget, big.NewInt(int64(actualTimespan.Seconds())))
+	newTarget = newTarget.Div(newTarget, big.NewInt(int64(powTargetTimespan.Seconds())))
 	//超过最多难度，则重置
 	//if newTarget.Cmp(MaxPowLimit) > 0 {
 	//	newTarget.Set(MaxPowLimit)
 	//}
-	return BigToCompact(newTarget)
+	nextBits := BigToCompact(newTarget)
+
+	fmt.Printf("CalculateNextWorkTarget new difficulty  ============================  %d/%d  ==  %d  ==\n",
+		int32(actualTimespan.Seconds()),
+		int32(powTargetTimespan.Seconds()),
+		nextBits,
+	)
+
+	return nextBits
 }

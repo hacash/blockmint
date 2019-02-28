@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/fields"
@@ -17,6 +18,10 @@ import (
 	"time"
 )
 
+var (
+	globalInstanceHacashMiner *HacashMiner = nil
+)
+
 type HacashMiner struct {
 	State *MinerState
 
@@ -24,6 +29,13 @@ type HacashMiner struct {
 
 	CurrentActiveChainState *state.ChainState
 	CurrentActiveCoinbase   block.Transaction
+}
+
+func GetGlobalInstanceHacashMiner() *HacashMiner {
+	if globalInstanceHacashMiner == nil {
+		globalInstanceHacashMiner = NewHacashMiner()
+	}
+	return globalInstanceHacashMiner
 }
 
 func NewHacashMiner() *HacashMiner {
@@ -37,45 +49,65 @@ func NewHacashMiner() *HacashMiner {
 // 开始挖矿
 func (this *HacashMiner) Start() error {
 
-	for true {
+	totalTime := uint64(0)
+	totalHashTry := uint64(0)
+	for i := uint64(1); ; i++ {
+
+		t1 := time.Now() // get current time
 
 		targetBlk, e := this.CreateBlock()
 		if e != nil {
 			return e
 		}
-		_, e1 := this.CalculateTargetHash(targetBlk)
+		tarhash, trynum, e1 := this.CalculateTargetHash(targetBlk)
 		if e1 != nil {
 			return e1
 		}
+		totalHashTry += uint64(trynum)
 		// 已挖到，保存状态数据
 		store.GetGlobalInstanceBlocksDataStore().Save(targetBlk)
 		state.GetGlobalInstanceChainState().TraversalCopy(this.CurrentActiveChainState)
 		this.CurrentActiveChainState.Destroy()
+		this.CurrentActiveChainState = nil
 		// 修改矿工状态信息，开始下一个区块挖矿
 		this.State.prevBlockHead = targetBlk
 		this.State.FlushSave()
 		// ok one
 		//fmt.Println( hex.EncodeToString(tarhash) )
+		elapsed := time.Since(t1)
+		spt := int(elapsed.Seconds())
+		totalTime += uint64(spt)
+		fmt.Printf("bh: %d, hs: %s, cn: %d, ts: %ds, ah: %d, at: %ds \n",
+			int(targetBlk.GetHeight()),
+			hex.EncodeToString(tarhash),
+			trynum,
+			spt,
+			totalHashTry/i,
+			totalTime/i,
+		)
+
 	}
 
 	return nil
 }
 
 // 生成一个新区块
-func (this *HacashMiner) CalculateTargetHash(block block.Block) ([]byte, error) {
+func (this *HacashMiner) CalculateTargetHash(block block.Block) ([]byte, uint32, error) {
+
+	targetDifficulty := block.GetDifficulty()
 
 	for i := uint32(0); i < uint32(4294967295); i++ {
-		// 休眠 0.777 秒
-		time.Sleep(time.Duration(1777) * time.Millisecond)
+		// 休眠 0.111 秒
+		time.Sleep(time.Duration(10) * time.Millisecond)
 		//fmt.Println(i)
 		block.SetNonce(i)
 		tarhash := block.HashFresh()
 		//fmt.Println( hex.EncodeToString(tarhash) )
 		difficulty := difficulty.BigToCompact(difficulty.HashToBig(&tarhash))
 		//fmt.Println(difficulty, block.GetDifficulty())
-		if difficulty <= block.GetDifficulty() {
+		if difficulty <= targetDifficulty {
 			// OK !!!!!!!!!!!!!!!
-			return tarhash, nil
+			return tarhash, i, nil
 		}
 	}
 	// 尝试次数已达上限， 切换 coinbase
@@ -91,15 +123,32 @@ func (this *HacashMiner) CreateBlock() (block.Block, error) {
 	prev := this.State.prevBlockHead
 	if prev == nil {
 		prev = coin.GetGenesisBlock() // 创世
+		this.State.prev288BlockTimestamp = uint64(time.Now().Unix())
 	}
 	nextblock := blocks.NewEmptyBlock_v1(prev)
 	// 最低难度
-	if nextblock.Difficulty == 0 {
+	if nextblock.Height < 10 {
 		nextblock.Difficulty = fields.VarInt4(difficulty.LowestCompact)
+	} else {
+		newDifficulty := difficulty.CalculateNextWorkTarget(
+			uint32(nextblock.Difficulty),
+			uint64(nextblock.Height),
+			this.State.prev288BlockTimestamp,
+			uint64(nextblock.Timestamp),
+		)
+		if newDifficulty != uint32(nextblock.Difficulty) {
+			//fmt.Printf("CalculateNextWorkTarget new Difficulty  ============================  %d \n", newDifficulty)
+			this.State.prev288BlockTimestamp = uint64(nextblock.Timestamp)
+			nextblock.Difficulty = fields.VarInt4(newDifficulty) // 计算难度
+		}
 	}
 	// coinbase 占位
 	nextblock.TransactionCount = 1
 	nextblock.Transactions = append(nextblock.Transactions, nil)
+	if this.CurrentActiveChainState != nil {
+		this.CurrentActiveChainState.Destroy()
+		this.CurrentActiveChainState = nil
+	}
 	this.CurrentActiveChainState = state.NewTempChainState(nil)
 	// 添加交易
 	stoblk := store.GetGlobalInstanceBlocksDataStore()
@@ -159,7 +208,14 @@ func (this *HacashMiner) CreateBlockMinerAddress(block block.Block, totalFee fie
 	// 默克尔树
 	root := blocks.CalculateMrklRoot(block.GetTransactions())
 	block.SetMrklRoot(root)
-	fmt.Printf("block height: %d, coinbase miner: %s, reward: %s \n", int(block.GetHeight()), addrreadble, coinbase.Reward.ToFinString())
+	fmt.Printf("bh: %d, tx: %d, df: %d, cm: %s, rw: %s \n",
+		int(block.GetHeight()),
+		len(block.GetTransactions())-1,
+		block.GetDifficulty(),
+		// hex.EncodeToString(block.GetPrevHash()[0:16]) + "...",
+		addrreadble,
+		coinbase.Reward.ToFinString(),
+	)
 	//
 	this.CurrentActiveCoinbase = coinbase
 	// ok

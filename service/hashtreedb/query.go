@@ -167,6 +167,10 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 	}
 	// write file
 	if !hasUseGC {
+		//fmt.Println("realvaluebody:")
+		//fmt.Println(realvaluebody)
+		//fmt.Println(hex.EncodeToString(realvaluebody))
+		//fmt.Println(len(realvaluebody))
 		fileWriteAppendBatch.Write(realvaluebody) // 没有采用gc空间时，追加写入value
 	}
 	realwriteappend := fileWriteAppendBatch.Bytes()

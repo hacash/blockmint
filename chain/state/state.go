@@ -36,7 +36,7 @@ func NewTempChainState(base *ChainState) *ChainState {
 	if base == nil {
 		base = GetGlobalInstanceChainState()
 	}
-	tmpdir := path.Join(os.TempDir(), "/hacash_state_temp"+strconv.Itoa(rand.Int()))
+	tmpdir := path.Join(os.TempDir(), "/hacash_state_temp_"+strconv.Itoa(rand.Int()))
 
 	newBalanceDB := db.NewBalanceDB(path.Join(tmpdir, "balance"))
 	newBalanceDB.Treedb.DeleteMark = true

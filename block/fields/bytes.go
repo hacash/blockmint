@@ -43,7 +43,9 @@ func (elm *Bytes64) Size() uint32 { return 64 }
 ////////////////////////////////////////////////////////
 
 func bytesParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32, error) {
-	var addrbytes = buf[seek : seek+maxlen]
+	var nnnold = buf[seek : seek+maxlen]
+	var addrbytes = make([]byte, len(nnnold))
+	copy(addrbytes, nnnold)
 	//var sd = string(addrbytes)
 	switch a := elm.(type) {
 	case *Bytes21:

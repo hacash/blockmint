@@ -25,8 +25,11 @@ type Block interface {
 
 	GetTransactions() []Transaction
 	AddTransaction(Transaction)
+
 	GetHeight() uint64
 	GetDifficulty() uint32
+	GetPrevHash() []byte
+
 	SetMrklRoot([]byte)
 	SetNonce(uint32)
 }

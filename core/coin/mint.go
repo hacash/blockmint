@@ -1,6 +1,8 @@
 package coin
 
-import "github.com/hacash/blockmint/block/fields"
+import (
+	"github.com/hacash/blockmint/block/fields"
+)
 
 /**
  * 货币发行算法
@@ -13,13 +15,13 @@ func BlockCoinBaseReward(blockHeight uint64) *fields.Amount {
 	tbn1 := uint64(10000 * 10)
 	tbn2 := uint64(10000 * 100)
 	spx1 := uint64(len(part1)) * tbn1
-	spx2 := uint64(len(part2)) * tbn2
+	spx2 := uint64(len(part2))*tbn2 + spx1
 	if blockHeight <= spx1 {
 		base := blockHeight
 		num = part1[base/tbn1]
 	} else if blockHeight <= spx2 {
 		base := blockHeight - spx1
-		num = part1[base/spx2]
+		num = part2[base/tbn2]
 	} else {
 		num = part3
 	}

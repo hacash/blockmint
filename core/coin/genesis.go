@@ -53,8 +53,9 @@ func GetGenesisBlock() block.Block {
 		panic("Genesis Block Data Error: need " + check_bdbts + ", but give " + bdbts)
 	}
 	check_hash := "57cef097f9a7cc0c45bcac6325b5b6e58199c8197763734cac6664e8d2b8e63e"
+	bytecodes := []byte{87, 206, 240, 151, 249, 167, 204, 12, 69, 188, 172, 99, 37, 181, 182, 229, 129, 153, 200, 25, 119, 99, 115, 76, 172, 102, 100, 232, 210, 184, 230, 62}
 	check, _ := hex.DecodeString(check_hash)
-	if 0 != bytes.Compare(hash, check) {
+	if 0 != bytes.Compare(hash, check) || 0 != bytes.Compare(hash, bytecodes) {
 		panic("Genesis Block Hash Error: need " + check_hash + ", but give " + hex.EncodeToString(hash))
 	}
 	return genesis

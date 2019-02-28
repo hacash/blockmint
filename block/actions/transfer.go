@@ -90,6 +90,7 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 		return nil // 自己转给自己
 	}
 	amt1 := state.Balance(addr1)
+	//fmt.Println("amt1: " + amt1.ToFinString())
 	if amt1.LessThan(&amt) {
 		return fmt.Errorf("balance not enough")
 	}
@@ -108,36 +109,44 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 	/*if amtsub1 != amtsub || amtadd1 != amtadd {
 		return fmt.Errorf("amount can not to store")
 	}*/
-	state.BalanceSet(addr2, *amtadd)
 	if amtsub.IsEmpty() {
 		state.BalanceDel(addr1) // 归零
 	} else {
+		//fmt.Println("amtsub: " + amtsub.ToFinString())
 		state.BalanceSet(addr1, *amtsub)
 	}
-	//fmt.Println(addr1)
+	state.BalanceSet(addr2, *amtadd)
 	return nil
 }
 
 func DoAddBalanceFromChainState(state state.ChainStateOperation, addr fields.Address, amt fields.Amount) error {
 	baseamt := state.Balance(addr)
+	//fmt.Println( "baseamt: ", baseamt.ToFinString() )
 	amtnew, e1 := baseamt.Add(&amt)
 	if e1 != nil {
 		return e1
 	}
-	state.BalanceSet(addr, *amtnew.EllipsisDecimalFor23SizeStore())
+	amtsave := *amtnew.EllipsisDecimalFor23SizeStore()
+	//addrrr, _ := base58check.Encode(addr)
+	//fmt.Println( "DoAddBalanceFromChainState: ++++++++++ ", addrrr, amtsave.ToFinString() )
+	state.BalanceSet(addr, amtsave)
 	return nil
 }
 
 func DoSubBalanceFromChainState(state state.ChainStateOperation, addr fields.Address, amt fields.Amount) error {
 	baseamt := state.Balance(addr)
+	//fmt.Println("baseamt: " + baseamt.ToFinString())
 	if baseamt.LessThan(&amt) {
 		return fmt.Errorf("balance not enough")
 	}
+	//fmt.Println("amt fee: " + amt.ToFinString())
 	amtnew, e1 := baseamt.Sub(&amt)
 	if e1 != nil {
 		return e1
 	}
-	state.BalanceSet(addr, *amtnew.EllipsisDecimalFor23SizeStore())
+	amtnew1 := *amtnew.EllipsisDecimalFor23SizeStore()
+	//fmt.Println("amtnew1: " + amtnew1.ToFinString())
+	state.BalanceSet(addr, amtnew1)
 	return nil
 }
 

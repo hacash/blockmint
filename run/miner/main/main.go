@@ -12,8 +12,8 @@ func main() {
 	// http 接口
 	go rpc.RunHttpRpcService()
 	go func() {
-		var miner = miner.NewHacashMiner()
-		miner.Start() // 挖矿
+		var miner = miner.GetGlobalInstanceHacashMiner()
+		miner.Start() // 开始挖矿
 	}()
 
 	<-chwait

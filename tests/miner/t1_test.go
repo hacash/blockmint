@@ -1,8 +1,10 @@
 package miner
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
+	base58check2 "github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner"
 	"testing"
@@ -44,7 +46,22 @@ func Test_t1(t *testing.T) {
 
 func Test_t3(t *testing.T) {
 
-	var miner = miner.NewHacashMiner()
-	miner.Start()
+	//var miner = miner.NewHacashMiner()
+	//miner.Start()
+
+	fmt.Println(hex.DecodeString("57cef097f9a7cc0c45bcac6325b5b6e58199c8197763734cac6664e8d2b8e63e"))
+
+	blk := coin.GetGenesisBlock()
+
+	fmt.Println(blk.Hash())
+
+	address, _ := base58check2.Decode("13337681iZShfzYDkNBmjnaoAfchsrFQpD")
+	fmt.Println(address)
+
+	add := []byte{0, 22, 82, 215, 51, 169, 135, 248, 255, 189, 82, 120, 227, 122, 205, 117, 64, 162, 253, 1, 38}
+
+	if bytes.Compare(add, address) != 0 {
+		fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
 
 }

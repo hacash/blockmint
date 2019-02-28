@@ -43,6 +43,7 @@ func NewEmptyBlock_v1(prevBlockHead typesblock.Block) *Block_v1 {
 	if prevBlockHead != nil {
 		empty.PrevHash = prevBlockHead.Hash()
 		empty.Height = fields.VarInt5(prevBlockHead.GetHeight() + 1)
+		empty.Difficulty = fields.VarInt4(prevBlockHead.GetDifficulty())
 	}
 	return empty
 }
@@ -205,6 +206,9 @@ func (block *Block_v1) HashFresh() []byte {
 }
 func (block *Block_v1) GetHeight() uint64 {
 	return uint64(block.Height)
+}
+func (block *Block_v1) GetPrevHash() []byte {
+	return block.PrevHash
 }
 func (block *Block_v1) GetDifficulty() uint32 {
 	return uint32(block.Difficulty)

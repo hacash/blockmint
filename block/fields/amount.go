@@ -112,7 +112,9 @@ func (bill *Amount) Parse(buf []byte, seek uint32) (uint32, error) {
 		numCount *= -1
 	}
 	var tail = seek + 2 + uint32(numCount)
-	bill.Numeral = buf[seek+2 : tail]
+	var nnnold = buf[seek+2 : tail]
+	bill.Numeral = make([]byte, len(nnnold))
+	copy(bill.Numeral, nnnold)
 	return tail, nil
 }
 
@@ -303,4 +305,12 @@ func (bill *Amount) LessThan(amt *Amount) bool {
 	} else {
 		return false
 	}
+}
+
+// 相等
+func (bill *Amount) Equal(amt *Amount) bool {
+	if bill.GetValue().Cmp(amt.GetValue()) == 0 {
+		return true
+	}
+	return false
 }

@@ -137,6 +137,8 @@ func (trs *Transaction_0_Coinbase) RequestAddressBalance() ([][]byte, []big.Int,
 // 修改 / 恢复 状态数据库
 func (trs *Transaction_0_Coinbase) ChangeChainState(state state.ChainStateOperation) error {
 	rwd, _ := trs.Reward.Add(&trs.TotalFee)
+	//addr, _ := base58check.Encode(trs.Address)
+	//fmt.Printf("coinbase.ChangeChainState,  %s  +=  %s\n", addr, rwd.ToFinString())
 	return actions.DoAddBalanceFromChainState(state, trs.Address, *rwd)
 }
 func (trs *Transaction_0_Coinbase) RecoverChainState(state state.ChainStateOperation) error {

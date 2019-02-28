@@ -65,7 +65,7 @@ func (elm *VarInt8) Size() uint32 { return 8 }
 ////////////////////////////////////////////////////////
 
 func varIntSerialize(val uint64, maxlen uint32) ([]byte, error) {
-	var intbytes = make([]byte, 8)
+	var intbytes = bytes.Repeat([]byte{0}, 8)
 	binary.BigEndian.PutUint64(intbytes, val)
 	byyy := intbytes[8-maxlen : 8]
 	//fmt.Println(intbytes)
@@ -76,7 +76,9 @@ func varIntSerialize(val uint64, maxlen uint32) ([]byte, error) {
 
 func varIntParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32, error) {
 	// fmt.Println("xxx",*buf)
-	intbytes := buf[seek : seek+maxlen]
+	nnnold := buf[seek : seek+maxlen]
+	var intbytes = make([]byte, len(nnnold))
+	copy(intbytes, nnnold)
 	// fmt.Println(intbytes)
 	padbytes := bytes.Repeat([]byte{0}, int(8-maxlen))
 	intbytes = append(padbytes, intbytes...)

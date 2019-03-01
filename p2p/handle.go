@@ -12,11 +12,11 @@ const (
 )
 
 type ProtocolManager struct {
-	maxPeers int // 最大节点数量
+	TxsCh chan []byte // 交易广播
 
-	txsCh chan []byte // 交易广播
-
-	peers *peerSet
+	maxPeers     int // 最大节点数量
+	peers        *peerSet
+	SubProtocols []p2p.Protocol
 }
 
 func NewProtocolManager() (*ProtocolManager, error) {
@@ -24,6 +24,18 @@ func NewProtocolManager() (*ProtocolManager, error) {
 	manager := &ProtocolManager{
 		peers: newPeerSet(),
 	}
+
+	manager.SubProtocols = make([]p2p.Protocol, 0, 1)
+	manager.SubProtocols = append(manager.SubProtocols, p2p.Protocol{
+		Name:    "hacash",
+		Version: 1,
+		Length:  1,
+		Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
+			// peer := manager.newPeer(p, rw)
+			return nil
+		},
+	})
+
 	return manager, nil
 }
 
@@ -31,7 +43,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.maxPeers = maxPeers
 
 	// broadcast transactions
-	pm.txsCh = make(chan []byte, txChanSize)
+	pm.TxsCh = make(chan []byte, txChanSize)
 	go pm.txBroadcastLoop()
 
 }
@@ -43,7 +55,7 @@ func (pm *ProtocolManager) newPeer(p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 func (pm *ProtocolManager) txBroadcastLoop() {
 	for {
 		select {
-		case tx := <-pm.txsCh:
+		case tx := <-pm.TxsCh:
 			pm.BroadcastTx(tx)
 
 			// Err() channel will be closed when unsubscribing.

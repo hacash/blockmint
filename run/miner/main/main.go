@@ -8,8 +8,6 @@ import (
 
 func main() {
 
-	chwait := make(chan int, 1)
-
 	// config
 	config.LoadConfigFile()
 
@@ -24,6 +22,6 @@ func main() {
 		p2p.Start() // 加入p2p网络
 	}()
 
-	<-chwait
+	select {}
 
 }

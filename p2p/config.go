@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hacash/blockmint/config"
+	"os"
 	"path"
 )
 
@@ -23,10 +24,14 @@ func NodeKey() *ecdsa.PrivateKey {
 	// No persistent key found, generate and store a new one.
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		fmt.Errorf(fmt.Sprintf("Failed to generate node key: %v", err))
+		fmt.Errorf(fmt.Sprintf("Failed to generate node key: %v \n", err))
+	}
+	if err := os.MkdirAll(datadirPrivateKey, 0700); err != nil {
+		fmt.Errorf(fmt.Sprintf("Failed to persist node key: %v \n", err))
+		return key
 	}
 	if err := crypto.SaveECDSA(keyfile, key); err != nil {
-		fmt.Errorf(fmt.Sprintf("Failed to persist node key: %v", err))
+		fmt.Errorf(fmt.Sprintf("Failed to persist node key: %v \n", err))
 	}
 	return key
 }

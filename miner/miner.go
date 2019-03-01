@@ -208,9 +208,11 @@ func (this *HacashMiner) CreateBlockMinerAddress(block block.Block, totalFee fie
 	// 默克尔树
 	root := blocks.CalculateMrklRoot(block.GetTransactions())
 	block.SetMrklRoot(root)
-	fmt.Printf("bh: %d, tx: %d, df: %d, cm: %s, rw: %s \n",
+	timeNow := time.Now()
+	fmt.Printf("bh: %d, tx: %d, tt: %s-%d %d:%d, df: %d, cm: %s, rw: %s \n",
 		int(block.GetHeight()),
 		len(block.GetTransactions())-1,
+		timeNow.Month().String(), timeNow.Day(), timeNow.Hour(), timeNow.Minute(),
 		block.GetDifficulty(),
 		// hex.EncodeToString(block.GetPrevHash()[0:16]) + "...",
 		addrreadble,

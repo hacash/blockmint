@@ -48,7 +48,7 @@ func RunHttpRpcService() {
 	http.HandleFunc("/query", dealQuery)     //设置访问的路由
 	http.HandleFunc("/operate", dealOperate) //设置访问的路由
 
-	port := "3334"
+	port := "3338"
 
 	err := http.ListenAndServe(":"+port, nil) //设置监听的端口
 	if err != nil {

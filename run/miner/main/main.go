@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/hacash/blockmint/config"
 	p2p2 "github.com/hacash/blockmint/p2p"
 	"github.com/hacash/blockmint/service/rpc"
 )
@@ -8,6 +9,9 @@ import (
 func main() {
 
 	chwait := make(chan int, 1)
+
+	// config
+	config.LoadConfigFile()
 
 	// http 接口
 	go rpc.RunHttpRpcService()

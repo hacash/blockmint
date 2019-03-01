@@ -1,5 +1,10 @@
 # go get all
 
+# p2p
+go get github.com/ethereum/go-ethereum/p2p
+
+# config
+go get github.com/jinzhu/configor
 
 # json
 go get github.com/tidwall/gjson

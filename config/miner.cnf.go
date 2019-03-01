@@ -9,6 +9,7 @@ var (
 	DirDataChainState     = "chainstate/"
 	DirDataMinerState     = "minerstate/"
 	DirDataTemporaryState = "tempstate/" // 临时状态，最好是内存文件系统
+	DirDataNodes          = "nodes/"
 
 	// mining
 	MinimalFeePurity = int64(10000 * 10000 * 100) // 0.000001枚 // 最低手续费比值 每byte收取多少烁代币 （枚铢烁埃渺）

@@ -16,32 +16,37 @@ func dealHomeDirBase(dir string) string {
 }
 
 func GetCnfPathBlocks() string {
-	base := dealHomeDirBase(DirBase)
+	base := dealHomeDirBase(Config.Datadir)
 	blocks := path.Join(base, DirDataBlock)
 	return blocks
 }
 
 func GetCnfPathChainState() string {
-	base := dealHomeDirBase(DirBase)
+	base := dealHomeDirBase(Config.Datadir)
 	states := path.Join(base, DirDataChainState)
 	return states
 }
 
 func GetCnfPathMinerState() string {
-	base := dealHomeDirBase(DirBase)
+	base := dealHomeDirBase(Config.Datadir)
 	states := path.Join(base, DirDataMinerState)
 	return states
 }
 func GetCnfPathTemporaryState() string {
-	base := dealHomeDirBase(DirBase)
+	base := dealHomeDirBase(Config.Datadir)
 	states := path.Join(base, DirDataTemporaryState)
 	return states
 }
+func GetCnfPathNodes() string {
+	base := dealHomeDirBase(Config.Datadir)
+	nodes := path.Join(base, DirDataNodes)
+	return nodes
+}
 
 func GetRandomMinerRewardAddress() string {
-	length := len(MinerRewardAddress)
+	length := len(Config.Miner.Rewards)
 	if length == 0 {
-		panic("Miner Reward Address must be give !")
+		panic("Miner Reward Address must be give at lest one !")
 	}
 	idx := rand.Intn(length)
 	//fmt.Println(idx)

@@ -1,0 +1,21 @@
+#
+# 节点启动配置
+#
+
+# 数据目录
+# datadir: ~/.hacash
+datadir: /media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/database
+
+# 矿工配置
+miner:
+  minfeeratio: 100ww
+  rewards:
+  - 127717zvZWFjEghjEpyyRSnitEEbnMuuLn
+  - 129877upotaKLajSRhmBwczeehmjXCPndG
+
+
+
+
+
+
+

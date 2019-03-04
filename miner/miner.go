@@ -157,7 +157,7 @@ func (this *HacashMiner) CalculateTargetHash(block block.Block) ([]byte, uint32,
 			return nil, 0, fmt.Errorf("canPause be set") // 暂停挖矿
 		}
 		// 休眠 秒
-		time.Sleep(time.Duration(1200) * time.Microsecond)
+		time.Sleep(time.Duration(10) * time.Millisecond)
 		//fmt.Println(i)
 		block.SetNonce(i)
 		tarhash := block.HashFresh()
@@ -179,8 +179,8 @@ func (this *HacashMiner) CreateBlock() (block.Block, error) {
 
 	prev := this.State.prevBlockHead
 	if prev == nil {
-		prev = coin.GetGenesisBlock() // 创世
-		this.State.prev288BlockTimestamp = uint64(time.Now().Unix())
+		prev = coin.GetGenesisBlock()                          // 创世
+		this.State.prev288BlockTimestamp = prev.GetTimestamp() // uint64(time.Now().Unix())
 	}
 	nextblock := blocks.NewEmptyBlock_v1(prev)
 	// 最低难度
@@ -295,19 +295,23 @@ func (this *HacashMiner) SwitchBlockMinerAddress(block block.Block) (block.Trans
 
 // 新到了一个区块，验证并写入，更新矿工状态
 func (this *HacashMiner) ArrivedNewBlockToUpdate(blockbytes []byte, seek uint32) (block.Block, uint32, error) {
+	fmt.Printf("ArrivedNewBlockToUpdate ================ \n")
 	block, seek, e0 := blocks.ParseBlock(blockbytes, seek)
 	if e0 != nil {
 		return nil, 0, e0
 	}
-	//fmt.Printf("ArrivedNewBlockToUpdate(blockbytes []byte) block height: %d \n", block.GetHeight())
+	fmt.Printf("ArrivedNewBlockToUpdate(blockbytes []byte) block height: %d \n", block.GetHeight())
 	// 验证签名
 	sigok, e1 := block.VerifyNeedSigns()
 	if e1 != nil {
+		fmt.Println("ArrivedNewBlockToUpdate  block signature verify error")
 		return nil, 0, e1
 	}
 	if !sigok {
+		fmt.Println("ArrivedNewBlockToUpdate  block signature verify faild")
 		return nil, 0, fmt.Errorf("block signature verify faild")
 	}
+	fmt.Printf("ArrivedNewBlockToUpdate  this.insertBlock.Lock()\n")
 	// 锁定
 	this.insertBlock.Lock()
 	defer func() {
@@ -315,29 +319,36 @@ func (this *HacashMiner) ArrivedNewBlockToUpdate(blockbytes []byte, seek uint32)
 		this.insertBlock.Unlock()
 	}()
 
-	//fmt.Printf("ArrivedNewBlockToUpdate  this.insertBlock.Lock()\n")
+	fmt.Printf("ArrivedNewBlockToUpdate  this.State.CurrentHeight()+1 != block.GetHeight()\n")
 
 	// 判断当前状态
 	if this.State.CurrentHeight()+1 != block.GetHeight() {
+		fmt.Printf("ArrivedNewBlockToUpdate  not accepted block height\n")
 		return nil, 0, fmt.Errorf("not accepted block height")
 	}
 	if bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0 {
+		fmt.Printf("ArrivedNewBlockToUpdate not accepted block prev hash\n")
 		return nil, 0, fmt.Errorf("not accepted block prev hash")
 	}
 	// 创建执行环境并执行
+	fmt.Printf("newBlockChainState := state.NewTempChainState(nil)\n")
 	newBlockChainState := state.NewTempChainState(nil)
 	blksterr := block.ChangeChainState(newBlockChainState)
 	if blksterr != nil {
+		fmt.Printf("blksterr := block.ChangeChainState(newBlockChainState  error: %s \n", blksterr)
 		return nil, 0, blksterr
 	}
+	fmt.Printf("停止挖矿 this.canPause = true\n")
 	// 停止挖矿
 	this.canPause = true
 	// 保存区块，修改chain状态
 	blockdb := store.GetGlobalInstanceBlocksDataStore()
 	_, sverr := blockdb.Save(block)
 	if sverr != nil {
+		fmt.Printf(" _, sverr := blockdb.Save(block)  error: %s \n", sverr)
 		return nil, 0, sverr
 	}
+	fmt.Printf("chainstate.TraversalCopy(newBlockChainState)\n")
 	chainstate := state.GetGlobalInstanceChainState()
 	chainstate.TraversalCopy(newBlockChainState)
 	// 修改矿工状态
@@ -347,6 +358,7 @@ func (this *HacashMiner) ArrivedNewBlockToUpdate(blockbytes []byte, seek uint32)
 	//this.canPause = false
 	//this.CanStart()
 	// 成功
+	fmt.Printf("成功 return block, seek, nil\n")
 	return block, seek, nil
 
 }

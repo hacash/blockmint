@@ -174,12 +174,14 @@ func (p *peer) Handshake() error {
 		select {
 		case err := <-errc:
 			if err != nil {
+				//fmt.Println("case err := <-errc:", err)
 				return err
 			}
 		case <-timeout.C:
 			return p2p.DiscReadTimeout
 		}
 	}
+	//fmt.Println("(p *peer) Handshake() error   nononononon error")
 	return nil
 }
 
@@ -199,7 +201,7 @@ func (p *peer) readStatus(selfstatus, status *handShakeStatusData) error {
 		return fmt.Errorf("msg %v: %v", msg, err)
 	}
 
-	//fmt.Println(" readStatus =========== handShakeStatusData")
+	//fmt.Println(" readStatus =========== handShakeStatusData from ", p.Name())
 	stok := selfstatus.Confirm(status)
 	if stok != nil {
 		return stok
@@ -208,6 +210,8 @@ func (p *peer) readStatus(selfstatus, status *handShakeStatusData) error {
 	p.blkhash = status.CurrentBlockHash
 	p.blkheight = status.CurrentBlockHeight
 	p.blkok = status.Completed
+
+	//fmt.Println(" selfstatus.Confirm(status) Completed", p.Name())
 
 	return nil
 }

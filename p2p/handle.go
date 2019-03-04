@@ -82,7 +82,7 @@ func NewProtocolManager() *ProtocolManager {
 		Version: 1,
 		Length:  200,
 		Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-			//fmt.Println("Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error")
+			//fmt.Println("manager.SubProtocols Run: peer ", p.Name())
 			peer := manager.newPeer(p, rw)
 			return manager.handle(peer)
 		},
@@ -126,7 +126,9 @@ func (pm *ProtocolManager) removePeer(id string) {
 	if peer == nil {
 		return
 	}
-	//log.Debug("Removing Hacash peer", "peer", id)
+
+	fmt.Println("Removing Hacash peer", "peer", id)
+
 	if err := pm.peers.Unregister(id); err != nil {
 		fmt.Errorf("Peer removal failed peer %s err %s", id, err)
 	}
@@ -215,7 +217,6 @@ func (pm *ProtocolManager) syncMinerStatus(p *peer) {
 func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 
 	//fmt.Println("func DoSyncMinerStatus")
-
 	if pm.onsyncminer {
 		return
 	}
@@ -230,7 +231,7 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	_, tarhei := best.Head()
 	minerdb := pm.miner
 	fromhei := minerdb.State.CurrentHeight() + 1
-	if tarhei > fromhei {
+	if tarhei >= fromhei {
 		pm.onsyncminer = true // 开始同步
 		fmt.Printf("sync blocks from height %d ...\n", fromhei)
 		p2p.Send(best.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
@@ -244,25 +245,31 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 
 func (pm *ProtocolManager) txsyncLoop() {
 
-	select {
-	case s := <-pm.txsyncCh:
-		s.p.SendTransactions(s.txs)
+	for {
+		select {
+		case s := <-pm.txsyncCh:
+			s.p.SendTransactions(s.txs)
+		}
 	}
 }
 
 func (pm *ProtocolManager) minersyncLoop() {
 
-	select {
-	case m := <-pm.minersyncCh:
-		pm.DoSyncMinerStatus(m.p) // 同步矿工状态
+	for {
+		select {
+		case m := <-pm.minersyncCh:
+			pm.DoSyncMinerStatus(m.p) // 同步矿工状态
+		}
 	}
 }
 
 // handle is the callback invoked to manage the life cycle of an eth peer. When
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
+
 	// Ignore maxPeers if this is a trusted peer
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
+		//fmt.Println("pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted", "p", p.Name())
 		return p2p.DiscTooManyPeers
 	}
 	//fmt.Println("Hacash peer to do handshake...", "name", p.Name())
@@ -279,21 +286,22 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	defer pm.removePeer(p.id)
 
+	//fmt.Println("syncTransactions", "name", p.Name())
+
 	// Propagate existing transactions. new transactions appearing
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
+	//fmt.Println("syncMinerStatus", "name", p.Name())
 
 	// 同步矿工状态
 	pm.syncMinerStatus(p)
-
-	fmt.Println("Hacash peer connected", "name:", p.Name())
+	//fmt.Println("Hacash peer connected", "name:", p.Name())
 
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			fmt.Println("Hacash message handling failed", "err", err)
-			//return err
-			return nil
+			//fmt.Println("Hacash message handling failed", "err", err)
+			return err
 		}
 	}
 
@@ -304,9 +312,11 @@ func (pm *ProtocolManager) handle(p *peer) error {
 func (pm *ProtocolManager) handleMsg(p *peer) error {
 	// Read the next message from the remote peer, and ensure it's fully consumed
 
-	//fmt.Println("handleMsg +++++++++++")
+	//fmt.Printf("handleMsg ++++++++++++++++++++++++++++++++++++++++++++++++++ peer: %s  \n", p.Name())
 
 	msg, err := p.rw.ReadMsg()
+
+	//fmt.Printf("p.rw.ReadMsg ------ msg.Code ==  %d \n", msg.Code)
 
 	//fmt.Println("(pm *ProtocolManager) handleMsg(p *peer) error handleMsg handleMsg handleMsg handleMsg handleMsg ", msg.Code)
 	if err != nil {
@@ -319,6 +329,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	// Handle the message depending on its contents
 	switch {
+
 	case msg.Code == StatusMsg:
 		// Status messages should never arrive after the handshake
 		return fmt.Errorf("uncontrolled status message")
@@ -355,17 +366,17 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	case msg.Code == GetSyncBlocksMsg:
 		// 请求同步区块消息
-		fmt.Println("case msg.Code == GetSyncBlocksMsg: ")
+		//fmt.Println("case msg.Code == GetSyncBlocksMsg: ")
 		var data MsgDataGetSyncBlocks
 		if err := msg.Decode(&data); err != nil {
 			return fmt.Errorf("msg %v: %v", msg, err)
 		}
-		fmt.Println("msg.Decode(&data)")
+		//fmt.Println("msg.Decode(&data)")
 		minerdb := pm.miner
 		if minerdb.State.CurrentHeight() <= data.StartHeight {
 			return nil // 不能提供
 		}
-		fmt.Println("miner.GetGlobalInstanceHacashMiner()")
+		//fmt.Println("miner.GetGlobalInstanceHacashMiner()")
 		// 查询区块并返回
 		go func() {
 			bkdb := store.GetGlobalInstanceBlocksDataStore()
@@ -377,20 +388,20 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				blkbytes, e := bkdb.GetBlockBytesByHeight(height, true, true)
 				size := len(blkbytes)
 				if e != nil || size == 0 {
-					fmt.Printf(" bkdb.GetBlockBytesByHeight: %d, len: %d \n", height, size)
+					fmt.Printf(" not give block by height: %d, len: %d \n", height, size)
 					return // 不能提供
 				}
-				fmt.Printf("blocks = append(blocks, string(blkbytes)), height=%d, length=%d, string=%s \n", height, len(blkbytes), hex.EncodeToString(blkbytes))
+				//fmt.Printf("blocks = append(blocks, string(blkbytes)), height=%d, length=%d, string=%s \n", height, len(blkbytes), hex.EncodeToString(blkbytes))
 				blocks.Write(blkbytes)
 				blocksize += size
 				blocklen++
 				if blocklen >= 100 || blocksize >= 1024*1024 {
-					fmt.Println("totalsize >= 512KB break ")
+					//fmt.Println("totalsize >= 512KB break ")
 					break
 				}
 			}
 			if blocksize == 0 {
-				fmt.Println("blocks.Len() == 0")
+				//fmt.Println("blocks.Len() == 0")
 				return
 			}
 			// 发送
@@ -399,7 +410,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				ToHeight:   data.StartHeight + uint64(blocklen) - 1,
 				Datas:      blocks.String(),
 			}
-			fmt.Printf("Send SyncBlocks, FromHeight: %d, ToHeight: %d \n", sdmsgdt.FromHeight, sdmsgdt.ToHeight)
+			fmt.Printf("Send SyncBlocks to peer %s, FromHeight: %d, ToHeight: %d \n", p.Name(), sdmsgdt.FromHeight, sdmsgdt.ToHeight)
 			go p2p.Send(p.rw, SyncBlocksMsg, sdmsgdt)
 		}()
 
@@ -470,17 +481,16 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		minerdb := pm.miner
 		mytarhei := minerdb.State.CurrentHeight() + 1
 		if mytarhei > data.Height {
+			fmt.Printf("mytarhei > data.Height %d>%d ...\n", mytarhei, data.Height)
 			return nil
 		}
 		if mytarhei < data.Height {
-			go func() {
-				// 发起同步
-				pm.onsyncminer = true // 开始同步
-				fmt.Printf("sync blocks from height %d ...\n", mytarhei)
-				p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
-					mytarhei,
-				})
-			}()
+			// 发起同步
+			pm.onsyncminer = true // 开始同步
+			fmt.Printf("sync blocks from height %d ...\n", mytarhei)
+			p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
+				mytarhei,
+			})
 			return nil
 		}
 		fmt.Printf("blk, _, inserterr := minerdb.ArrivedNewBlockToUpdate, height: %d \n", data.Height)
@@ -488,7 +498,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// 插入
 			blk, _, inserterr := minerdb.ArrivedNewBlockToUpdate([]byte(data.Datas), 0)
 			if inserterr != nil {
-
 				return
 			}
 			p.MarkBlock(blk.Hash())
@@ -498,7 +507,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// 广播区块
 			data.block = blk
 			go pm.BroadcastBlock(&data)
-			fmt.Println("go pm.BroadcastBlock(&data)")
+			//fmt.Println("go pm.BroadcastBlock(&data)")
 		}()
 
 	default:

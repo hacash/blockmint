@@ -46,13 +46,12 @@ func NewP2PService() *P2PServer {
 	newser := &P2PServer{}
 	key := NodeKey()
 	newser.config = p2p.Config{
-		BootstrapNodes: bootnodes,
+		StaticNodes: bootnodes,
 		/////////////////////////////////////
 		Name:            config.Config.P2p.Myname,
 		PrivateKey:      key,
 		MaxPeers:        16,
 		MaxPendingPeers: 8,
-		DialRatio:       4,
 		NodeDatabase:    config.GetCnfPathNodes(),
 		ListenAddr:      ":" + config.Config.P2p.Port.Node,
 		Protocols:       protocolManager.SubProtocols,

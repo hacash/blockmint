@@ -50,5 +50,5 @@ func GetRandomMinerRewardAddress() string {
 	}
 	idx := rand.Intn(length)
 	//fmt.Println(idx)
-	return MinerRewardAddress[idx]
+	return Config.Miner.Rewards[idx]
 }

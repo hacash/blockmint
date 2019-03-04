@@ -8,6 +8,7 @@ import (
 	"github.com/hacash/blockmint/sys/file"
 	"github.com/hacash/blockmint/types/block"
 	"path"
+	"sync"
 )
 
 type BlocksDataStore struct {
@@ -15,12 +16,18 @@ type BlocksDataStore struct {
 
 	datadb  BlockDataDB
 	indexdb BlockIndexDB
+	heidxdb BlockHeightDB
 	trsdb   TrsIdxDB
 }
 
-var blockStoreInstance *BlocksDataStore = nil
+var (
+	blockStoreInstanceMutex sync.Mutex
+	blockStoreInstance      *BlocksDataStore = nil
+)
 
 func GetGlobalInstanceBlocksDataStore() *BlocksDataStore {
+	blockStoreInstanceMutex.Lock()
+	defer blockStoreInstanceMutex.Unlock()
 	if blockStoreInstance != nil {
 		return blockStoreInstance
 	}
@@ -83,6 +90,7 @@ func (this *BlocksDataStore) Init(dir string) error {
 	file.CreatePath(dir)
 
 	this.indexdb.Init(path.Join(dir, "indexs"))
+	this.heidxdb.Init(path.Join(dir, "heidxs"))
 	this.trsdb.Init(path.Join(dir, "trsidxs"))
 	this.datadb.Init(dir)
 
@@ -90,7 +98,7 @@ func (this *BlocksDataStore) Init(dir string) error {
 }
 
 // 储存 合法的 区块
-func (this *BlocksDataStore) Save(blk block.Block) error {
+func (this *BlocksDataStore) Save(blk block.Block) ([]byte, error) {
 	// hash
 	blockhash := blk.Hash()
 	// trsidx
@@ -99,33 +107,45 @@ func (this *BlocksDataStore) Save(blk block.Block) error {
 	}
 	trsbytes, e3 := blk.SerializeTransactions(itr)
 	if e3 != nil {
-		return e3
+		return nil, e3
 	}
 	// head
 	blockheadbytes, e1 := blk.SerializeHead()
 	blockmetabytes, e2 := blk.SerializeMeta()
 	if e2 != nil {
-		return e2
+		return nil, e2
 	}
 	// data
-	blockbodybuf := bytes.NewBuffer(blockmetabytes)
+	var blockbodybuf bytes.Buffer
+	blockbodybuf.Write(blockmetabytes)
 	blockbodybuf.Write(trsbytes)
+	blockbodys := blockbodybuf.Bytes()
 	// save body
-	loc, e1 := this.datadb.SaveByBodyBytes(blockbodybuf.Bytes())
+	blksaveloc, e1 := this.datadb.SaveByBodyBytes(blockbodys)
 	if e1 != nil {
-		return e1
+		return nil, e1
 	}
-	item, e5 := this.indexdb.SaveByBlockHeadByte(blockhash, loc, blockheadbytes)
+	// index db
+	item, e5 := this.indexdb.SaveByBlockHeadByte(blockhash, blksaveloc, blockheadbytes)
 	if e5 != nil {
-		return e5
+		return nil, e5
+	}
+	blkhdfilepart := this.indexdb.GetPositionLvTwoByHash(blockhash)
+	blkhdptrnum := item.ValuePtrNum
+	// save height index
+	e6 := this.heidxdb.Save(blk.GetHeight(), blkhdfilepart, blkhdptrnum, blksaveloc)
+	if e6 != nil {
+		return nil, e6
 	}
 	// save trs
-	e4 := itr.SaveAll(this.indexdb.GetPositionLvTwoByHash(blockhash), item.ValuePtrNum, loc)
-	if e4 != nil {
-		return e4
+	e7 := itr.SaveAll(blkhdfilepart, blkhdptrnum, blksaveloc)
+	if e7 != nil {
+		return nil, e7
 	}
-
-	return nil
+	var blkallbytes bytes.Buffer
+	blkallbytes.Write(blockheadbytes)
+	blkallbytes.Write(blockbodys)
+	return blkallbytes.Bytes(), nil
 }
 
 func (this *BlocksDataStore) Read(hash []byte) (block.Block, error) {
@@ -145,7 +165,8 @@ func (this *BlocksDataStore) ReadBlockBytes(hash []byte) ([]byte, error) {
 	if e != nil {
 		return nil, e
 	}
-	var resbuf = bytes.NewBuffer(blkhead)
+	var resbuf bytes.Buffer
+	resbuf.Write(blkhead)
 	blkbodybytes, e1 := this.datadb.ReadBlockBody(blkloc)
 	if e1 != nil {
 		return nil, e1
@@ -213,4 +234,33 @@ func (this *BlocksDataStore) CheckTransactionExist(hashNoFee []byte) (bool, erro
 	}
 	return false, nil
 
+}
+
+func (this *BlocksDataStore) GetBlockBytesByHeight(height uint64, gethead bool, getbody bool) ([]byte, error) {
+	finditem, e := this.heidxdb.Find(height)
+	if e != nil {
+		return nil, e
+	}
+	if finditem == nil {
+		return nil, nil
+	}
+	var blockbytes bytes.Buffer
+	if gethead {
+		head, e1 := this.indexdb.FindBlockHeadBytesByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
+		//fmt.Println(e1)
+		if e1 != nil {
+			return nil, e1
+		}
+		blockbytes.Write(head)
+	}
+	if getbody {
+		body, e := this.datadb.ReadBlockBody(finditem.location)
+		//fmt.Println(body)
+		if e != nil {
+			return nil, e
+		}
+		blockbytes.Write(body)
+	}
+	// ok
+	return blockbytes.Bytes(), nil
 }

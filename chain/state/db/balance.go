@@ -7,6 +7,7 @@ import (
 	"github.com/hacash/blockmint/service/hashtreedb"
 	"github.com/hacash/blockmint/sys/err"
 	"path"
+	"sync"
 )
 
 var (
@@ -26,7 +27,7 @@ func NewEmptyStoreItemData() *StoreItemData {
 	return &StoreItemData{
 		LockHeight: 0,
 		BlankEmpty: fields.EmptyZeroBytes32,
-		Amount:     fields.NewEmptyAmount(),
+		Amount:     *fields.NewEmptyAmount(),
 	}
 }
 
@@ -48,10 +49,6 @@ func (this *StoreItemData) Serialize() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-var (
-	globalInstanceBalanceDB *BalanceDB = nil
-)
-
 //////////////////////////////////////////
 
 type BalanceDB struct {
@@ -63,8 +60,15 @@ type BalanceDB struct {
 
 }
 
+var (
+	globalInstanceBalanceDBMutex sync.Mutex
+	globalInstanceBalanceDB      *BalanceDB = nil
+)
+
 // 余额数据库全局实例
 func GetGlobalInstanceBalanceDB() *BalanceDB {
+	globalInstanceBalanceDBMutex.Lock()
+	defer globalInstanceBalanceDBMutex.Unlock()
 	if globalInstanceBalanceDB != nil {
 		return globalInstanceBalanceDB
 	}

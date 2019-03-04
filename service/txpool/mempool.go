@@ -2,8 +2,13 @@ package txpool
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/hacash/blockmint/block/store"
+	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/types/block"
+	"github.com/hacash/blockmint/types/service"
 	"sync"
 )
 
@@ -27,11 +32,20 @@ type MemTxPool struct {
 	Size   uint64
 
 	mulk sync.Mutex // 互斥锁
+
+	// 事件订阅
+	txFeed      event.Feed
+	txFeedScope event.SubscriptionScope
 }
 
-var GlobalInstanceMemTxPool *MemTxPool = nil
+var (
+	GlobalInstanceMemTxPoolMutex sync.Mutex
+	GlobalInstanceMemTxPool      *MemTxPool = nil
+)
 
-func GetGlobalInstanceMemTxPool() *MemTxPool {
+func GetGlobalInstanceMemTxPool() service.TxPool {
+	GlobalInstanceMemTxPoolMutex.Lock()
+	defer GlobalInstanceMemTxPoolMutex.Unlock()
 	if GlobalInstanceMemTxPool == nil {
 		GlobalInstanceMemTxPool = &MemTxPool{
 			Length: 0,
@@ -76,27 +90,63 @@ func (this *MemTxPool) pickUpTrs(hashnofee []byte) *MemTxItem {
 	return nil
 }
 
-func (this *MemTxPool) AddTx(tx block.Transaction) error {
-	this.Lock()
-	defer this.Unlock()
-
+func (this *MemTxPool) checkTx(tx block.Transaction) error {
 	if this.Length > MemTxPoolMaxLimit {
 		return fmt.Errorf("Mem Tx Pool Over Max Limit %d", MemTxPoolMaxLimit)
 	}
+
+	ok, e1 := tx.VerifyNeedSigns()
+	if !ok || e1 != nil {
+		return fmt.Errorf("Transaction Verify Signature error")
+	}
+
+	hashnofee := tx.HashNoFee()
+
+	stoblk := store.GetGlobalInstanceBlocksDataStore()
+	ext, e2 := stoblk.CheckTransactionExist(hashnofee)
+	if e2 != nil {
+		return fmt.Errorf("Transaction CheckTransactionExist error")
+	}
+	if ext {
+		hashnofeestr := hex.EncodeToString(hashnofee)
+		return fmt.Errorf("Transaction " + hashnofeestr + " already exist")
+	}
+	// 最低手续费
+	if tx.FeePurity() < uint64(config.MinimalFeePurity) {
+		return fmt.Errorf("The handling fee is too low for miners to accept.")
+	}
+
+	// pass check !
+	return nil
+}
+
+// entrance 是否为
+func (this *MemTxPool) AddTx(tx block.Transaction) error {
+
+	if e := this.checkTx(tx); e != nil {
+		return e
+	}
+
+	this.Lock()
+	defer this.Unlock()
+
 	// 检查
 	txsize := tx.Size()
 	if uint64(txsize)+this.Size > MemTxPoolMaxSize {
 		return fmt.Errorf("Mem Tx Pool Over Max Size %d", MemTxPoolMaxSize)
 	}
+
+	hashnofee := tx.HashNoFee()
+
 	txfeepur := tx.FeePurity()
 	txItem := &MemTxItem{
 		FeePer:    txfeepur,
 		Size:      txsize,
-		HashNoFee: tx.HashNoFee(),
+		HashNoFee: hashnofee,
 		Tx:        tx,
 		next:      nil,
 	}
-	hashave := this.pickUpTrs(tx.HashNoFee())
+	hashave := this.pickUpTrs(hashnofee)
 	if hashave != nil {
 		if txItem.FeePer <= hashave.FeePer { // 手续费不能比原有的低
 			return fmt.Errorf("Tx FeePurity value equal or less than the exist")
@@ -107,6 +157,8 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 	this.Length += 1
 	if this.TxHead == nil {
 		this.TxHead = txItem
+		// 插入链表 广播添加事件
+		go this.txFeed.Send([]block.Transaction{tx})
 		return nil
 	}
 	txSeekPtr := this.TxHead
@@ -118,7 +170,9 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 		if txSeekPtr.next.FeePer < txItem.FeePer {
 			txItem.next = txSeekPtr.next
 			txSeekPtr.next = txItem
-			break // 插入链表
+			// 插入链表 广播添加事件
+			go this.txFeed.Send([]block.Transaction{tx})
+			break
 		}
 		// 下一个
 		txSeekPtr = txSeekPtr.next
@@ -145,4 +199,9 @@ func (this *MemTxPool) PopTxByHighestFee() block.Transaction {
 	ret := this.TxHead
 	this.TxHead = this.TxHead.next
 	return ret.Tx
+}
+
+// 订阅交易池加入新交易事件
+func (this *MemTxPool) SubscribeNewTx(txCh chan<- []block.Transaction) event.Subscription {
+	return this.txFeedScope.Track(this.txFeed.Subscribe(txCh))
 }

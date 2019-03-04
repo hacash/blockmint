@@ -12,7 +12,7 @@ func (this *ChainState) Balance(addr fields.Address) fields.Amount {
 		return blc.Amount
 	}
 	if this.base == nil {
-		return fields.NewEmptyAmount()
+		return *fields.NewEmptyAmount()
 	}
 	// 递归查询
 	return this.base.Balance(addr)

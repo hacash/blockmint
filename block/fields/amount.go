@@ -14,8 +14,8 @@ type Amount struct {
 	Numeral []byte
 }
 
-func NewEmptyAmount() Amount {
-	return Amount{
+func NewEmptyAmount() *Amount {
+	return &Amount{
 		Unit:    0,
 		Dist:    0,
 		Numeral: []byte{},

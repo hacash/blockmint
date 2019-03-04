@@ -2,6 +2,7 @@ package difficulty
 
 import (
 	"fmt"
+	"github.com/hacash/blockmint/config"
 	"math/big"
 	"time"
 )
@@ -16,7 +17,7 @@ var (
 	oneLsh256 = new(big.Int).Lsh(bigOne, 256)
 
 	//
-	LowestCompact = uint32(521000000) // 508000000
+	LowestCompact = uint32(521000000) // 508000000  521000000
 )
 
 // HashToBig converts a chainhash.Hash into a big.Int that can be used to
@@ -163,9 +164,9 @@ var (
 // 计算下一阶段区块难度
 func CalculateNextWorkTarget(currentBits uint32, currentHeight uint64, prevTimestamp uint64, lastTimestamp uint64) uint32 {
 
-	powTargetTimespan := time.Minute * 1 * 288 // 一天
+	powTargetTimespan := time.Second * time.Duration(config.EachBlockTakesTime*config.ChangeDifficultyBlockNumber) // 一分钟一个快
 	// 如果新区块height不是 288 的整数倍，则不需要更新，仍然是最后一个区块的 bits
-	if currentHeight%288 != 0 {
+	if currentHeight%uint64(config.ChangeDifficultyBlockNumber) != 0 {
 		return currentBits
 	}
 	prev2016blockTimestamp := time.Unix(int64(prevTimestamp), 0)

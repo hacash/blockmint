@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"sync"
 )
 
 //
@@ -19,10 +20,13 @@ type ChainState struct {
 }
 
 var (
-	globalInstanceChainState *ChainState = nil
+	globalInstanceChainStateMutex sync.Mutex
+	globalInstanceChainState      *ChainState = nil
 )
 
 func GetGlobalInstanceChainState() *ChainState {
+	globalInstanceChainStateMutex.Lock()
+	defer globalInstanceChainStateMutex.Unlock()
 	if globalInstanceChainState == nil {
 		globalInstanceChainState = &ChainState{
 			tempdir:   "",

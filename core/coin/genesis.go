@@ -7,20 +7,27 @@ import (
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/transactions"
 	"github.com/hacash/blockmint/types/block"
-	"strings"
 	"time"
+)
+
+var (
+	genesisBlock block.Block = nil
 )
 
 /**
  * 创世区块
  */
 func GetGenesisBlock() block.Block {
+	if genesisBlock != nil {
+		return genesisBlock
+	}
 	genesis := blocks.NewEmptyBlock_v1(nil)
 	loc, _ := time.LoadLocation("Asia/Chongqing")
 	//fmt.Println(time.Now().In(loc))
 	ttt := time.Date(2019, time.February, 4, 11, 25, 0, 0, loc).Unix()
 	//fmt.Println( ttt )
 	genesis.Timestamp = fields.VarInt5(ttt)
+	genesis.Nonce = fields.VarInt4(160117829)
 	// coinbase
 	addrreadble := "1271438866CSDpJUqrnchoJAiGGBFSQhjd"
 	addr, _ := fields.CheckReadableAddress(addrreadble)
@@ -34,29 +41,12 @@ func GetGenesisBlock() block.Block {
 	root := blocks.CalculateMrklRoot(genesis.GetTransactions())
 	//fmt.Println( hex.EncodeToString(root) )
 	genesis.SetMrklRoot(root)
-	// check data
-	/*for i:=0; i<1000; i++ {
-		hash := genesis.HashFresh()
-		fmt.Printf("%d %s \n", i, hex.EncodeToString(hash) )
-		time.Sleep(time.Duration(100) * time.Millisecond)
-	}*/
 	hash := genesis.HashFresh()
-	bodybytes, e := genesis.Serialize()
-	if e != nil {
-		panic(e)
-	}
-	bdbts := hex.EncodeToString(bodybytes)
-	check_bdbts := "010000000000005c57b08c0000000000000000000000000000000000000000000000000000000000000000ad557702fc70afaf70a855e7b8a4400159643cb5a7fc8a89ba2bce6f818a9b01000000010000000000000000000000000c1aaa4e6007cc58cfb932052ac0ec25ca356183f80101686172646572746f646f62657474657200"
-	//fmt.Println( bdbts )
-	//fmt.Println( check_bdbts )
-	if 0 != strings.Compare(bdbts, check_bdbts) {
-		panic("Genesis Block Data Error: need " + check_bdbts + ", but give " + bdbts)
-	}
-	check_hash := "57cef097f9a7cc0c45bcac6325b5b6e58199c8197763734cac6664e8d2b8e63e"
-	bytecodes := []byte{87, 206, 240, 151, 249, 167, 204, 12, 69, 188, 172, 99, 37, 181, 182, 229, 129, 153, 200, 25, 119, 99, 115, 76, 172, 102, 100, 232, 210, 184, 230, 62}
+	check_hash := "000000077790ba2fcdeaef4a4299d9b667135bac577ce204dee8388f1b97f7e6"
 	check, _ := hex.DecodeString(check_hash)
-	if 0 != bytes.Compare(hash, check) || 0 != bytes.Compare(hash, bytecodes) {
+	if 0 != bytes.Compare(hash, check) {
 		panic("Genesis Block Hash Error: need " + check_hash + ", but give " + hex.EncodeToString(hash))
 	}
+	genesisBlock = genesis
 	return genesis
 }

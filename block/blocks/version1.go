@@ -2,10 +2,12 @@ package blocks
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/transactions"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
+	"github.com/hacash/blockmint/types/state"
 	"time"
 )
 
@@ -207,6 +209,9 @@ func (block *Block_v1) HashFresh() []byte {
 func (block *Block_v1) GetHeight() uint64 {
 	return uint64(block.Height)
 }
+func (block *Block_v1) GetTimestamp() uint64 {
+	return uint64(block.Timestamp)
+}
 func (block *Block_v1) GetPrevHash() []byte {
 	return block.PrevHash
 }
@@ -225,6 +230,84 @@ func (block *Block_v1) GetTransactions() []typesblock.Transaction {
 }
 func (block *Block_v1) AddTransaction(trs typesblock.Transaction) {
 	block.Transactions = append(block.Transactions, trs)
+}
+
+// 验证需要的签名
+func (block *Block_v1) VerifyNeedSigns() (bool, error) {
+	for _, tx := range block.Transactions {
+		ok, e := tx.VerifyNeedSigns()
+		if !ok || e != nil {
+			return ok, e // 验证失败
+		}
+	}
+	return true, nil
+}
+
+// 修改 / 恢复 状态数据库
+func (block *Block_v1) ChangeChainState(blockstate state.ChainStateOperation) error {
+	txlen := len(block.Transactions)
+	totalfee := fields.NewEmptyAmount()
+	for i := 1; i < txlen; i++ {
+		tx := block.Transactions[i]
+		e := tx.ChangeChainState(blockstate)
+		if e != nil {
+			return e // 验证失败
+		}
+		var fee fields.Amount
+		_, e1 := fee.Parse(tx.GetFee(), 0)
+		if e1 != nil {
+			return e // 手续费失败
+		}
+		totalfee, e = totalfee.Add(&fee)
+	}
+	// coinbase
+	if txlen < 1 {
+		return fmt.Errorf("not find coinbase tx")
+	}
+	tx0 := block.Transactions[0]
+	if tx0.Type() != 0 {
+		return fmt.Errorf("transaction[0] not coinbase tx")
+	}
+	coinbase, ok := tx0.(*transactions.Transaction_0_Coinbase)
+	if !ok {
+		return fmt.Errorf("transaction[0] not coinbase tx")
+	}
+	coinbase.TotalFee = *totalfee
+	// coinbase change state
+	e3 := coinbase.ChangeChainState(blockstate)
+	if e3 != nil {
+		return e3
+	}
+
+	// ok
+	return nil
+
+}
+func (block *Block_v1) RecoverChainState(blockstate state.ChainStateOperation) error {
+	txlen := len(block.Transactions)
+	totalfee := fields.NewEmptyAmount()
+	for i := txlen - 1; i > 0; i++ {
+		tx := block.Transactions[i]
+		e := tx.RecoverChainState(blockstate)
+		if e != nil {
+			return e // 失败
+		}
+		var fee fields.Amount
+		_, e1 := fee.Parse(tx.GetFee(), 0)
+		if e1 != nil {
+			return e // 手续费失败
+		}
+		totalfee, e = totalfee.Add(&fee)
+	}
+	coinbase, _ := block.Transactions[0].(*transactions.Transaction_0_Coinbase)
+	coinbase.TotalFee = *totalfee
+	// coinbase change state
+	e3 := coinbase.ChangeChainState(blockstate)
+	if e3 != nil {
+		return e3
+	}
+	// ok
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////

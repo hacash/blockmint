@@ -43,6 +43,10 @@ func (elm *Bytes64) Size() uint32 { return 64 }
 ////////////////////////////////////////////////////////
 
 func bytesParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32, error) {
+	//fmt.Println(len(buf))
+	//fmt.Println(seek)
+	//fmt.Println(seek+maxlen)
+	//fmt.Println("----------")
 	var nnnold = buf[seek : seek+maxlen]
 	var addrbytes = make([]byte, len(nnnold))
 	copy(addrbytes, nnnold)

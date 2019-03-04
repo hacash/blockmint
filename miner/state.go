@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/config"
+	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/protocol/block1def"
 	"github.com/hacash/blockmint/sys/file"
 	"github.com/hacash/blockmint/types/block"
@@ -24,6 +25,28 @@ type MinerState struct {
 
 func NewMinerState() *MinerState {
 	return &MinerState{}
+}
+
+// 修改矿工状态
+func (this *MinerState) SetNewBlock(block block.Block) {
+	this.prevBlockHead = block
+	if block.GetHeight()%uint64(config.ChangeDifficultyBlockNumber) == 0 {
+		this.prev288BlockTimestamp = block.GetTimestamp()
+	}
+	this.FlushSave()
+}
+
+func (this *MinerState) CurrentHeight() uint64 {
+	if this.prevBlockHead == nil {
+		return 0
+	}
+	return this.prevBlockHead.GetHeight()
+}
+func (this *MinerState) CurrentBlockHash() []byte {
+	if this.prevBlockHead == nil {
+		return coin.GetGenesisBlock().Hash()
+	}
+	return this.prevBlockHead.Hash()
 }
 
 func (this *MinerState) getDistFile() *os.File {

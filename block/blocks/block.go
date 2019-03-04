@@ -22,6 +22,9 @@ func NewBlockByVersion(ty uint8) (typesblock.Block, error) {
 }
 
 func ParseBlock(buf []byte, seek uint32) (typesblock.Block, uint32, error) {
+	if len(buf) < 1 {
+		return nil, 0, fmt.Errorf("buf too short")
+	}
 	version := uint8(buf[seek])
 	var blk, _ = NewBlockByVersion(version)
 	var mv, err = blk.Parse(buf, seek+1)
@@ -83,7 +86,8 @@ func hashMerge(hashs [][]byte) [][]byte {
 	}
 	var mergehashs = make([][]byte, mgsize)
 	for m := 0; m < length; m += 2 {
-		b1 := bytes.NewBuffer(hashs[m])
+		var b1 bytes.Buffer
+		b1.Write(hashs[m])
 		h2 := hashs[m]
 		if m+1 < length {
 			h2 = hashs[m+1]

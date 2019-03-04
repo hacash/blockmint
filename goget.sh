@@ -15,8 +15,11 @@ go get github.com/hacash/x16rs
 # hash
 go get golang.org/x/crypto/sha3
 
-#bitcoin
+# bitcoin
 go get github.com/hacash/bitcoin
+
+# utils
+go get github.com/deckarep/golang-set
 
 
 

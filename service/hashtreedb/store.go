@@ -1,6 +1,7 @@
 package hashtreedb
 
 import (
+	"bytes"
 	"encoding/binary"
 	"github.com/hacash/blockmint/sys/file"
 	"os"
@@ -16,7 +17,7 @@ type HashTreeDB struct {
 
 	MaxValueSize uint32 // 最大数据尺寸大小 + hash32
 
-	MenuWide uint32 // 单层索引宽度数（不可超过256）
+	MenuWide uint8 // 单层索引宽度数（不可超过256）
 
 	FilePartitionLevel uint32 // 文件分区层级 0为不分区
 
@@ -41,11 +42,14 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 	if (MaxValueSize+HashSize)%IndexItemSize == 0 {
 		menuWide -= 1 // 刚好合适
 	}
+	if menuWide > 255 {
+		panic("menuWide cannot over 255")
+	}
 
 	return &HashTreeDB{
 		HashSize:           HashSize,
 		KeyReverse:         false,
-		MenuWide:           menuWide,
+		MenuWide:           uint8(menuWide),
 		FilePartitionLevel: 0,
 		FileName:           "INDEX",
 		FileSuffix:         ".idx",
@@ -111,16 +115,18 @@ func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 		return nil, fe
 	}
 	// 返回
-	return NewQueryInstance(this, hash, keyhash, this.GetQueryHashKey(hash), curfile, &filename), nil
+	return NewQueryInstance(this, hash, this.SpreadTheKey(keyhash), this.GetQueryHashKey(hash), curfile, &filename), nil
 }
 
 // 建立数据操作
 func (this *HashTreeDB) ReadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]byte, error) {
 
+	//fmt.Println(keyprefix)
+
 	filename := this.getPartFileName(keyprefix)
 	//fmt.Println(filename)
 	//fmt.Println(path.Dir(filename))
-	file.CreatePath(path.Dir(filename))
+	//file.CreatePath(path.Dir(filename))
 	// 打开相应文件
 	curfile, fe := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
 	if fe != nil {
@@ -140,15 +146,37 @@ func (this *HashTreeDB) ReadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]
 
 // Segment Size
 func (this *HashTreeDB) getSegmentSize() uint32 {
-	return IndexItemSize * this.MenuWide
+	return IndexItemSize * uint32(this.MenuWide)
+}
+
+// 展开key
+func (this *HashTreeDB) SpreadTheKey(key []byte) []byte {
+	var queryKey bytes.Buffer
+	for _, v := range key {
+		num := uint8(v)
+		count := uint8(0)
+		for {
+			if num/this.MenuWide == 0 {
+				queryKey.Write([]byte{count, num})
+				break
+			} else {
+				count++
+				if count+1 == this.MenuWide {
+					queryKey.Write([]byte{count})
+					count = 0
+				}
+				//queryKey.Write([]byte{this.db.MenuWide-1})
+				num -= this.MenuWide
+			}
+		}
+	}
+	bts := queryKey.Bytes()
+	return bts // ReverseHashOrder(bts) // 倒序
 }
 
 // Segment Size
 func (this *HashTreeDB) GetQueryHashKey(hash []byte) []byte {
-	hashkey := hash
-	if this.KeyReverse {
-		hashkey = ReverseHashOrder(hash) // 倒序
-	}
+	hashkey := this.SpreadTheKey(hash)
 	return hashkey[this.FilePartitionLevel:]
 }
 
@@ -159,6 +187,7 @@ func (this *HashTreeDB) getPartFileName(hash []byte) string {
 
 // 获取打开的文件名
 func (this *HashTreeDB) getPartFileNameEx(hash []byte, ffix string) string {
+	hash = this.SpreadTheKey(hash)
 
 	var partPath = "" // 路径分区
 	var partNum = ""  // 文件编号
@@ -171,8 +200,8 @@ func (this *HashTreeDB) getPartFileNameEx(hash []byte, ffix string) string {
 		partNum = strconv.Itoa(int(hash[lv]) % bsm)
 
 		var mergedir = 1
-		var mw = this.MenuWide
-		var mwd = mw
+		var mw = uint32(this.MenuWide)
+		var mwd = uint32(mw)
 		var filenummax = uint32(20000)
 		for true {
 			mwd = mwd * mw

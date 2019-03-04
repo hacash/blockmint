@@ -1,18 +1,20 @@
 package tests
 
-import "bytes"
+import (
+	"bytes"
+)
 
-func GenTestData_block() []byte {
+func GenTestData_block_set_height(height uint32) []byte {
 
 	var testbuffer bytes.Buffer
 
 	// action 1  head
-	testbuffer.Write([]byte{1})                                  // version
-	testbuffer.Write([]byte{0, 0, 0, 0, 8})                      // height
-	testbuffer.Write([]byte{0, 0, 0, 0, 9})                      // timestamp
-	testbuffer.Write([]byte("oooooooooooooooooooooooooooooooo")) // prevMark 32
-	testbuffer.Write([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")) // mrklRoot 32
-	testbuffer.Write([]byte{0, 0, 0, 2})                         // transactionCount
+	testbuffer.Write([]byte{1})                                                                                                           // version
+	testbuffer.Write([]byte{0, uint8(height / (256 * 256 * 256)), uint8(height / (256 * 256)), uint8(height / 256), uint8(height % 256)}) // height
+	testbuffer.Write([]byte{0, 0, 0, 0, 9})                                                                                               // timestamp
+	testbuffer.Write([]byte("oooooooooooooooooooooooooooooooo"))                                                                          // prevMark 32
+	testbuffer.Write([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))                                                                          // mrklRoot 32
+	testbuffer.Write([]byte{0, 0, 0, 2})                                                                                                  // transactionCount
 	// head end
 
 	testbuffer.Write([]byte{1, 2, 3, 4}) // miner nonce
@@ -26,6 +28,11 @@ func GenTestData_block() []byte {
 	var testByteAry = testbuffer.Bytes()
 
 	return testByteAry
+
+}
+
+func GenTestData_block() []byte {
+	return GenTestData_block_set_height(8)
 }
 
 func GenTestData_trs_coinbase() []byte {

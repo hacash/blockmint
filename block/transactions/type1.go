@@ -43,7 +43,7 @@ func NewEmptyTransaction_1_Simple(master fields.Address) (*Transaction_1_Simple,
 	return &Transaction_1_Simple{
 		Timestamp:      fields.VarInt5(uint64(timeUnix)),
 		Address:        master,
-		Fee:            fields.NewEmptyAmount(),
+		Fee:            *fields.NewEmptyAmount(),
 		ActionCount:    fields.VarInt2(0),
 		SignCount:      fields.VarInt2(0),
 		MultisignCount: fields.VarInt2(0),
@@ -140,7 +140,7 @@ func (trs *Transaction_1_Simple) Parse(buf []byte, seek uint32) (uint32, error) 
 	if e != nil {
 		return 0, e
 	}
-	for i := 0; i < int(trs.ActionCount); i++ {
+	for i := 0; i < int(trs.SignCount); i++ {
 		var sign fields.Sign
 		iseek, e = sign.Parse(buf, iseek)
 		if e != nil {

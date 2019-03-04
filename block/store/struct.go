@@ -121,7 +121,8 @@ func (this *TrsIdxOneFindItem) Parse(buf []byte, seek uint32) error {
 }
 
 func (this *TrsIdxOneFindItem) Serialize() []byte {
-	var buffer = bytes.NewBuffer(this.BlockHeadInfoFilePartition[:])
+	var buffer bytes.Buffer
+	buffer.Write(this.BlockHeadInfoFilePartition[:])
 	var byt1 = make([]byte, 4)
 	binary.BigEndian.PutUint32(byt1, this.BlockHeadInfoPtrNumber)
 	buffer.Write(byt1)

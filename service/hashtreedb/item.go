@@ -33,7 +33,8 @@ func (this *IndexItem) Parse(buf []byte, seek uint32) error {
 }
 
 func (this *IndexItem) Serialize() []byte {
-	var buffer = bytes.NewBuffer([]byte{this.Type})
+	var buffer bytes.Buffer
+	buffer.Write([]byte{this.Type})
 	var byt1 = make([]byte, 4)
 	binary.BigEndian.PutUint32(byt1, this.ValuePtrNum)
 	buffer.Write(byt1)

@@ -1,5 +1,7 @@
 package block
 
+import . "github.com/hacash/blockmint/types/state"
+
 type Block interface {
 
 	// 序列化 与 反序列化
@@ -19,6 +21,10 @@ type Block interface {
 	SerializeTransactions(SerializeTransactionsIterator) ([]byte, error)
 	ParseTransactions([]byte, uint32) (uint32, error)
 
+	// 修改 / 恢复 状态数据库
+	ChangeChainState(ChainStateOperation) error
+	RecoverChainState(ChainStateOperation) error
+
 	// HASH
 	Hash() []byte
 	HashFresh() []byte
@@ -29,9 +35,13 @@ type Block interface {
 	GetHeight() uint64
 	GetDifficulty() uint32
 	GetPrevHash() []byte
+	GetTimestamp() uint64
 
 	SetMrklRoot([]byte)
 	SetNonce(uint32)
+
+	// 验证需要的签名
+	VerifyNeedSigns() (bool, error)
 }
 
 type SerializeTransactionsIterator interface {

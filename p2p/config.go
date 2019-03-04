@@ -5,9 +5,39 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hacash/blockmint/config"
+	"github.com/hacash/blockmint/types/block"
 	"os"
 	"path"
 )
+
+const ProtocolMaxMsgSize = 2 * 1024 * 1024 // Maximum cap on the size of a protocol message
+
+// eth protocol message codes
+const (
+	// Protocol messages belonging to eth/62
+	StatusMsg           = 0x00
+	TxMsg               = 0x01
+	GetSyncBlocksMsg    = 0x02
+	SyncBlocksMsg       = 0x03
+	NewBlockExcavateMsg = 0x04 // 新区块被挖出
+
+)
+
+type MsgDataGetSyncBlocks struct {
+	StartHeight uint64
+}
+
+type MsgDataSyncBlocks struct {
+	FromHeight uint64
+	ToHeight   uint64
+	Datas      string
+}
+
+type MsgDataNewBlock struct {
+	block  block.Block
+	Height uint64
+	Datas  string
+}
 
 // NodeKey retrieves the currently configured private key of the node, checking
 // first any manually set key, falling back to the one found in the configured

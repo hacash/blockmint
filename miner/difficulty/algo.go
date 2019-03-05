@@ -172,12 +172,12 @@ func CalculateNextWorkTarget(currentBits uint32, currentHeight uint64, prevTimes
 	lastBlockTimestamp := time.Unix(int64(lastTimestamp), 0)
 	// 计算 288 个区块出块时间
 	actualTimespan := lastBlockTimestamp.Sub(prev2016blockTimestamp)
-	if actualTimespan < powTargetTimespan/8 {
-		// 如果小于1/8天，则按1/8天计算
-		actualTimespan = powTargetTimespan / 8
-	} else if actualTimespan > powTargetTimespan*8 {
-		// 如果超过8天，则按8天计算
-		actualTimespan = powTargetTimespan * 8
+	if actualTimespan < powTargetTimespan/4 {
+		// 如果小于1/4天，则按1/4天计算
+		actualTimespan = powTargetTimespan / 4
+	} else if actualTimespan > powTargetTimespan*4 {
+		// 如果超过4天，则按4天计算
+		actualTimespan = powTargetTimespan * 4
 	}
 
 	lastTarget := CompactToBig(currentBits)
@@ -192,7 +192,7 @@ func CalculateNextWorkTarget(currentBits uint32, currentHeight uint64, prevTimes
 
 	if printInfo != nil {
 		actual_t, target_t := uint64(actualTimespan.Seconds()), uint64(powTargetTimespan.Seconds())
-		printStr := fmt.Sprintf("calculate next work target difficulty at height %d == %ds/%ds == %ds/%ds == %d->%d ==\n",
+		printStr := fmt.Sprintf("calculate next work target difficulty at height %d == %ds/%ds == %ds/%ds == %d->%d ==",
 			currentHeight,
 			actual_t/changeblocknum,
 			target_t/changeblocknum,

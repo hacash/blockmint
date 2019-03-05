@@ -23,15 +23,14 @@ import (
 
 var (
 	insertBlocksChSize = 255
+
+	miningSleepMicrosecond = 1000 * 5000
 )
 
 type HacashMiner struct {
 	State *MinerState
 
 	TxPool service.TxPool
-
-	CurrentActiveChainState *state.ChainState
-	CurrentActiveCoinbase   block.Transaction
 
 	// 可以开始挖矿
 	canStartCh chan bool // 开始
@@ -141,25 +140,25 @@ func (this *HacashMiner) doMining() error {
 	// 挖掘计算
 	var targetHash []byte
 	targetDifficulty := newBlock.GetDifficulty()
-reentry:
+RESTART_TO_MINING:
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 	for i := uint32(0); i < 4294967295; i++ {
+		time.Sleep(time.Duration(miningSleepMicrosecond) * time.Microsecond)
 		newBlock.SetNonce(i)
 		targetHash = newBlock.HashFresh()
 		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
 		//fmt.Println(curdiff, targetDifficulty)
 		if curdiff < targetDifficulty {
 			// OK !!!!!!!!!!!!!!!
-			goto miningok
+			goto MINING_SUCCESS
 		}
 		if this.miningBreakOnce {
 			return fmt.Errorf("miningBreakOnce be set") // 暂停挖矿
 		}
-		time.Sleep(time.Duration(300) * time.Microsecond)
 	}
-	goto reentry
-miningok:
+	goto RESTART_TO_MINING
+MINING_SUCCESS:
 	// 储存区块与状态
 	// 存储区块数据
 	bodys, sverr := store.GetGlobalInstanceBlocksDataStore().Save(newBlock)
@@ -168,6 +167,7 @@ miningok:
 	}
 	// coinbase
 	coinbase.TotalFee = *totalFee
+	fmt.Println(totalFee.ToFinString())
 	coinbase.ChangeChainState(newState) // 加上奖励和手续费
 	// 保存用户状态
 	chainstate := state.GetGlobalInstanceChainState()
@@ -241,11 +241,21 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 		})
 	}()
 	// 判断高度
-	if this.State.CurrentHeight()+1 != block.GetHeight() {
-		return fmt.Errorf("not accepted block height")
-	}
-	if bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0 {
-		return fmt.Errorf("not accepted block %d prev hash", block.GetHeight())
+	var fail_height = this.State.CurrentHeight()+1 != block.GetHeight()
+	var fail_prevhash = bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0
+	if fail_height || fail_prevhash {
+		var typestr = "height"
+		if fail_prevhash {
+			typestr = "prev hash"
+		}
+		return fmt.Errorf("not accepted block with wrong",
+			typestr,
+			", height", block.GetHeight(),
+			"hash", hex.EncodeToString(block.Hash()),
+			"target prev hash", hex.EncodeToString(block.GetPrevHash()),
+			", base height", this.State.CurrentHeight(),
+			"base hash", hex.EncodeToString(this.State.CurrentBlockHash()),
+		)
 	}
 	// 检查难度值
 	blkhash := block.HashFresh()
@@ -351,12 +361,13 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 			continue // error
 		}
 		// ok copy state
-		this.CurrentActiveChainState.TraversalCopy(hxstate)
+		tempBlockState.TraversalCopy(hxstate)
 		hxstate.Destroy()
 		nextblock.Transactions = append(nextblock.Transactions, trs)
 		nextblock.TransactionCount += 1
 		// 手续费
-		blockTotalFee.Add(fields.ParseAmount(trs.GetFee(), 0))
+		fee := fields.ParseAmount(trs.GetFee(), 0)
+		blockTotalFee, _ = blockTotalFee.Add(fee)
 	}
 
 	return nextblock, tempBlockState, coinbase, blockTotalFee, nil

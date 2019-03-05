@@ -11,6 +11,7 @@ miner:
   forcestart: true
   minfeeratio: 100Y
   rewards:
+  - 127717zvZWFjEghjEpyyRSnitEEbnMuuLn
   - 1799951NwpyxekkraYtAbYVuydDfGsMiQ
   - 126517vPvexxaivGSUGewzrsxREUTnhKcR
 
@@ -25,7 +26,7 @@ p2p:
   port: { node: 3337, rpc: 3338 }
   myname: hacash_debug # 本节点名称
   bootnodes: # 初始节点
-  - enode://afdc3e0fc9045cf0db5f6dad61efeba4c50076c424a13ca43db155390bfd3e3816c9f0ff4e114c1079a7982a5589564ebac9e8d29f8e015648bd24896be83fb3@127.0.0.1:33371
+#  - enode://afdc3e0fc9045cf0db5f6dad61efeba4c50076c424a13ca43db155390bfd3e3816c9f0ff4e114c1079a7982a5589564ebac9e8d29f8e015648bd24896be83fb3@127.0.0.1:33371
 
 
 

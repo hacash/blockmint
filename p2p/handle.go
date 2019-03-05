@@ -170,7 +170,7 @@ func (pm *ProtocolManager) BroadcastBlock(newBlock *MsgDataNewBlock) {
 
 	// Otherwise if the block is indeed in out own chain, announce it
 	for _, peer := range peers {
-		peer.AsyncSendNewBlockHash(newBlock)
+		peer.AsyncSendNewBlock(newBlock)
 	}
 	//if len(peers) > 0 {
 	//fmt.Println("broadcast block", "height", newBlock.Height, "hash", hex.EncodeToString(hash), "recipients", len(peers))
@@ -190,7 +190,9 @@ func (pm *ProtocolManager) BroadcastTxs(txs []block.Transaction) {
 		for _, peer := range peers {
 			txset[peer] = append(txset[peer], tx)
 		}
-		fmt.Println("Broadcast transaction", "hash", hex.EncodeToString(tx.Hash()), "recipients", len(peers))
+		if len(peers) > 0 {
+			fmt.Println("broadcast transaction", "hash", hex.EncodeToString(tx.Hash()), "recipients", len(peers))
+		}
 	}
 	//
 	for peer, txs := range txset {
@@ -361,7 +363,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// 加入我的交易池
 			pe := pm.txpool.AddTx(tx)
 			if pe != nil {
-				fmt.Println("pm.txpool.AddTx error:", pe)
+				// fmt.Println("pm.txpool.AddTx error:", pe)
 			}
 			//fmt.Println("pm.txpool.AddTx(tx) 加入我的交易池  txtxtxtxtxtxtxtxtxtx ", hex.EncodeToString(tx.HashNoFee()))
 		}
@@ -509,7 +511,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			insert := <-insertCh
 			if insert.Block.GetHeight() == data.Height && insert.Success { // insert ok
 				str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
-				fmt.Println("discovery new block, insert success.", "height", data.Height, "hash", hex.EncodeToString(insert.Block.Hash()), "time", str_time)
+				fmt.Println("discovery new block, insert success.", "height", data.Height, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
 				// 广播区块=
 				data.block = insert.Block
 				go pm.BroadcastBlock(&data)

@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"encoding/hex"
 	"fmt"
 	"github.com/deckarep/golang-set"
 	"github.com/ethereum/go-ethereum/p2p"
@@ -65,13 +64,13 @@ func (p *peer) broadcast() {
 			if err := p.SendTransactions(txs); err != nil {
 				return
 			}
-			fmt.Println("Broadcast transactions", "count", len(txs))
+			// fmt.Println("Broadcast transactions", "count", len(txs))
 
 		case data := <-p.queuedNewBlock:
 			if err := p.SendNewBlock(data); err != nil {
 				return
 			}
-			p.Log().Trace("send new block", "height", data.block.GetHeight(), "hash", hex.EncodeToString(data.block.Hash()))
+			// p.Log().Trace("send new block", "height", data.block.GetHeight(), "hash", hex.EncodeToString(data.block.Hash()))
 
 		case <-p.term:
 			return
@@ -133,7 +132,7 @@ func (p *peer) SendTransactions(txs []block.Transaction) error {
 	return p2p.Send(p.rw, TxMsg, sdtxs)
 }
 
-func (p *peer) AsyncSendNewBlockHash(data *MsgDataNewBlock) {
+func (p *peer) AsyncSendNewBlock(data *MsgDataNewBlock) {
 	select {
 	case p.queuedNewBlock <- data:
 		p.knownBlocks.Add(string(data.block.Hash()))

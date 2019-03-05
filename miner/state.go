@@ -3,24 +3,29 @@ package miner
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/core/coin"
+	"github.com/hacash/blockmint/miner/difficulty"
 	"github.com/hacash/blockmint/protocol/block1def"
 	"github.com/hacash/blockmint/sys/file"
 	"github.com/hacash/blockmint/types/block"
 	"os"
 	"path"
-	"sync"
 )
 
-var distFileSize = block1def.ByteSizeBlockBeforeTransaction + 8
+var (
+	LowestDifficultyCompact = uint32(520000000) // 首次调整难度前的预设难度值
+
+	// 保存文件尺寸
+	distFileSize = block1def.ByteSizeBlockBeforeTransaction + 8
+)
 
 type MinerState struct {
 	prevBlockHead         block.Block
 	prev288BlockTimestamp uint64 // 上一个288倍数区块的创建时间
-
-	lock sync.Mutex
 }
 
 func NewMinerState() *MinerState {
@@ -34,6 +39,32 @@ func (this *MinerState) SetNewBlock(block block.Block) {
 		this.prev288BlockTimestamp = block.GetTimestamp()
 	}
 	this.FlushSave()
+}
+
+// 获取下一个区块的难度值
+func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) uint32 {
+	// 预设难度
+	if height < config.ChangeDifficultyBlockNumber {
+		return LowestDifficultyCompact
+	}
+	head := this.prevBlockHead
+	return difficulty.CalculateNextWorkTarget(
+		head.GetDifficulty(),
+		height,
+		this.prev288BlockTimestamp,
+		head.GetTimestamp(),
+		config.EachBlockTakesTime,
+		config.ChangeDifficultyBlockNumber,
+		print,
+	)
+}
+
+// 获取下一个区块的难度值
+func (this *MinerState) NextHeightTargetDifficultyCompact() (uint64, uint32, *string) {
+	nextHei := this.CurrentHeight() + 1
+	print := new(string)
+	target := this.TargetDifficultyCompact(nextHei, print)
+	return nextHei, target, print
 }
 
 func (this *MinerState) CurrentHeight() uint64 {
@@ -58,8 +89,6 @@ func (this *MinerState) getDistFile() *os.File {
 }
 
 func (this *MinerState) FlushSave() {
-	this.lock.Lock()
-	defer this.lock.Unlock()
 
 	head := new(bytes.Buffer)
 	b1, _ := this.prevBlockHead.SerializeHead()
@@ -77,11 +106,9 @@ func (this *MinerState) FlushSave() {
 	file.Close()
 }
 
-func (this *MinerState) DistLoad() {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-
+func (this *MinerState) FetchLoad() {
 	file := this.getDistFile()
+	defer file.Close()
 	valuebytes := make([]byte, distFileSize)
 	rdlen, e := file.Read(valuebytes)
 	if e == nil && rdlen >= distFileSize {
@@ -89,8 +116,11 @@ func (this *MinerState) DistLoad() {
 		seek, _ := this.prevBlockHead.ParseHead(valuebytes, 1)
 		seek, _ = this.prevBlockHead.ParseMeta(valuebytes, seek)
 		this.prev288BlockTimestamp = binary.BigEndian.Uint64(valuebytes[seek : seek+8])
+		head := this.prevBlockHead
+		fmt.Println("MinerState FetchLoad", "Height", head.GetHeight(), "Hash", hex.EncodeToString(head.Hash()), "Difficulty", head.GetDifficulty())
+	} else {
+		genesis := coin.GetGenesisBlock()
+		this.prevBlockHead = genesis                        // 创世
+		this.prev288BlockTimestamp = genesis.GetTimestamp() // uint64(time.Now().Unix())
 	}
-	file.Close()
-	//fmt.Println("123")
-	return
 }

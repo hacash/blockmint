@@ -14,6 +14,12 @@ type Amount struct {
 	Numeral []byte
 }
 
+func ParseAmount(buf []byte, seek uint32) *Amount {
+	empty := NewEmptyAmount()
+	empty.Parse(buf, seek)
+	return empty
+}
+
 func NewEmptyAmount() *Amount {
 	return &Amount{
 		Unit:    0,

@@ -8,6 +8,7 @@ datadir: /media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/database_de
 
 # 矿工配置
 miner:
+  forcestart: true
   minfeeratio: 100Y
   rewards:
   - 1799951NwpyxekkraYtAbYVuydDfGsMiQ

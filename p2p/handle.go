@@ -12,6 +12,7 @@ import (
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
 	"sync"
+	"time"
 )
 
 const (
@@ -126,8 +127,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	if peer == nil {
 		return
 	}
-
-	fmt.Println("Removing Hacash peer", "peer", id)
+	// fmt.Println("Removing Hacash peer", id)
 
 	if err := pm.peers.Unregister(id); err != nil {
 		fmt.Errorf("Peer removal failed peer %s err %s", id, err)
@@ -172,9 +172,9 @@ func (pm *ProtocolManager) BroadcastBlock(newBlock *MsgDataNewBlock) {
 	for _, peer := range peers {
 		peer.AsyncSendNewBlockHash(newBlock)
 	}
-	if len(peers) > 0 {
-		fmt.Println("broadcast block", "height", newBlock.Height, "hash", hex.EncodeToString(hash), "recipients", len(peers))
-	}
+	//if len(peers) > 0 {
+	//fmt.Println("broadcast block", "height", newBlock.Height, "hash", hex.EncodeToString(hash), "recipients", len(peers))
+	//}
 
 }
 
@@ -217,9 +217,6 @@ func (pm *ProtocolManager) syncMinerStatus(p *peer) {
 func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 
 	//fmt.Println("func DoSyncMinerStatus")
-	if pm.onsyncminer {
-		return
-	}
 	if pm.peers.Len() < 1 {
 		return // 最少连接个节点才能同步状态
 	}
@@ -233,13 +230,18 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	fromhei := minerdb.State.CurrentHeight() + 1
 	if tarhei >= fromhei {
 		pm.onsyncminer = true // 开始同步
-		fmt.Printf("sync blocks from height %d ...\n", fromhei)
-		p2p.Send(best.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
-			fromhei,
-		})
+		fmt.Printf("ask sync blocks from height %d ...\n", fromhei)
+		go func() {
+			p2p.Send(best.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
+				fromhei,
+			})
+		}()
 	} else {
 		pm.onsyncminer = false
-		minerdb.CanStart() // 可以开始挖矿
+		minerdb.StartMining() // 可以开始挖矿
+		if pm.peers.Len() == 1 {
+			fmt.Println("all block status sync finish, start mining ...")
+		}
 	}
 }
 
@@ -372,8 +374,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return fmt.Errorf("msg %v: %v", msg, err)
 		}
 		//fmt.Println("msg.Decode(&data)")
-		minerdb := pm.miner
-		if minerdb.State.CurrentHeight() <= data.StartHeight {
+		if pm.miner.State.CurrentHeight() < data.StartHeight {
 			return nil // 不能提供
 		}
 		//fmt.Println("miner.GetGlobalInstanceHacashMiner()")
@@ -383,8 +384,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			var blocks bytes.Buffer
 			var blocklen = 0
 			var blocksize = 0
-			//fmt.Println("for height:=data.StartHeight; height <= minerdb.State.CurrentHeight(); height++ { ", data.StartHeight, minerdb.State.CurrentHeight())
-			for height := data.StartHeight; height <= minerdb.State.CurrentHeight(); height++ {
+			//fmt.Println("for height:=data.StartHeight; height <= minerdb.State.CurrentHeight(); height++ { ", data.StartHeight, pm.miner.State.CurrentHeight())
+			for height := data.StartHeight; height <= pm.miner.State.CurrentHeight(); height++ {
 				blkbytes, e := bkdb.GetBlockBytesByHeight(height, true, true)
 				size := len(blkbytes)
 				if e != nil || size == 0 {
@@ -410,7 +411,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				ToHeight:   data.StartHeight + uint64(blocklen) - 1,
 				Datas:      blocks.String(),
 			}
-			fmt.Printf("Send SyncBlocks to peer %s, FromHeight: %d, ToHeight: %d \n", p.Name(), sdmsgdt.FromHeight, sdmsgdt.ToHeight)
+			fmt.Printf("send sync blocks to peer %s, from height %d to %d \n", p.Name(), sdmsgdt.FromHeight, sdmsgdt.ToHeight)
 			go p2p.Send(p.rw, SyncBlocksMsg, sdmsgdt)
 		}()
 
@@ -426,88 +427,94 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if minerdb.State.CurrentHeight()+1 != data.FromHeight {
 			return nil
 		}
-
 		//fmt.Printf("SyncBlocksMsg, FromHeight: %d, ToHeight: %d,  \n", data.FromHeight, data.ToHeight)
 		go func() {
 			// 解包区块，依次插入
+			segblocks := make([]block.Block, 0, 100)
+			segbodys := make([][]byte, 0, 100)
 			stuffbytes := []byte(data.Datas)
-			//fmt.Println(hex.EncodeToString(stuffbytes))
 			seek := uint32(0)
-			var insertok error
-			var blk block.Block
 			for {
-				//fmt.Println("seek", seek)
-				blk, seek, insertok = minerdb.ArrivedNewBlockToUpdate(stuffbytes, seek)
-				if insertok != nil {
-					fmt.Printf("peer %s give error block data", p.Name(), insertok)
+				if seek >= uint32(len(stuffbytes)) {
+					break
+				}
+				blk, sk, e := blocks.ParseBlock(stuffbytes, seek)
+				if e != nil {
+					pm.syncMinerStatus(p) // 区块数据错误，重新同步
 					return
 				}
-				// 标记已知
-				p.MarkBlock(blk.Hash())
-				if seek >= uint32(len(stuffbytes)) {
-					break // finish
+				segblocks = append(segblocks, blk)
+				segbodys = append(segbodys, stuffbytes[seek:sk])
+				seek = sk
+			}
+			fmt.Printf("got sync blocks from height %d to %d, inserting ...\n", data.FromHeight, data.ToHeight)
+			insertCh := make(chan miner.InsertNewBlockEvent, len(segblocks))
+			subhandle := minerdb.SubscribeInsertBlock(insertCh)
+			go func() { // 写入区块
+				for i := 0; i < len(segblocks); i++ {
+					minerdb.InsertBlock(segblocks[i], segbodys[i])
+				}
+			}()
+			for {
+				insert := <-insertCh
+				if !insert.Success {
+					pm.removePeer(p.id) // 区块失败
+					break
+				}
+				if insert.Block.GetHeight() == data.ToHeight { // insert ok
+					subhandle.Unsubscribe()
+					pm.syncMinerStatus(p) // 再次同步
+					break
 				}
 			}
-			fmt.Printf("sync blocks from height: %d, to height: %d, ok\n", data.FromHeight, data.ToHeight)
-			// 判断是否完成同步
-			_, tarhei := pm.peers.BestPeer().Head()
-			if tarhei <= data.ToHeight {
-				pm.onsyncminer = false // 结束同步
-				minerdb.CanStart()     // 可以开始挖矿
-				return                 // 同步完成
-			}
-			// 再次发起同步请求
-			fromhei := data.ToHeight + 1
-			fmt.Printf("sync blocks from height %d ...\n", fromhei)
-			p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
-				fromhei,
-			})
 		}()
 
 	case msg.Code == NewBlockExcavateMsg:
+
 		// 新区块被挖出
-		fmt.Println("case msg.Code == NewBlockExcavateMsg: ")
+		//fmt.Println("case msg.Code == NewBlockExcavateMsg: ")
 		if pm.onsyncminer {
 			return nil // 正在同步 忽略新挖出区块
 		}
 		// 新区块被挖出
-		fmt.Println("var data MsgDataNewBlock")
+		//fmt.Println("var data MsgDataNewBlock")
 		var data MsgDataNewBlock
 		if err := msg.Decode(&data); err != nil {
 			return fmt.Errorf("msg %v: %v", msg, err)
 		}
-		fmt.Println("err := msg.Decode(&data);", data.Height)
-		// 检查
-		minerdb := pm.miner
-		mytarhei := minerdb.State.CurrentHeight() + 1
-		if mytarhei > data.Height {
-			fmt.Printf("mytarhei > data.Height %d>%d ...\n", mytarhei, data.Height)
-			return nil
-		}
+		//fmt.Println("err := msg.Decode(&data);", data.Height)
+		// 如果区块高度超过，先同步
+		mytarhei := pm.miner.State.CurrentHeight() + 1
 		if mytarhei < data.Height {
-			// 发起同步
-			pm.onsyncminer = true // 开始同步
-			fmt.Printf("sync blocks from height %d ...\n", mytarhei)
-			p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
-				mytarhei,
-			})
+			pm.syncMinerStatus(p)
 			return nil
 		}
-		fmt.Printf("blk, _, inserterr := minerdb.ArrivedNewBlockToUpdate, height: %d \n", data.Height)
+		// 区块小于当前高度，忽略
+		if mytarhei > data.Height {
+			//fmt.Printf("mytarhei > data.Height %d>%d ...\n", mytarhei, data.Height)
+			return nil
+		}
 		go func() {
-			// 插入
-			blk, _, inserterr := minerdb.ArrivedNewBlockToUpdate([]byte(data.Datas), 0)
-			if inserterr != nil {
+			// 尝试添加区块
+			blkbts := []byte(data.Datas)
+			blk, _, e := blocks.ParseBlock(blkbts, 0)
+			if e != nil {
 				return
 			}
-			p.MarkBlock(blk.Hash())
-			fmt.Println("重新开始挖矿 minerdb.CanStart()")
-			// 重新开始挖矿
-			minerdb.CanStart()
-			// 广播区块
-			data.block = blk
-			go pm.BroadcastBlock(&data)
-			//fmt.Println("go pm.BroadcastBlock(&data)")
+			insertCh := make(chan miner.InsertNewBlockEvent, 1)
+			subhandle := pm.miner.SubscribeInsertBlock(insertCh)
+			go func() { // 写入区块
+				pm.miner.InsertBlock(blk, blkbts)
+			}()
+			insert := <-insertCh
+			if insert.Block.GetHeight() == data.Height && insert.Success { // insert ok
+				str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
+				fmt.Println("discovery new block, insert success.", "height", data.Height, "hash", hex.EncodeToString(insert.Block.Hash()), "time", str_time)
+				// 广播区块=
+				data.block = insert.Block
+				go pm.BroadcastBlock(&data)
+			}
+			subhandle.Unsubscribe()
 		}()
 
 	default:

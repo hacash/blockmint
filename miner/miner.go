@@ -21,6 +21,10 @@ import (
 	"time"
 )
 
+var (
+	insertBlocksChSize = 255
+)
+
 type HacashMiner struct {
 	State *MinerState
 
@@ -32,14 +36,26 @@ type HacashMiner struct {
 	// 可以开始挖矿
 	canStartCh chan bool // 开始
 
-	canPause bool
+	miningBreakOnce bool
 
 	// 正在插入区块
 	insertBlock sync.Mutex
 
+	// 当前能否添加区块
+	insertBlocksCh chan *DiscoveryNewBlockEvent
+
+	// 插入区块进度 事件订阅
+	insertBlockFeed      event.Feed
+	insertBlockFeedScope event.SubscriptionScope
+
 	// 成功挖掘新区快 事件订阅
 	discoveryNewBlockFeed      event.Feed
 	discoveryNewBlockFeedScope event.SubscriptionScope
+}
+
+type InsertNewBlockEvent struct {
+	Block   block.Block
+	Success bool // 成功写入
 }
 
 type DiscoveryNewBlockEvent struct {
@@ -64,30 +80,341 @@ func GetGlobalInstanceHacashMiner() *HacashMiner {
 func NewHacashMiner() *HacashMiner {
 	miner := &HacashMiner{}
 	miner.State = NewMinerState()
-	miner.State.DistLoad()
+	miner.State.FetchLoad()
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
 	miner.canStartCh = make(chan bool, 1)
-	miner.canPause = false
+	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
+	miner.miningBreakOnce = false
 	return miner
 }
 
-// 通知可以开始挖矿
-func (this *HacashMiner) CanStart() {
-	this.canPause = false
+// 开始挖矿
+func (this *HacashMiner) Start() {
+	go this.miningLoop()
+	go this.insertBlockLoop()
+}
+
+// 开始挖矿
+func (this *HacashMiner) StartMining() {
+	//fmt.Println("HacashMiner StartMining ...")
+	this.miningBreakOnce = false
 	if len(this.canStartCh) == 0 {
 		this.canStartCh <- true
 	}
 }
 
 // 开始挖矿
-func (this *HacashMiner) Start() error {
-	go func() {
-		for {
-			this.start()
+func (this *HacashMiner) StopMining() {
+	//fmt.Println("HacashMiner StopMining.")
+	this.miningBreakOnce = true
+}
+
+// 中断挖矿
+func (this *HacashMiner) InterruptMining(block block.Block) {
+	this.StopMining()
+	// 修改矿工状态
+	this.State.SetNewBlock(block)
+	// 重新开始
+	this.StartMining()
+}
+
+// 挖矿循环
+func (this *HacashMiner) miningLoop() {
+	for {
+		select {
+		case <-this.canStartCh:
+			err := this.doMining()
+			if err != nil {
+				// fmt.Println("miningLoop out:", err)
+			}
 		}
-	}()
+	}
+}
+
+// 执行挖矿
+func (this *HacashMiner) doMining() error {
+	// 创建区块
+	newBlock, newState, coinbase, totalFee, e := this.CreateNewBlock()
+	if e != nil {
+		return e
+	}
+	// 挖掘计算
+	var targetHash []byte
+	targetDifficulty := newBlock.GetDifficulty()
+reentry:
+	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
+	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
+	for i := uint32(0); i < 4294967295; i++ {
+		newBlock.SetNonce(i)
+		targetHash = newBlock.HashFresh()
+		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
+		//fmt.Println(curdiff, targetDifficulty)
+		if curdiff < targetDifficulty {
+			// OK !!!!!!!!!!!!!!!
+			goto miningok
+		}
+		if this.miningBreakOnce {
+			return fmt.Errorf("miningBreakOnce be set") // 暂停挖矿
+		}
+		time.Sleep(time.Duration(300) * time.Microsecond)
+	}
+	goto reentry
+miningok:
+	// 储存区块与状态
+	// 存储区块数据
+	bodys, sverr := store.GetGlobalInstanceBlocksDataStore().Save(newBlock)
+	if sverr != nil {
+		return sverr
+	}
+	// coinbase
+	coinbase.TotalFee = *totalFee
+	coinbase.ChangeChainState(newState) // 加上奖励和手续费
+	// 保存用户状态
+	chainstate := state.GetGlobalInstanceChainState()
+	chainstate.TraversalCopy(newState)
+	// 更新矿工状态
+	this.State.SetNewBlock(newBlock)
+	// 广播新区快信息
+	go this.discoveryNewBlockFeed.Send(DiscoveryNewBlockEvent{
+		Block: newBlock,
+		Bodys: bodys,
+	})
+	// 继续挖掘下一个区块
+	this.StartMining()
+
+	// 打印相关信息
+	str_time := time.Unix(int64(newBlock.GetTimestamp()), 0).Format("01/02 15:04:05")
+	fmt.Printf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s\n",
+		int(newBlock.GetHeight()),
+		len(newBlock.GetTransactions())-1,
+		newBlock.GetDifficulty(),
+		hex.EncodeToString(targetHash),
+		hex.EncodeToString(newBlock.GetPrevHash()[0:16])+"...",
+		rewardAddrReadble,
+		coinbase.Reward.ToFinString(),
+		str_time,
+	)
+
 	return nil
 }
+
+// 插入区块
+func (this *HacashMiner) InsertBlock(blk block.Block, bodys []byte) {
+	this.insertBlocksCh <- &DiscoveryNewBlockEvent{
+		blk,
+		bodys,
+	}
+}
+
+// 插入区块
+func (this *HacashMiner) insertBlockLoop() {
+	for {
+		select {
+		case blk := <-this.insertBlocksCh:
+			err := this.doInsertBlock(blk)
+			if err != nil {
+				fmt.Println("insertBlockLoop error:", err)
+			}
+		}
+	}
+}
+
+// 插入区块
+func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
+	if blk.Block == nil && (blk.Bodys == nil || len(blk.Bodys) == 0) {
+		fmt.Errorf("data is empty")
+	}
+	if blk.Block == nil {
+		b, _, e := blocks.ParseBlock(blk.Bodys, 0)
+		if e != nil {
+			return e
+		}
+		blk.Block = b
+	}
+	block := blk.Block
+	successInsert := false
+	defer func() {
+		// 插入处理事件通知
+		go this.insertBlockFeed.Send(InsertNewBlockEvent{
+			block,
+			successInsert,
+		})
+	}()
+	// 判断高度
+	if this.State.CurrentHeight()+1 != block.GetHeight() {
+		return fmt.Errorf("not accepted block height")
+	}
+	if bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0 {
+		return fmt.Errorf("not accepted block %d prev hash", block.GetHeight())
+	}
+	// 检查难度值
+	blkhash := block.HashFresh()
+	hxdift := difficulty.BigToCompact(difficulty.HashToBig(&blkhash))
+	tardift := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
+	if hxdift > tardift {
+		return fmt.Errorf("difficulty not satisfy")
+	}
+	// 验证签名
+	sigok, e1 := block.VerifyNeedSigns()
+	if e1 != nil {
+		return e1
+	}
+	if !sigok {
+		return fmt.Errorf("block signature verify faild")
+	}
+	// 判断交易是否已经存在
+	blockdb := store.GetGlobalInstanceBlocksDataStore()
+	txs := block.GetTransactions()
+	if len(txs) < 1 {
+		return fmt.Errorf("block is empty")
+	}
+	for i := 1; i < len(txs); i++ {
+		txhashnofee := txs[i].HashNoFee()
+		if ok, e := blockdb.CheckTransactionExist(txhashnofee); ok || e != nil {
+			return fmt.Errorf("tx %s is exist", hex.EncodeToString(txhashnofee))
+		}
+	}
+	// 停止挖矿
+	this.StopMining()
+	// 验证交易
+	newBlockChainState := state.NewTempChainState(nil)
+	blksterr := block.ChangeChainState(newBlockChainState)
+	if blksterr != nil {
+		return blksterr
+	}
+	// 存储区块数据
+	_, sverr := blockdb.Save(block)
+	if sverr != nil {
+		return sverr
+	}
+	// 保存用户状态
+	chainstate := state.GetGlobalInstanceChainState()
+	chainstate.TraversalCopy(newBlockChainState)
+	// 更新矿工状态
+	this.State.SetNewBlock(block)
+	// 判断可以开始挖矿
+	if len(this.insertBlocksCh) == 0 {
+		this.StartMining()
+	}
+	successInsert = true
+
+	return nil
+}
+
+// 插入区块进度事件
+func (this *HacashMiner) SubscribeInsertBlock(insertCh chan<- InsertNewBlockEvent) event.Subscription {
+	return this.insertBlockFeedScope.Track(this.insertBlockFeed.Subscribe(insertCh))
+}
+
+// 订阅挖掘出新区快事件
+func (this *HacashMiner) SubscribeDiscoveryNewBlock(discoveryCh chan<- DiscoveryNewBlockEvent) event.Subscription {
+	return this.discoveryNewBlockFeedScope.Track(this.discoveryNewBlockFeed.Subscribe(discoveryCh))
+}
+
+// 创建区块
+func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *transactions.Transaction_0_Coinbase, *fields.Amount, error) {
+	nextblock := blocks.NewEmptyBlock_v1(this.State.prevBlockHead)
+	hei, dfct, info := this.State.NextHeightTargetDifficultyCompact()
+	if info != nil && *info != "" {
+		fmt.Println(*info)
+	}
+	nextblock.Height = fields.VarInt5(hei)
+	nextblock.Difficulty = fields.VarInt4(dfct)
+	coinbase := this.createCoinbaseTx(nextblock)
+	nextblock.TransactionCount = 1
+	nextblock.Transactions = append(nextblock.Transactions, coinbase)
+	// 获取交易并验证
+	tempBlockState := state.NewTempChainState(nil)
+	// 添加交易
+	stoblk := store.GetGlobalInstanceBlocksDataStore()
+	blockSize := uint32(block1def.ByteSizeBlockBeforeTransaction)
+	blockTotalFee := fields.NewEmptyAmount()
+	for true {
+		trs := this.TxPool.PopTxByHighestFee()
+		if trs == nil {
+			break // nothing
+		}
+		hashnofee := trs.HashNoFee() // 交易是否已经存在
+		ext, e2 := stoblk.CheckTransactionExist(hashnofee)
+		if e2 != nil || ext {
+			continue // drop tx
+		}
+		blockSize += trs.Size()
+		if int64(blockSize) > config.MaximumBlockSize {
+			this.TxPool.AddTx(trs)
+			break // over block size
+		}
+		hxstate := state.NewTempChainState(tempBlockState)
+		errun := trs.ChangeChainState(hxstate)
+		if errun != nil {
+			hxstate.Destroy()
+			continue // error
+		}
+		// ok copy state
+		this.CurrentActiveChainState.TraversalCopy(hxstate)
+		hxstate.Destroy()
+		nextblock.Transactions = append(nextblock.Transactions, trs)
+		nextblock.TransactionCount += 1
+		// 手续费
+		blockTotalFee.Add(fields.ParseAmount(trs.GetFee(), 0))
+	}
+
+	return nextblock, tempBlockState, coinbase, blockTotalFee, nil
+}
+
+// 创建coinbase交易
+func (this *HacashMiner) createCoinbaseTx(block block.Block) *transactions.Transaction_0_Coinbase {
+	// coinbase
+	coinbase := transactions.NewTransaction_0_Coinbase()
+	coinbase.Reward = *(coin.BlockCoinBaseReward(uint64(block.GetHeight())))
+	this.setMinerForCoinbase(coinbase)
+	return coinbase
+}
+
+// 创建coinbase交易
+func (this *HacashMiner) setMinerForCoinbase(coinbase *transactions.Transaction_0_Coinbase) string {
+	addrreadble := config.GetRandomMinerRewardAddress()
+	addr, e := fields.CheckReadableAddress(addrreadble)
+	if e != nil {
+		panic("Miner Reward Address `" + addrreadble + "` Error !")
+	}
+	coinbase.Address = *addr
+	return addrreadble
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+/*
+
+
+
+// 计算hash
+func (this *HacashMiner) CalculateTargetHash(block block.Block) ([]byte, uint32, error) {
+
+	targetDifficulty := difficulty.CompactToBig(block.GetDifficulty())
+
+	for i := uint32(0); i < uint32(4294967295); i++ {
+		if this.miningBreakOnce {
+			return nil, 0, fmt.Errorf("miningBreakOnce be set") // 暂停挖矿
+		}
+		// 休眠 秒
+		time.Sleep(time.Duration(10) * time.Millisecond)
+		//fmt.Println(i)
+		block.SetNonce(i)
+		tarhash := block.HashFresh()
+		//fmt.Println( hex.EncodeToString(tarhash) )
+		curdiff := difficulty.HashToBig(&tarhash)
+		//fmt.Println(difficulty, block.GetDifficulty())
+		if curdiff.Cmp(targetDifficulty) == -1 {
+			// OK !!!!!!!!!!!!!!!
+			return tarhash, i, nil
+		}
+	}
+	// 尝试次数已达上限， 切换 reward address
+	this.SwitchBlockMinerAddress(block)
+	return this.CalculateTargetHash(block)
+}
+
 
 // 等待外部信号，而后开始
 func (this *HacashMiner) start() error {
@@ -148,34 +475,7 @@ func (this *HacashMiner) start() error {
 }
 
 // 生成一个新区块
-func (this *HacashMiner) CalculateTargetHash(block block.Block) ([]byte, uint32, error) {
-
-	targetDifficulty := difficulty.CompactToBig(block.GetDifficulty())
-
-	for i := uint32(0); i < uint32(4294967295); i++ {
-		if this.canPause {
-			return nil, 0, fmt.Errorf("canPause be set") // 暂停挖矿
-		}
-		// 休眠 秒
-		time.Sleep(time.Duration(10) * time.Millisecond)
-		//fmt.Println(i)
-		block.SetNonce(i)
-		tarhash := block.HashFresh()
-		//fmt.Println( hex.EncodeToString(tarhash) )
-		curdiff := difficulty.HashToBig(&tarhash)
-		//fmt.Println(difficulty, block.GetDifficulty())
-		if curdiff.Cmp(targetDifficulty) == -1 {
-			// OK !!!!!!!!!!!!!!!
-			return tarhash, i, nil
-		}
-	}
-	// 尝试次数已达上限， 切换 reward address
-	this.SwitchBlockMinerAddress(block)
-	return this.CalculateTargetHash(block)
-}
-
-// 生成一个新区块
-func (this *HacashMiner) CreateBlock() (block.Block, error) {
+func (this *HacashMiner) createBlock() (block.Block, error) {
 
 	prev := this.State.prevBlockHead
 	if prev == nil {
@@ -312,12 +612,13 @@ func (this *HacashMiner) ArrivedNewBlockToUpdate(blockbytes []byte, seek uint32)
 		return nil, 0, fmt.Errorf("block signature verify faild")
 	}
 	fmt.Printf("ArrivedNewBlockToUpdate  this.insertBlock.Lock()\n")
+
 	// 锁定
-	this.insertBlock.Lock()
-	defer func() {
-		fmt.Printf("ArrivedNewBlockToUpdate finish, height: %d \n", block.GetHeight())
-		this.insertBlock.Unlock()
-	}()
+	//this.insertBlock.Lock()
+	//defer func() {
+	//	fmt.Printf("ArrivedNewBlockToUpdate finish, height: %d \n", block.GetHeight())
+	//	this.insertBlock.Unlock()
+	//}()
 
 	fmt.Printf("ArrivedNewBlockToUpdate  this.State.CurrentHeight()+1 != block.GetHeight()\n")
 
@@ -338,10 +639,12 @@ func (this *HacashMiner) ArrivedNewBlockToUpdate(blockbytes []byte, seek uint32)
 		fmt.Printf("blksterr := block.ChangeChainState(newBlockChainState  error: %s \n", blksterr)
 		return nil, 0, blksterr
 	}
-	fmt.Printf("停止挖矿 this.canPause = true\n")
+	fmt.Printf("停止挖矿 this.miningBreakOnce = true\n")
 	// 停止挖矿
-	this.canPause = true
+	this.miningBreakOnce = true
 	// 保存区块，修改chain状态
+
+
 	blockdb := store.GetGlobalInstanceBlocksDataStore()
 	_, sverr := blockdb.Save(block)
 	if sverr != nil {
@@ -353,9 +656,12 @@ func (this *HacashMiner) ArrivedNewBlockToUpdate(blockbytes []byte, seek uint32)
 	chainstate.TraversalCopy(newBlockChainState)
 	// 修改矿工状态
 	this.State.SetNewBlock(block)
+
+
+
 	// 重新开始挖矿
 	//this.Start()
-	//this.canPause = false
+	//this.miningBreakOnce = false
 	//this.CanStart()
 	// 成功
 	fmt.Printf("成功 return block, seek, nil\n")
@@ -363,7 +669,4 @@ func (this *HacashMiner) ArrivedNewBlockToUpdate(blockbytes []byte, seek uint32)
 
 }
 
-// 订阅交易池加入新交易事件
-func (this *HacashMiner) SubscribeDiscoveryNewBlock(discoveryCh chan<- DiscoveryNewBlockEvent) event.Subscription {
-	return this.discoveryNewBlockFeedScope.Track(this.discoveryNewBlockFeed.Subscribe(discoveryCh))
-}
+*/

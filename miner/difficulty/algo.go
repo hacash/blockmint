@@ -2,7 +2,6 @@ package difficulty
 
 import (
 	"fmt"
-	"github.com/hacash/blockmint/config"
 	"math/big"
 	"time"
 )
@@ -162,11 +161,11 @@ var (
 )
 
 // 计算下一阶段区块难度
-func CalculateNextWorkTarget(currentBits uint32, currentHeight uint64, prevTimestamp uint64, lastTimestamp uint64) uint32 {
+func CalculateNextWorkTarget(currentBits uint32, currentHeight uint64, prevTimestamp uint64, lastTimestamp uint64, eachblocktime uint64, changeblocknum uint64, printInfo *string) uint32 {
 
-	powTargetTimespan := time.Second * time.Duration(config.EachBlockTakesTime*config.ChangeDifficultyBlockNumber) // 一分钟一个快
+	powTargetTimespan := time.Second * time.Duration(eachblocktime*changeblocknum) // 一分钟一个快
 	// 如果新区块height不是 288 的整数倍，则不需要更新，仍然是最后一个区块的 bits
-	if currentHeight%uint64(config.ChangeDifficultyBlockNumber) != 0 {
+	if currentHeight%changeblocknum != 0 {
 		return currentBits
 	}
 	prev2016blockTimestamp := time.Unix(int64(prevTimestamp), 0)
@@ -191,11 +190,18 @@ func CalculateNextWorkTarget(currentBits uint32, currentHeight uint64, prevTimes
 	//}
 	nextBits := BigToCompact(newTarget)
 
-	fmt.Printf("CalculateNextWorkTarget new difficulty  ============================  %d/%d  ==  %d  ==\n",
-		int32(actualTimespan.Seconds()),
-		int32(powTargetTimespan.Seconds()),
-		nextBits,
-	)
+	if printInfo != nil {
+		actual_t, target_t := uint64(actualTimespan.Seconds()), uint64(powTargetTimespan.Seconds())
+		printStr := fmt.Sprintf("calculate next work target difficulty at height %d == %ds/%ds == %ds/%ds == %d->%d ==\n",
+			currentHeight,
+			actual_t/changeblocknum,
+			target_t/changeblocknum,
+			actual_t,
+			target_t,
+			currentBits,
+			nextBits)
+		*printInfo = printStr
+	}
 
 	return nextBits
 }

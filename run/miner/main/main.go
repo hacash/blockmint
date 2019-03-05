@@ -21,9 +21,10 @@ func main() {
 	go rpc.RunHttpRpcService()
 
 	var miner = miner.GetGlobalInstanceHacashMiner()
-	go miner.Start() // 准备挖矿
+	go miner.Start()
 	if config.Config.Miner.Forcestart == "true" {
-		miner.CanStart() // 开始挖矿
+		miner.StartMining() // 开始挖矿
+		fmt.Println("HacashMiner start mining in force on start ...")
 	}
 
 	var ptcmng = p2p2.GetGlobalInstanceProtocolManager()

@@ -2,12 +2,10 @@ package transactions
 
 import (
 	"bytes"
-	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/blockmint/block/actions"
 	"github.com/hacash/blockmint/types/state"
 	"math/big"
 
-	"fmt"
 	"github.com/hacash/blockmint/block/fields"
 
 	"golang.org/x/crypto/sha3"
@@ -138,10 +136,10 @@ func (trs *Transaction_0_Coinbase) RequestAddressBalance() ([][]byte, []big.Int,
 // 修改 / 恢复 状态数据库
 func (trs *Transaction_0_Coinbase) ChangeChainState(state state.ChainStateOperation) error {
 
-	fmt.Printf("trs.TotalFee = %s\n", trs.TotalFee.ToFinString())
+	// fmt.Printf("trs.TotalFee = %s\n", trs.TotalFee.ToFinString())
 	rwd, _ := trs.Reward.Add(&trs.TotalFee)
-	addr, _ := base58check.Encode(trs.Address)
-	fmt.Printf("coinbase.ChangeChainState,  %s  +=  %s\n", addr, rwd.ToFinString())
+	// addr, _ := base58check.Encode(trs.Address)
+	// fmt.Printf("coinbase.ChangeChainState,  %s  +=  %s\n", addr, rwd.ToFinString())
 	return actions.DoAddBalanceFromChainState(state, trs.Address, *rwd)
 }
 func (trs *Transaction_0_Coinbase) RecoverChainState(state state.ChainStateOperation) error {

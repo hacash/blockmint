@@ -24,7 +24,7 @@ import (
 var (
 	insertBlocksChSize = 255
 
-	miningSleepMicrosecond = 1000 * 5000
+	miningSleepMicrosecond = 500
 )
 
 type HacashMiner struct {
@@ -167,7 +167,7 @@ MINING_SUCCESS:
 	}
 	// coinbase
 	coinbase.TotalFee = *totalFee
-	fmt.Println(totalFee.ToFinString())
+	// fmt.Println(totalFee.ToFinString())
 	coinbase.ChangeChainState(newState) // 加上奖励和手续费
 	// 保存用户状态
 	chainstate := state.GetGlobalInstanceChainState()

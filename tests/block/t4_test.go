@@ -123,8 +123,6 @@ func Test_6(t *testing.T) {
 
 func Test_loop_nice(t *testing.T) {
 
-	//account.FindNiceAccounts("yangjie19920203+liyang19940622+", 4, 0)
-
 	fmt.Println([]byte("ㄜ"))
 
 }

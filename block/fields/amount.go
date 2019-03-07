@@ -52,7 +52,11 @@ func NewAmountByBigIntWithUnit(bignum *big.Int, unit int) (*Amount, error) {
 }
 
 func NewAmountByBigInt(bignum *big.Int) (*Amount, error) {
-	longnumstrary := []byte(bignum.String())
+	longnumstr := bignum.String()
+	if longnumstr == "0" {
+		return NewEmptyAmount(), nil
+	}
+	longnumstrary := []byte(longnumstr)
 	strlen := len(longnumstrary)
 	unit := 0
 	for i := strlen - 1; i >= 0; i-- {
@@ -66,6 +70,8 @@ func NewAmountByBigInt(bignum *big.Int) (*Amount, error) {
 		}
 	}
 	numeralstr := string(longnumstrary[0 : strlen-unit])
+	//fmt.Println("longnumstrary:", bignum.String())
+	//fmt.Println("numeralstr:", numeralstr)
 	numeralbigint, ok1 := new(big.Int).SetString(numeralstr, 10)
 	if !ok1 {
 		return nil, err.New("Amount too big")
@@ -287,18 +293,18 @@ func (bill *Amount) EllipsisDecimalFor23SizeStore() *Amount {
 
 // 加法
 func (bill *Amount) Add(amt *Amount) (*Amount, error) {
-	add1 := bill.GetValue()
-	add2 := amt.GetValue()
-	add1 = add1.Add(add1, add2)
-	return NewAmountByBigInt(add1)
+	num1 := bill.GetValue()
+	num2 := amt.GetValue()
+	num1 = num1.Add(num1, num2)
+	return NewAmountByBigInt(num1)
 }
 
 // 减法
 func (bill *Amount) Sub(amt *Amount) (*Amount, error) {
-	add1 := bill.GetValue()
-	add2 := amt.GetValue()
-	add1 = add1.Sub(add1, add2)
-	return NewAmountByBigInt(add1)
+	num1 := bill.GetValue()
+	num2 := amt.GetValue()
+	num1 = num1.Sub(num1, num2)
+	return NewAmountByBigInt(num1)
 }
 
 // 比较

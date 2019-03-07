@@ -24,6 +24,13 @@ func main() {
 	//Test_coinbaseAmt()
 	//return
 
+	StartHacash()
+
+}
+
+// 启动
+func StartHacash() {
+
 	if config.Config.Miner.Backtoheight > 0 {
 		tarhei := config.Config.Miner.Backtoheight
 		// 区块状态倒退
@@ -73,7 +80,7 @@ func Test_coinbaseAmt() {
 		blkbts, _ := db.GetBlockBytesByHeight(i, true, true)
 		block, _, _ := blocks.ParseBlock(blkbts, 0)
 		coinbase, _ := block.GetTransactions()[0].(*transactions.Transaction_0_Coinbase)
-		addr, _ := base58check.Encode(coinbase.Address)
+		addr := base58check.Encode(coinbase.Address)
 		if _, ok := rewards[addr]; ok {
 			rewards[addr] += 1
 		} else {

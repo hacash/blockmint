@@ -296,6 +296,10 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	defer pm.removePeer(p.id)
 
+	if pm.peers.Len() == 1 {
+		fmt.Println("hacash peer connected", "name:", p.Name())
+	}
+
 	//fmt.Println("syncTransactions", "name", p.Name())
 
 	// Propagate existing transactions. new transactions appearing

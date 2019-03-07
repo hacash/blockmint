@@ -24,7 +24,7 @@ import (
 var (
 	insertBlocksChSize = 255
 
-	miningSleepMicrosecond = 300
+	miningSleepMicrosecond = 30
 )
 
 type HacashMiner struct {
@@ -263,7 +263,7 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	hxdift := difficulty.BigToCompact(difficulty.HashToBig(&blkhash))
 	tardift := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
 	if hxdift > tardift {
-		return fmt.Errorf("difficulty not satisfy")
+		return fmt.Errorf("difficulty not satisfy, height %d, accept %d, but got %d", block.GetHeight(), tardift, hxdift)
 	}
 	// 验证签名
 	sigok, e1 := block.VerifyNeedSigns()
@@ -426,17 +426,31 @@ func (this *HacashMiner) BackTheWorldInHeight(target_height uint64) error {
 		}
 	}
 	// 修改矿工状态
-	blkhdbts, err := db.GetBlockBytesByHeight(current_height, true, true)
-	if err != nil {
-		return err
+	blkhdbts, e0 := db.GetBlockBytesByHeight(current_height, true, true)
+	if e0 != nil {
+		return e0
 	}
 	//fmt.Println("head bytes ", hex.EncodeToString(blkhdbts))
 	blkhead, _, e2 := blocks.ParseBlock(blkhdbts, 0)
 	if e2 != nil {
 		return e2
 	}
-	fmt.Println("修改矿工状态 height", blkhead.GetHeight(), "hash", hex.EncodeToString(blkhead.Hash()))
-
+	prev288blkhei := current_height - (current_height % config.ChangeDifficultyBlockNumber)
+	if prev288blkhei == 0 {
+		rootblk := coin.GetGenesisBlock()
+		this.State.prev288BlockTimestamp = rootblk.GetTimestamp() // 起始时间戳
+	} else {
+		blkhdbts_prev288, e1 := db.GetBlockBytesByHeight(prev288blkhei, true, false)
+		if e1 != nil {
+			return e1
+		}
+		blkhead_prev288, _, e3 := blocks.ParseBlockHead(blkhdbts_prev288, 0)
+		if e3 != nil {
+			return e3
+		}
+		this.State.prev288BlockTimestamp = blkhead_prev288.GetTimestamp() // 时间戳
+		//fmt.Println("修改矿工状态 height", blkhead.GetHeight(), "hash", hex.EncodeToString(blkhead.Hash()))
+	}
 	this.State.SetNewBlock(blkhead)
 	// ok
 	return nil

@@ -48,7 +48,7 @@ func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) ui
 		return LowestDifficultyCompact
 	}
 	head := this.prevBlockHead
-	return difficulty.CalculateNextWorkTarget(
+	targetdiff := difficulty.CalculateNextWorkTarget(
 		head.GetDifficulty(),
 		height,
 		this.prev288BlockTimestamp,
@@ -57,6 +57,8 @@ func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) ui
 		config.ChangeDifficultyBlockNumber,
 		print,
 	)
+	//fmt.Println("targetdiff", targetdiff)
+	return targetdiff
 }
 
 // 获取下一个区块的难度值

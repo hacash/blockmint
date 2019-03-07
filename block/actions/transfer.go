@@ -86,6 +86,8 @@ func (act *Action_1_SimpleTransfer) SetBelongTrs(trs block.Transaction) {
 
 func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 fields.Address, addr2 fields.Address, amt fields.Amount) error {
 
+	//fmt.Println("addr1:", base58check.Encode(addr1), "addr2:", base58check.Encode(addr2), "amt:", amt.ToFinString())
+
 	if bytes.Compare(addr1, addr2) == 0 {
 		return nil // 自己转给自己
 	}
@@ -95,15 +97,19 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 		return fmt.Errorf("balance not enough")
 	}
 	amt2 := state.Balance(addr2)
+	//fmt.Println("amt2: " + amt2.ToFinString())
 	// add
 	amtsub, e1 := amt1.Sub(&amt)
 	if e1 != nil {
+		//fmt.Println("e1: ", e1)
 		return e1
 	}
 	amtadd, e2 := amt2.Add(&amt)
 	if e2 != nil {
+		//fmt.Println("e2: ", e2)
 		return e2
 	}
+	//fmt.Println("EllipsisDecimalFor23SizeStore: ")
 	amtsub = amtsub.EllipsisDecimalFor23SizeStore()
 	amtadd = amtadd.EllipsisDecimalFor23SizeStore()
 	/*if amtsub1 != amtsub || amtadd1 != amtadd {

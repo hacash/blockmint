@@ -286,7 +286,7 @@ func (block *Block_v1) ChangeChainState(blockstate state.ChainStateOperation) er
 func (block *Block_v1) RecoverChainState(blockstate state.ChainStateOperation) error {
 	txlen := len(block.Transactions)
 	totalfee := fields.NewEmptyAmount()
-	for i := txlen - 1; i > 0; i++ {
+	for i := txlen - 1; i > 0; i-- {
 		tx := block.Transactions[i]
 		e := tx.RecoverChainState(blockstate)
 		if e != nil {

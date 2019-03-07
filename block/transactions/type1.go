@@ -3,8 +3,8 @@ package transactions
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/hacash/bitcoin/address/address"
+	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/bitcoin/address/btcec"
 	"github.com/hacash/blockmint/block/actions"
 	"github.com/hacash/blockmint/block/fields"
@@ -260,15 +260,15 @@ func (trs *Transaction_1_Simple) FillNeedSigns(addrPrivates map[string][]byte) e
 func (trs *Transaction_1_Simple) addOneSign(hash []byte, addrPrivates map[string][]byte, address []byte) error {
 	privitebytes, has := addrPrivates[string(address)]
 	if !has {
-		return err.New("Private Key '" + base58.Encode(address) + "' necessary")
+		return err.New("Private Key '" + base58check.Encode(address) + "' necessary")
 	}
 	privite, e1 := account.GetAccountByPriviteKey(privitebytes)
 	if e1 != nil {
-		return err.New("Private Key '" + base58.Encode(address) + "' error")
+		return err.New("Private Key '" + base58check.Encode(address) + "' error")
 	}
 	signature, e2 := privite.Private.Sign(hash)
 	if e2 != nil {
-		return err.New("Private Key '" + base58.Encode(address) + "' do sign error")
+		return err.New("Private Key '" + base58check.Encode(address) + "' do sign error")
 	}
 	// append
 	trs.SignCount += 1
@@ -352,9 +352,9 @@ func (trs *Transaction_1_Simple) ChangeChainState(state state.ChainStateOperatio
 
 func (trs *Transaction_1_Simple) RecoverChainState(state state.ChainStateOperation) error {
 	// actions
-	for i := len(trs.Actions) - 1; i <= 0; i-- {
+	for i := len(trs.Actions) - 1; i >= 0; i-- {
 		trs.Actions[i].SetBelongTrs(trs)
-		e := trs.Actions[i].ChangeChainState(state)
+		e := trs.Actions[i].RecoverChainState(state)
 		if e != nil {
 			return e
 		}

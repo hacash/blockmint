@@ -66,3 +66,17 @@ func (this *TrsIdxDB) Find(hash []byte) (*TrsIdxOneFindItem, error) {
 
 	return &item, nil
 }
+
+func (this *TrsIdxDB) Delete(hash []byte) error {
+	query, e1 := this.treedb.CreateQuery(hash)
+	if e1 != nil {
+		return e1
+	}
+	defer query.Close()
+	// Remove
+	e2 := query.Remove()
+	if e2 != nil {
+		return e2
+	}
+	return nil
+}

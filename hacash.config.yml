@@ -9,6 +9,7 @@ datadir: /media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/database_de
 # 矿工配置
 miner:
   forcestart: true
+#  backtoheight: 800 # 区块状态退回到指定高度
   minfeeratio: 100Y
   rewards:
   - 127717zvZWFjEghjEpyyRSnitEEbnMuuLn

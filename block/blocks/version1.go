@@ -302,7 +302,7 @@ func (block *Block_v1) RecoverChainState(blockstate state.ChainStateOperation) e
 	coinbase, _ := block.Transactions[0].(*transactions.Transaction_0_Coinbase)
 	coinbase.TotalFee = *totalfee
 	// coinbase change state
-	e3 := coinbase.ChangeChainState(blockstate)
+	e3 := coinbase.RecoverChainState(blockstate)
 	if e3 != nil {
 		return e3
 	}

@@ -24,7 +24,7 @@ import (
 var (
 	insertBlocksChSize = 255
 
-	miningSleepMicrosecond = 500
+	miningSleepMicrosecond = 300
 )
 
 type HacashMiner struct {
@@ -244,17 +244,18 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	var fail_height = this.State.CurrentHeight()+1 != block.GetHeight()
 	var fail_prevhash = bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0
 	if fail_height || fail_prevhash {
-		var typestr = "height"
-		if fail_prevhash {
-			typestr = "prev hash"
+		var typestr = "prev hash"
+		if fail_height {
+			typestr += "height"
 		}
-		return fmt.Errorf("not accepted block with wrong",
+		return fmt.Errorf("not accepted block with wrong %s, height=%d, hash=%s, target_prev_hash=%s, base_height=%d, base_hash=%s, base_prev_hash=%s",
 			typestr,
-			", height", block.GetHeight(),
-			"hash", hex.EncodeToString(block.Hash()),
-			"target prev hash", hex.EncodeToString(block.GetPrevHash()),
-			", base height", this.State.CurrentHeight(),
-			"base hash", hex.EncodeToString(this.State.CurrentBlockHash()),
+			block.GetHeight(),
+			hex.EncodeToString(block.Hash()),
+			hex.EncodeToString(block.GetPrevHash()),
+			this.State.CurrentHeight(),
+			hex.EncodeToString(this.State.CurrentBlockHash()),
+			hex.EncodeToString(this.State.prevBlockHead.GetPrevHash()),
 		)
 	}
 	// 检查难度值
@@ -382,7 +383,7 @@ func (this *HacashMiner) createCoinbaseTx(block block.Block) *transactions.Trans
 	return coinbase
 }
 
-// 创建coinbase交易
+// 设置coinbase交易
 func (this *HacashMiner) setMinerForCoinbase(coinbase *transactions.Transaction_0_Coinbase) string {
 	addrreadble := config.GetRandomMinerRewardAddress()
 	addr, e := fields.CheckReadableAddress(addrreadble)
@@ -391,6 +392,54 @@ func (this *HacashMiner) setMinerForCoinbase(coinbase *transactions.Transaction_
 	}
 	coinbase.Address = *addr
 	return addrreadble
+}
+
+// 倒退区块
+func (this *HacashMiner) BackTheWorldInHeight(target_height uint64) error {
+
+	current_height := this.State.CurrentHeight()
+	if target_height >= current_height {
+		// do nothing
+		return nil
+	}
+
+	db := store.GetGlobalInstanceBlocksDataStore()
+	state := state.GetGlobalInstanceChainState()
+	for {
+		blkbts, err := db.GetBlockBytesByHeight(current_height, true, true)
+		if err != nil {
+			return err
+		}
+		blkobj, _, e2 := blocks.ParseBlock(blkbts, 0)
+		if e2 != nil {
+			return e2
+		}
+		fmt.Println("delete height", current_height, "hash", hex.EncodeToString(blkobj.Hash()), "prev_hash", hex.EncodeToString(blkobj.GetPrevHash()[0:16])+"...")
+		// 回退状态
+		blkobj.RecoverChainState(state)
+		// 删除数据
+		db.DeleteBlockForceUnsafe(blkobj)
+		// 是否完成
+		current_height--
+		if current_height <= target_height {
+			break
+		}
+	}
+	// 修改矿工状态
+	blkhdbts, err := db.GetBlockBytesByHeight(current_height, true, true)
+	if err != nil {
+		return err
+	}
+	//fmt.Println("head bytes ", hex.EncodeToString(blkhdbts))
+	blkhead, _, e2 := blocks.ParseBlock(blkhdbts, 0)
+	if e2 != nil {
+		return e2
+	}
+	fmt.Println("修改矿工状态 height", blkhead.GetHeight(), "hash", hex.EncodeToString(blkhead.Hash()))
+
+	this.State.SetNewBlock(blkhead)
+	// ok
+	return nil
 }
 
 /////////////////////////////////////////////////////////////////////////////////

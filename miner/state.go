@@ -102,7 +102,7 @@ func (this *MinerState) FlushSave() {
 	file := this.getDistFile()
 
 	//fmt.Println( "miner state save: " + hex.EncodeToString(head.Bytes()) )
-	file.Write(head.Bytes())
+	file.WriteAt(head.Bytes(), 0)
 	file.Close()
 }
 

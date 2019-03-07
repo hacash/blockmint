@@ -264,3 +264,12 @@ func (this *BlocksDataStore) GetBlockBytesByHeight(height uint64, gethead bool, 
 	// ok
 	return blockbytes.Bytes(), nil
 }
+
+// 强制非安全删除区块、交易等数据
+func (this *BlocksDataStore) DeleteBlockForceUnsafe(block block.Block) error {
+	// 循环删除交易指针即可
+	for _, tx := range block.GetTransactions() {
+		this.trsdb.Delete(tx.HashNoFee())
+	}
+	return nil
+}

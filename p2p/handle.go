@@ -217,28 +217,34 @@ func (pm *ProtocolManager) syncMinerStatus(p *peer) {
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
 func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
-
-	//fmt.Println("func DoSyncMinerStatus")
+	//fmt.Println("func DoSyncMinerStatus, onsyncminer:", pm.onsyncminer)
+	if pm.onsyncminer {
+		return // 正在同步
+	}
 	if pm.peers.Len() < 1 {
 		return // 最少连接个节点才能同步状态
 	}
 	// 判断是否完成同步
 	best := pm.peers.BestPeer()
 	if best == nil {
+		//fmt.Println("not Completed")
 		return // not Completed
 	}
 	_, tarhei := best.Head()
 	minerdb := pm.miner
 	fromhei := minerdb.State.CurrentHeight() + 1
 	if tarhei >= fromhei {
+		//fmt.Println("tarhei >= fromhei")
+		//fmt.Println("pm.onsyncminer = true")
 		pm.onsyncminer = true // 开始同步
-		fmt.Printf("ask sync blocks from height %d ...\n", fromhei)
+		fmt.Printf("ask sync blocks from height %d ... ", fromhei)
 		go func() {
 			p2p.Send(best.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
 				fromhei,
 			})
 		}()
 	} else {
+		//fmt.Println("pm.onsyncminer = false")
 		pm.onsyncminer = false
 		minerdb.StartMining() // 可以开始挖矿
 		if pm.peers.Len() == 1 {
@@ -449,23 +455,28 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				segbodys = append(segbodys, stuffbytes[seek:sk])
 				seek = sk
 			}
-			fmt.Printf("got sync blocks from height %d to %d, inserting ...\n", data.FromHeight, data.ToHeight)
+			fmt.Printf("got blocks (%d > %d), inserting ... ", data.FromHeight, data.ToHeight)
 			insertCh := make(chan miner.InsertNewBlockEvent, len(segblocks))
 			subhandle := minerdb.SubscribeInsertBlock(insertCh)
 			go func() { // 写入区块
 				for i := 0; i < len(segblocks); i++ {
+					//fmt.Println("minerdb.InsertBlock", segblocks[i].GetHeight())
 					minerdb.InsertBlock(segblocks[i], segbodys[i])
 				}
 			}()
 			for {
 				insert := <-insertCh
+				//fmt.Println("insert := <-insertCh ",insert.Block.GetHeight(), insert.Success)
 				if !insert.Success {
 					pm.removePeer(p.id) // 区块失败
 					break
 				}
 				if insert.Block.GetHeight() == data.ToHeight { // insert ok
 					subhandle.Unsubscribe()
-					pm.syncMinerStatus(p) // 再次同步
+					//fmt.Println("subhandle.Unsubscribe() pm.syncMinerStatus(p)")
+					fmt.Printf("OK\n")
+					pm.onsyncminer = false // 完成
+					pm.syncMinerStatus(p)  // 再次同步
 					break
 				}
 			}

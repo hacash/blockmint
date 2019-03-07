@@ -24,7 +24,7 @@ import (
 var (
 	insertBlocksChSize = 255
 
-	miningSleepMicrosecond = 30
+	miningSleepMicrosecond = 300
 )
 
 type HacashMiner struct {

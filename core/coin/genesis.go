@@ -30,7 +30,10 @@ func GetGenesisBlock() block.Block {
 	genesis.Nonce = fields.VarInt4(160117829)
 	// coinbase
 	addrreadble := "1271438866CSDpJUqrnchoJAiGGBFSQhjd"
-	addr, _ := fields.CheckReadableAddress(addrreadble)
+	addr, e0 := fields.CheckReadableAddress(addrreadble)
+	if e0 != nil {
+		panic(e0)
+	}
 	coinbase := transactions.NewTransaction_0_Coinbase()
 	coinbase.Address = *addr
 	coinbase.Reward = *(BlockCoinBaseReward(uint64(0)))

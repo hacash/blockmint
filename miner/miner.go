@@ -107,23 +107,22 @@ func (this *HacashMiner) Start() {
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
 	this.Log.Noise("hacash miner will start mining by call func StartMining()")
-	go func() {
-		if len(this.startingCh) == 0 {
-			this.Log.Info("start mining")
-			this.startingCh <- true
-		}
-	}()
+	if len(this.stopingCh) > 0 {
+		<-this.stopingCh // 防止停机
+	}
+	if len(this.startingCh) == 0 {
+		this.Log.Info("start mining")
+		this.startingCh <- true
+	}
 }
 
 // 开始挖矿
 func (this *HacashMiner) StopMining() {
 	this.Log.Noise("hacash miner will stop mining by call func StopMining()")
-	go func() {
-		if len(this.stopingCh) == 0 {
-			this.Log.Info("stop mining")
-			this.stopingCh <- true
-		}
-	}()
+	if len(this.stopingCh) == 0 {
+		this.Log.Info("stop mining")
+		this.stopingCh <- true
+	}
 }
 
 // 挖矿循环
@@ -183,8 +182,9 @@ MINING_SUCCESS:
 	// 插入并等待结果
 	insert := this.InsertBlockWait(newBlock, nil)
 	if insert.Success {
+		targethashhex := hex.EncodeToString(targetHash)
 		// 广播新区快信息
-		this.Log.Notice("mining success one block", "hash", targetHash)
+		this.Log.Notice("mining success one block", "hash", targethashhex)
 		go this.discoveryNewBlockFeed.Send(DiscoveryNewBlockEvent{
 			Block: newBlock,
 			Bodys: insert.Bodys,
@@ -195,7 +195,7 @@ MINING_SUCCESS:
 			int(newBlock.GetHeight()),
 			len(newBlock.GetTransactions())-1,
 			newBlock.GetDifficulty(),
-			hex.EncodeToString(targetHash),
+			targethashhex,
 			hex.EncodeToString(newBlock.GetPrevHash()[0:16])+"...",
 			rewardAddrReadble,
 			coinbase.Reward.ToFinString(),
@@ -220,7 +220,7 @@ func (this *HacashMiner) InsertBlock(blk block.Block, bodys []byte) {
 // 插入区块
 func (this *HacashMiner) insertBlockLoop() {
 	for {
-		tk := time.NewTimer(time.Second * 3)
+		tk := time.NewTimer(time.Second * 9)
 		select {
 		case blk := <-this.insertBlocksCh:
 			this.Log.News("insert loop get one block", "height", blk.Block.GetHeight())
@@ -233,8 +233,8 @@ func (this *HacashMiner) insertBlockLoop() {
 				this.Log.News("insert block ok", "height", blk.Block.GetHeight())
 			}
 		case <-tk.C:
-			//this.Log.Noise("no block to insert")
-			// this.StartMining() // 几秒后没有区块插入则自动开始挖矿
+			this.Log.Noise("no block to insert")
+			this.StartMining() // 几秒后没有区块插入则自动开始挖矿
 		}
 	}
 }

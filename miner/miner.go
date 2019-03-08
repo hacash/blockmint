@@ -17,6 +17,7 @@ import (
 	"github.com/hacash/blockmint/service/txpool"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -24,7 +25,8 @@ import (
 var (
 	insertBlocksChSize = 255
 
-	miningSleepMicrosecond = 1000 * 200
+	miningSleepNanosecond = uint64(0) // 矿工休眠时间
+
 )
 
 type HacashMiner struct {
@@ -77,6 +79,16 @@ func GetGlobalInstanceHacashMiner() *HacashMiner {
 }
 
 func NewHacashMiner() *HacashMiner {
+	// 检查配置
+	sleepnano, e1 := strconv.ParseUint(config.Config.Miner.Stepsleepnano, 10, 0)
+	if e1 != nil {
+		panic("config.Config.Miner.Stepsleepnano not be " + config.Config.Miner.Stepsleepnano)
+	}
+	if sleepnano > 0 {
+		fmt.Println("miner step calculation sleep", sleepnano, "nanosecond")
+	}
+	miningSleepNanosecond = sleepnano
+	// 创建
 	miner := &HacashMiner{}
 	miner.State = NewMinerState()
 	miner.State.FetchLoad()
@@ -144,7 +156,9 @@ RESTART_TO_MINING:
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 	for i := uint32(0); i < 4294967295; i++ {
-		time.Sleep(time.Duration(miningSleepMicrosecond) * time.Microsecond)
+		if miningSleepNanosecond > 0 {
+			time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
+		}
 		newBlock.SetNonce(i)
 		targetHash = newBlock.HashFresh()
 		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))

@@ -31,7 +31,8 @@ var Config = struct {
 		Minfeeratio string   `default:"1Y"`    // 接受的最小手续费比例
 		Rewards     []string // 矿工奖励地址
 		// 慎重参数
-		Backtoheight uint64 // state 数据状态退回到指定区块高低
+		Backtoheight  uint64 // state 数据状态退回到指定区块高低
+		Stepsleepnano string `default:"1KK"` // 矿工单次计算后休眠时间 纳秒  1秒=1000*1000*1000纳秒
 	}
 
 	P2p struct {
@@ -63,6 +64,7 @@ func LoadConfigFile() {
 	//fmt.Printf("config: %#v\n\n", Config)
 	// handle
 	Config.Miner.Minfeeratio = strnumdeal(Config.Miner.Minfeeratio)
+	Config.Miner.Stepsleepnano = strnumdeal(Config.Miner.Stepsleepnano)
 	// deal
 	MainnetBootnodes = append(MainnetBootnodes, Config.P2p.Bootnodes...)
 	if Config.P2p.Myname == "" {

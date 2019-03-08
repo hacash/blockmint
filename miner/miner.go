@@ -24,7 +24,7 @@ import (
 var (
 	insertBlocksChSize = 255
 
-	miningSleepMicrosecond = 300
+	miningSleepMicrosecond = 1000 * 200
 )
 
 type HacashMiner struct {
@@ -325,6 +325,15 @@ func (this *HacashMiner) SubscribeDiscoveryNewBlock(discoveryCh chan<- Discovery
 // 创建区块
 func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *transactions.Transaction_0_Coinbase, *fields.Amount, error) {
 	nextblock := blocks.NewEmptyBlock_v1(this.State.prevBlockHead)
+
+	//////////////// test ////////////////
+	//timeset := coin.GetGenesisBlock().GetTimestamp() + nextblock.GetHeight()*300 - 150 + uint64(rand.Int63n(300))
+	//nextblock.Timestamp = fields.VarInt5(timeset)
+	//if timeset > uint64(time.Now().Unix()) {
+	//	panic("okokokok")
+	//}
+	//////////////// test ////////////////
+
 	hei, dfct, info := this.State.NextHeightTargetDifficultyCompact()
 	if info != nil && *info != "" {
 		fmt.Println(*info)

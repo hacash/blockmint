@@ -54,14 +54,10 @@ type HacashMiner struct {
 	discoveryNewBlockFeedScope event.SubscriptionScope
 }
 
-type InsertNewBlockEvent struct {
-	Block   block.Block
-	Success bool // 成功写入
-}
-
 type DiscoveryNewBlockEvent struct {
-	Block block.Block
-	Bodys []byte
+	Success bool // 成功写入
+	Block   block.Block
+	Bodys   []byte
 }
 
 var (
@@ -145,7 +141,7 @@ func (this *HacashMiner) miningLoop() {
 // 执行挖矿
 func (this *HacashMiner) doMining() error {
 	// 创建区块
-	newBlock, newState, coinbase, totalFee, e := this.CreateNewBlock()
+	newBlock, _, coinbase, _, e := this.CreateNewBlock()
 	if e != nil {
 		return e
 	}
@@ -173,41 +169,30 @@ RESTART_TO_MINING:
 	}
 	goto RESTART_TO_MINING
 MINING_SUCCESS:
-	// 储存区块与状态
-	// 存储区块数据
-	bodys, sverr := store.GetGlobalInstanceBlocksDataStore().Save(newBlock)
-	if sverr != nil {
-		return sverr
+
+	// 插入并等待结果
+	insert := this.InsertBlockWait(newBlock, nil)
+	if insert.Success {
+		// 广播新区快信息
+		go this.discoveryNewBlockFeed.Send(DiscoveryNewBlockEvent{
+			Block: newBlock,
+			Bodys: insert.Bodys,
+		})
+		// 打印相关信息
+		str_time := time.Unix(int64(newBlock.GetTimestamp()), 0).Format("01/02 15:04:05")
+		fmt.Printf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s\n",
+			int(newBlock.GetHeight()),
+			len(newBlock.GetTransactions())-1,
+			newBlock.GetDifficulty(),
+			hex.EncodeToString(targetHash),
+			hex.EncodeToString(newBlock.GetPrevHash()[0:16])+"...",
+			rewardAddrReadble,
+			coinbase.Reward.ToFinString(),
+			str_time,
+		)
 	}
-	// coinbase
-	coinbase.TotalFee = *totalFee
-	// fmt.Println(totalFee.ToFinString())
-	coinbase.ChangeChainState(newState) // 加上奖励和手续费
-	// 保存用户状态
-	chainstate := state.GetGlobalInstanceChainState()
-	chainstate.TraversalCopy(newState)
-	// 更新矿工状态
-	this.State.SetNewBlock(newBlock)
-	// 广播新区快信息
-	go this.discoveryNewBlockFeed.Send(DiscoveryNewBlockEvent{
-		Block: newBlock,
-		Bodys: bodys,
-	})
 	// 继续挖掘下一个区块
 	this.StartMining()
-
-	// 打印相关信息
-	str_time := time.Unix(int64(newBlock.GetTimestamp()), 0).Format("01/02 15:04:05")
-	fmt.Printf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s\n",
-		int(newBlock.GetHeight()),
-		len(newBlock.GetTransactions())-1,
-		newBlock.GetDifficulty(),
-		hex.EncodeToString(targetHash),
-		hex.EncodeToString(newBlock.GetPrevHash()[0:16])+"...",
-		rewardAddrReadble,
-		coinbase.Reward.ToFinString(),
-		str_time,
-	)
 
 	return nil
 }
@@ -215,6 +200,7 @@ MINING_SUCCESS:
 // 插入区块
 func (this *HacashMiner) InsertBlock(blk block.Block, bodys []byte) {
 	this.insertBlocksCh <- &DiscoveryNewBlockEvent{
+		false,
 		blk,
 		bodys,
 	}
@@ -247,11 +233,13 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}
 	block := blk.Block
 	successInsert := false
+	blockBytes := []byte{}
 	defer func() {
 		// 插入处理事件通知
-		go this.insertBlockFeed.Send(InsertNewBlockEvent{
-			block,
+		go this.insertBlockFeed.Send(DiscoveryNewBlockEvent{
 			successInsert,
+			block,
+			blockBytes,
 		})
 	}()
 	// 判断高度
@@ -308,7 +296,8 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 		return blksterr
 	}
 	// 存储区块数据
-	_, sverr := blockdb.Save(block)
+	var sverr error
+	blockBytes, sverr = blockdb.Save(block)
 	if sverr != nil {
 		return sverr
 	}
@@ -324,13 +313,30 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 }
 
 // 插入区块进度事件
-func (this *HacashMiner) SubscribeInsertBlock(insertCh chan<- InsertNewBlockEvent) event.Subscription {
+func (this *HacashMiner) SubscribeInsertBlock(insertCh chan<- DiscoveryNewBlockEvent) event.Subscription {
 	return this.insertBlockFeedScope.Track(this.insertBlockFeed.Subscribe(insertCh))
 }
 
 // 订阅挖掘出新区快事件
 func (this *HacashMiner) SubscribeDiscoveryNewBlock(discoveryCh chan<- DiscoveryNewBlockEvent) event.Subscription {
 	return this.discoveryNewBlockFeedScope.Track(this.discoveryNewBlockFeed.Subscribe(discoveryCh))
+}
+
+// 插入区块，等待插入状态返回
+func (this *HacashMiner) InsertBlockWait(blk block.Block, bodys []byte) DiscoveryNewBlockEvent {
+	insertCh := make(chan DiscoveryNewBlockEvent, 1)
+	subhandle := this.SubscribeInsertBlock(insertCh)
+	// 写入区块
+	this.InsertBlock(blk, bodys)
+	// 等待返回
+	for {
+		res := <-insertCh
+		if bytes.Compare(res.Block.Hash(), blk.Hash()) == 0 {
+			subhandle.Unsubscribe() // 取消注册
+			return res
+		}
+
+	}
 }
 
 // 创建区块

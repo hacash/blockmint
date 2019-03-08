@@ -466,7 +466,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				seek = sk
 			}
 			fmt.Printf("got blocks (%d > %d), inserting ... ", data.FromHeight, data.ToHeight)
-			insertCh := make(chan miner.InsertNewBlockEvent, len(segblocks))
+			insertCh := make(chan miner.DiscoveryNewBlockEvent, len(segblocks))
 			subhandle := minerdb.SubscribeInsertBlock(insertCh)
 			go func() { // 写入区块
 				for i := 0; i < len(segblocks); i++ {
@@ -525,24 +525,18 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			if e != nil {
 				return
 			}
-			insertCh := make(chan miner.InsertNewBlockEvent, 1)
-			subhandle := pm.miner.SubscribeInsertBlock(insertCh)
-			go func() { // 写入区块
-				pm.miner.InsertBlock(blk, blkbts)
-			}()
-			insert := <-insertCh
-			if insert.Block.GetHeight() == data.Height {
-				subhandle.Unsubscribe()
-				if insert.Success { // insert ok
-					str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
-					fmt.Println("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions())-1, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
-					// 广播区块=
-					data.block = insert.Block
-					go pm.BroadcastBlock(&data)
-				}
-				pm.onsyncminer = false // 状态恢复
-				pm.miner.StartMining() // 可以开始挖矿
+			// 插入并等待
+			insert := pm.miner.InsertBlockWait(blk, blkbts)
+			if insert.Success { // insert ok
+				str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
+				fmt.Println("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions())-1, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
+				// 广播区块=
+				data.block = insert.Block
+				go pm.BroadcastBlock(&data)
 			}
+			pm.onsyncminer = false // 状态恢复
+			pm.miner.StartMining() // 可以开始挖矿
+
 		}()
 
 	default:

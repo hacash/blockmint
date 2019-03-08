@@ -493,6 +493,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if pm.onsyncminer {
 			return nil // 正在同步 忽略新挖出区块
 		}
+		pm.onsyncminer = true
 		// 新区块被挖出
 		//fmt.Println("var data MsgDataNewBlock")
 		var data MsgDataNewBlock
@@ -524,14 +525,17 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				pm.miner.InsertBlock(blk, blkbts)
 			}()
 			insert := <-insertCh
-			if insert.Block.GetHeight() == data.Height && insert.Success { // insert ok
-				str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
-				fmt.Println("discovery new block, insert success.", "height", data.Height, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
-				// 广播区块=
-				data.block = insert.Block
-				go pm.BroadcastBlock(&data)
+			if insert.Block.GetHeight() == data.Height {
+				subhandle.Unsubscribe()
+				pm.miner.StartMining() // 可以开始挖矿
+				if insert.Success {    // insert ok
+					str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
+					fmt.Println("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions()), "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
+					// 广播区块=
+					data.block = insert.Block
+					go pm.BroadcastBlock(&data)
+				}
 			}
-			subhandle.Unsubscribe()
 		}()
 
 	default:

@@ -303,10 +303,7 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	chainstate.TraversalCopy(newBlockChainState)
 	// 更新矿工状态
 	this.State.SetNewBlock(block)
-	// 判断可以开始挖矿
-	if len(this.insertBlocksCh) == 0 {
-		this.StartMining()
-	}
+	// 成功状态
 	successInsert = true
 
 	return nil

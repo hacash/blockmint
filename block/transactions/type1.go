@@ -14,6 +14,7 @@ import (
 	"github.com/hacash/blockmint/types/state"
 	"golang.org/x/crypto/sha3"
 	"math/big"
+	"time"
 )
 
 type Transaction_1_Simple struct {
@@ -39,7 +40,7 @@ func NewEmptyTransaction_1_Simple(master fields.Address) (*Transaction_1_Simple,
 	if !master.IsValid() {
 		return nil, err.New("Master Address is InValid ")
 	}
-	timeUnix := 1550839748 //time.Now().Unix()
+	timeUnix := time.Now().Unix()
 	return &Transaction_1_Simple{
 		Timestamp:      fields.VarInt5(uint64(timeUnix)),
 		Address:        master,

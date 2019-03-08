@@ -128,7 +128,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	if peer == nil {
 		return
 	}
-	// fmt.Println("Removing Hacash peer", id)
+	fmt.Println("removing hacash peer", peer.Name())
 
 	if err := pm.peers.Unregister(id); err != nil {
 		fmt.Errorf("Peer removal failed peer %s err %s", id, err)
@@ -224,9 +224,9 @@ func (pm *ProtocolManager) syncMinerStatus(p *peer) {
 // syncTransactions starts sending all currently pending transactions to the given peer.
 func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	//fmt.Println("func DoSyncMinerStatus, onsyncminer:", pm.onsyncminer)
-	if pm.onsyncminer {
-		return // 正在同步
-	}
+	//if pm.onsyncminer {
+	//	return // 正在同步
+	//}
 	if pm.peers.Len() < 1 {
 		return // 最少连接个节点才能同步状态
 	}
@@ -533,15 +533,15 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			insert := <-insertCh
 			if insert.Block.GetHeight() == data.Height {
 				subhandle.Unsubscribe()
-				pm.onsyncminer = false // 状态恢复
-				pm.miner.StartMining() // 可以开始挖矿
-				if insert.Success {    // insert ok
+				if insert.Success { // insert ok
 					str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
 					fmt.Println("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions())-1, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
 					// 广播区块=
 					data.block = insert.Block
 					go pm.BroadcastBlock(&data)
 				}
+				pm.onsyncminer = false // 状态恢复
+				pm.miner.StartMining() // 可以开始挖矿
 			}
 		}()
 

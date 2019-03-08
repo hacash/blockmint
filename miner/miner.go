@@ -88,6 +88,7 @@ func NewHacashMiner() *HacashMiner {
 	miner.State.FetchLoad()
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
 	miner.stopingCh = make(chan bool, 1)
+	miner.startingCh = make(chan bool, 1)
 	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
 	return miner
 }
@@ -142,6 +143,7 @@ func (this *HacashMiner) miningLoop() {
 
 // 执行挖矿
 func (this *HacashMiner) doMining() error {
+	//fmt.Println("=++++++++++++++++++++++++++++++++")
 	// 创建区块
 	newBlock, _, coinbase, _, e := this.CreateNewBlock()
 	if e != nil {
@@ -162,6 +164,7 @@ RESTART_TO_MINING:
 		if miningSleepNanosecond > 0 {
 			time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
 		}
+		//fmt.Println(i)
 		newBlock.SetNonce(i)
 		targetHash = newBlock.HashFresh()
 		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))

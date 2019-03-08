@@ -34,10 +34,8 @@ type HacashMiner struct {
 
 	TxPool service.TxPool
 
-	// 可以开始挖矿
-	canStartCh chan bool // 开始
-
-	miningBreakOnce bool
+	startingCh chan bool // 标记
+	stopingCh  chan bool // 是否停止
 
 	// 正在插入区块
 	insertBlock sync.Mutex
@@ -89,9 +87,8 @@ func NewHacashMiner() *HacashMiner {
 	miner.State = NewMinerState()
 	miner.State.FetchLoad()
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
-	miner.canStartCh = make(chan bool, 1)
+	miner.stopingCh = make(chan bool, 1)
 	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
-	miner.miningBreakOnce = false
 	return miner
 }
 
@@ -104,16 +101,21 @@ func (this *HacashMiner) Start() {
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
 	//fmt.Println("HacashMiner StartMining ...")
-	this.miningBreakOnce = false
-	if len(this.canStartCh) == 0 {
-		this.canStartCh <- true
-	}
+	go func() {
+		if len(this.startingCh) == 0 {
+			this.startingCh <- true
+		}
+	}()
 }
 
 // 开始挖矿
 func (this *HacashMiner) StopMining() {
 	//fmt.Println("HacashMiner StopMining.")
-	this.miningBreakOnce = true
+	go func() {
+		if len(this.stopingCh) == 0 {
+			this.stopingCh <- true
+		}
+	}()
 }
 
 // 中断挖矿
@@ -129,10 +131,10 @@ func (this *HacashMiner) InterruptMining(block block.Block) {
 func (this *HacashMiner) miningLoop() {
 	for {
 		select {
-		case <-this.canStartCh:
+		case <-this.startingCh:
 			err := this.doMining()
 			if err != nil {
-				// fmt.Println("miningLoop out:", err)
+				fmt.Println("miningLoop out:", err)
 			}
 		}
 	}
@@ -152,6 +154,11 @@ RESTART_TO_MINING:
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 	for i := uint32(0); i < 4294967295; i++ {
+		select {
+		case <-this.stopingCh:
+			return fmt.Errorf("mining break once, stop mining.") // 停止挖矿
+		default:
+		}
 		if miningSleepNanosecond > 0 {
 			time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
 		}
@@ -162,9 +169,6 @@ RESTART_TO_MINING:
 		if curdiff < targetDifficulty {
 			// OK !!!!!!!!!!!!!!!
 			goto MINING_SUCCESS
-		}
-		if this.miningBreakOnce {
-			return fmt.Errorf("miningBreakOnce be set") // 暂停挖矿
 		}
 	}
 	goto RESTART_TO_MINING

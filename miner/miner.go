@@ -133,6 +133,7 @@ func (this *HacashMiner) miningLoop() {
 	for {
 		select {
 		case <-this.startingCh:
+			fmt.Println("miningLoop run again.")
 			err := this.doMining()
 			if err != nil {
 				fmt.Println("miningLoop out:", err)

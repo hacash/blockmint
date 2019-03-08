@@ -527,6 +527,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			insert := <-insertCh
 			if insert.Block.GetHeight() == data.Height {
 				subhandle.Unsubscribe()
+				pm.onsyncminer = false // 状态恢复
 				pm.miner.StartMining() // 可以开始挖矿
 				if insert.Success {    // insert ok
 					str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")

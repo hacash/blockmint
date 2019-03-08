@@ -7,6 +7,7 @@ import (
 	base58check2 "github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner"
+	"github.com/hacash/blockmint/sys/log"
 	"testing"
 )
 
@@ -32,7 +33,7 @@ func Test_t1(t *testing.T) {
 	fmt.Println(hex.EncodeToString(dttypes))
 	fmt.Println(len(dttypes))
 
-	var miner = miner.NewHacashMiner()
+	var miner = miner.NewHacashMiner(log.New())
 	nextblk, _ := miner.CreateBlock()
 	nexttypes, _ := nextblk.Serialize()
 	hash2 := nextblk.Hash()

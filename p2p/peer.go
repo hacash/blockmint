@@ -14,6 +14,7 @@ const (
 	maxKnownBlocks     = 1024  // Maximum block hashes to keep in the known list (prevent DOS)
 	maxQueuedTxs       = 128
 	maxQueuedNewBlocks = 64
+	maxQueuedHeight    = 64
 
 	handshakeTimeout = 5 * time.Second
 )
@@ -26,15 +27,17 @@ type peer struct {
 	*p2p.Peer
 	rw p2p.MsgReadWriter
 
-	knownTxs       mapset.Set               // Set of transaction hashes known to be known by this peer
-	knownBlocks    mapset.Set               // Set of block hashes known to be known by this peer
+	knownTxs    mapset.Set // Set of transaction hashes known to be known by this peer
+	knownBlocks mapset.Set // Set of block hashes known to be known by this peer
+
 	queuedTxs      chan []block.Transaction // Queue of transactions to broadcast to the peer
 	queuedNewBlock chan *MsgDataNewBlock    // Queue of blocks to announce to the peer
+	queuedHeight   chan uint64              // Queue of height
 
-	blkhash   []byte // 当前所在区块hash
-	blkheight uint64
-	blkok     bool // 区块同步完成
-	lock      sync.RWMutex
+	headBlockHash []byte // 当前所在区块hash
+	knownHeight   uint64
+
+	lock sync.RWMutex
 
 	term chan struct{} // Termination channel to stop the broadcaster
 
@@ -49,6 +52,7 @@ func newPeer(p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		knownBlocks:    mapset.NewSet(),
 		queuedTxs:      make(chan []block.Transaction, maxQueuedTxs),
 		queuedNewBlock: make(chan *MsgDataNewBlock, maxQueuedNewBlocks),
+		queuedHeight:   make(chan uint64, maxQueuedHeight),
 
 		term: make(chan struct{}),
 	}
@@ -70,6 +74,11 @@ func (p *peer) broadcast() {
 			if err := p.SendNewBlock(data); err != nil {
 				return
 			}
+
+		case height := <-p.queuedHeight:
+			if err := p.SendHigherHeight(height); err != nil {
+				return
+			}
 			// p.Log().Trace("send new block", "height", data.block.GetHeight(), "hash", hex.EncodeToString(data.block.Hash()))
 
 		case <-p.term:
@@ -83,25 +92,29 @@ func (p *peer) close() {
 	close(p.term)
 }
 
-// Head retrieves a copy of the current blkhash hash and total difficulty of the
+// Head retrieves a copy of the current headBlockHash hash and total difficulty of the
 // peer.
 func (p *peer) Head() (hash []byte, height uint64) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	height = p.blkheight
-	copy(hash[:], p.blkhash[:])
+	height = p.knownHeight
+	copy(hash[:], p.headBlockHash[:])
 	return hash, height
 }
 
 // MarkBlock marks a block as known for the peer, ensuring that the block will
 // never be propagated to this particular peer.
-func (p *peer) MarkBlock(hash []byte) {
+func (p *peer) MarkBlock(block block.Block) {
 	// If we reached the memory allowance, drop a previously known block hash
 	for p.knownBlocks.Cardinality() >= maxKnownBlocks {
 		p.knownBlocks.Pop()
 	}
-	p.knownBlocks.Add(string(hash))
+	p.knownBlocks.Add(string(block.Hash()))
+	if p.knownHeight < block.GetHeight() {
+		p.knownHeight = block.GetHeight()
+		p.headBlockHash = block.Hash()
+	}
 }
 
 // MarkTransaction marks a transaction as known for the peer, ensuring that it
@@ -132,6 +145,11 @@ func (p *peer) SendTransactions(txs []block.Transaction) error {
 	return p2p.Send(p.rw, TxMsg, sdtxs)
 }
 
+func (p *peer) SendHigherHeight(height uint64) error {
+	msgdata := MsgDataHeightHigher{Height: height}
+	return p2p.Send(p.rw, HeightHigherMsg, msgdata)
+}
+
 func (p *peer) AsyncSendNewBlock(data *MsgDataNewBlock) {
 	select {
 	case p.queuedNewBlock <- data:
@@ -154,8 +172,20 @@ func (p *peer) AsyncSendTransactions(txs []block.Transaction) {
 	}
 }
 
+func (p *peer) AsyncSendHigherHeight(height uint64) {
+	select {
+	case p.queuedHeight <- height:
+		if height > p.knownHeight {
+			p.knownHeight = height
+		}
+	default:
+		p.Log().Debug("Dropping height propagation", "height", height)
+	}
+
+}
+
 // Handshake executes the eth protocol handshake, negotiating version number,
-// network IDs, difficulties, blkhash and genesis blocks.
+// network IDs, difficulties, headBlockHash and genesis blocks.
 func (p *peer) Handshake() error {
 	errc := make(chan error, 2)
 	// Send out own handshake in a new thread
@@ -206,9 +236,8 @@ func (p *peer) readStatus(selfstatus, status *handShakeStatusData) error {
 		return stok
 	}
 
-	p.blkhash = status.CurrentBlockHash
-	p.blkheight = status.CurrentBlockHeight
-	p.blkok = status.Completed
+	p.headBlockHash = status.CurrentBlockHash
+	p.knownHeight = status.CurrentBlockHeight
 
 	//fmt.Println(" selfstatus.Confirm(status) Completed", p.Name())
 

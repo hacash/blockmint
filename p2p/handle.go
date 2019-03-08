@@ -10,6 +10,7 @@ import (
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/miner"
 	"github.com/hacash/blockmint/service/txpool"
+	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
 	"sync"
@@ -32,9 +33,15 @@ type minersync struct {
 	p *peer
 }
 
+type heightsync struct {
+	p      *peer
+	height uint64
+}
+
 type ProtocolManager struct {
 	TxsCh               chan []block.Transaction          // 交易广播
 	DiscoveryNewBlockCh chan miner.DiscoveryNewBlockEvent // 挖出新区块广播
+	HeightHighCh        chan uint64
 
 	maxPeers     int // 最大节点数量
 	peers        *peerSet
@@ -44,14 +51,13 @@ type ProtocolManager struct {
 	miner  *miner.HacashMiner
 
 	// 同步交易
-	txsyncCh    chan *txsync
-	minersyncCh chan *minersync
-	onsyncminer bool // 是否正在同步状态
+	txsyncCh       chan *txsync
+	minersyncCh    chan *minersync
+	heightsyncCh   chan *heightsync
+	onsyncminer    bool // 是否正在同步状态
+	onheighthigher bool // 是否是发现了新高度状态
 
-	// 全网最新区块状态
-	//netBestHeadHash []byte
-	//netBestHeadHeight uint64
-
+	Log log.Logger
 }
 
 var (
@@ -63,19 +69,22 @@ func GetGlobalInstanceProtocolManager() *ProtocolManager {
 	globalInstanceProtocolManagerMutex.Lock()
 	defer globalInstanceProtocolManagerMutex.Unlock()
 	if globalInstanceProtocolManager == nil {
-		globalInstanceProtocolManager = NewProtocolManager()
+		lg := config.GetGlobalInstanceLogger()
+		globalInstanceProtocolManager = NewProtocolManager(lg)
 	}
 	return globalInstanceProtocolManager
 }
 
-func NewProtocolManager() *ProtocolManager {
+func NewProtocolManager(log log.Logger) *ProtocolManager {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
-		maxPeers:    25,
-		peers:       newPeerSet(),
-		txpool:      txpool.GetGlobalInstanceMemTxPool(),
-		miner:       miner.GetGlobalInstanceHacashMiner(),
-		onsyncminer: false,
+		maxPeers:       25,
+		peers:          newPeerSet(),
+		txpool:         txpool.GetGlobalInstanceMemTxPool(),
+		miner:          miner.GetGlobalInstanceHacashMiner(),
+		onsyncminer:    false,
+		onheighthigher: false,
+		Log:            log,
 	}
 
 	manager.SubProtocols = make([]p2p.Protocol, 0, 1)
@@ -98,8 +107,10 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 		pm.maxPeers = maxPeers
 	}
 
+	pm.Log.News("protocal manager start")
+
 	// 新区块广播
-	pm.DiscoveryNewBlockCh = make(chan miner.DiscoveryNewBlockEvent, 256)
+	pm.DiscoveryNewBlockCh = make(chan miner.DiscoveryNewBlockEvent, 100)
 	pm.miner.SubscribeDiscoveryNewBlock(pm.DiscoveryNewBlockCh)
 	go pm.blockBroadcastLoop()
 
@@ -107,6 +118,9 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.TxsCh = make(chan []block.Transaction, txChanSize)
 	pm.txpool.SubscribeNewTx(pm.TxsCh)
 	go pm.txBroadcastLoop()
+
+	pm.HeightHighCh = make(chan uint64, 100)
+	go pm.heightBroadcastLoop()
 
 	// sync transactions in pool
 	pm.txsyncCh = make(chan *txsync)
@@ -128,10 +142,10 @@ func (pm *ProtocolManager) removePeer(id string) {
 	if peer == nil {
 		return
 	}
-	fmt.Println("removing hacash peer", peer.Name())
+	pm.Log.Info("removing hacash peer", peer.Name())
 
 	if err := pm.peers.Unregister(id); err != nil {
-		fmt.Errorf("Peer removal failed peer %s err %s", id, err)
+		pm.Log.Warning("peer removal failed peer id %s err %s", id, err)
 	}
 	// Hard disconnect at the networking layer
 	if peer != nil {
@@ -140,7 +154,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	// 如果连接数为零，且不为强制挖矿，则停止挖矿，避免在自己的分支上挖矿
 	if pm.peers.Len() == 0 && config.Config.Miner.Forcestart != "true" {
 		// 停止挖矿
-		fmt.Println("remove only peer ", peer.Name(), ", no peer connect now, stop mining !")
+		pm.Log.Warning("only one peer removed", peer.Name(), "no connect now, stop mining !")
 	}
 }
 
@@ -168,11 +182,24 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 	}
 }
 
+func (pm *ProtocolManager) heightBroadcastLoop() {
+	for {
+		select {
+		case height := <-pm.HeightHighCh:
+			pm.BroadcastHeight(height)
+		}
+	}
+}
+
 // BroadcastBlock will either propagate a block to a subset of it's peers, or
 // will only announce it's availability (depending what's requested).
 func (pm *ProtocolManager) BroadcastBlock(newBlock *MsgDataNewBlock) {
 	hash := newBlock.block.Hash()
 	peers := pm.peers.PeersWithoutBlock(hash)
+
+	if len(peers) > 0 {
+		pm.Log.Info("broadcast block to", len(peers), "peers", "height", newBlock.block.GetHeight(), "hash", hex.EncodeToString(hash))
+	}
 
 	// Otherwise if the block is indeed in out own chain, announce it
 	for _, peer := range peers {
@@ -197,12 +224,22 @@ func (pm *ProtocolManager) BroadcastTxs(txs []block.Transaction) {
 			txset[peer] = append(txset[peer], tx)
 		}
 		if len(peers) > 0 {
-			fmt.Println("broadcast transaction", "hash", hex.EncodeToString(tx.Hash()), "recipients", len(peers))
+			pm.Log.Info("broadcast tx to", len(peers), "peers", "hash", hex.EncodeToString(tx.Hash()))
 		}
 	}
 	//
 	for peer, txs := range txset {
 		peer.AsyncSendTransactions(txs)
+	}
+}
+
+func (pm *ProtocolManager) BroadcastHeight(height uint64) {
+	peers := pm.peers.PeersWithoutHeight(height)
+	if len(peers) > 0 {
+		pm.Log.Info("broadcast height to", len(peers), "peers", "height", height)
+	}
+	for _, peer := range peers {
+		peer.AsyncSendHigherHeight(height)
 	}
 }
 
@@ -223,38 +260,32 @@ func (pm *ProtocolManager) syncMinerStatus(p *peer) {
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
 func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
+	pm.Log.Noise("p2p to sync miner status")
 	//fmt.Println("func DoSyncMinerStatus, onsyncminer:", pm.onsyncminer)
 	//if pm.onsyncminer {
 	//	return // 正在同步
 	//}
-	if pm.peers.Len() < 1 {
-		return // 最少连接个节点才能同步状态
-	}
-	// 判断是否完成同步
-	best := pm.peers.BestPeer()
-	if best == nil {
-		//fmt.Println("not Completed")
-		return // not Completed
-	}
-	_, tarhei := best.Head()
+	_, tarhei := p.Head()
 	minerdb := pm.miner
 	fromhei := minerdb.State.CurrentHeight() + 1
 	if tarhei >= fromhei {
 		//fmt.Println("tarhei >= fromhei")
 		//fmt.Println("pm.onsyncminer = true")
 		pm.onsyncminer = true // 开始同步
-		fmt.Printf("ask sync blocks from height %d ... ", fromhei)
+		pm.Log.Mark("request sync blocks from height", fromhei)
 		go func() {
-			p2p.Send(best.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
+			p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
 				fromhei,
 			})
 		}()
 	} else {
-		//fmt.Println("pm.onsyncminer = false")
+		pm.Log.Mark("all block status sync finish, start mining ...")
 		pm.onsyncminer = false
 		minerdb.StartMining() // 可以开始挖矿
-		if pm.peers.Len() == 1 {
-			fmt.Println("all block status sync finish, start mining ...")
+		if pm.onheighthigher == true {
+			// 如果是发现了新高度， 则广播通知大家
+			pm.onheighthigher = false
+			pm.BroadcastHeight(tarhei)
 		}
 	}
 }
@@ -283,6 +314,8 @@ func (pm *ProtocolManager) minersyncLoop() {
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
 
+	pm.Log.Noise("p2p handle msg from peer", p.Name())
+
 	// Ignore maxPeers if this is a trusted peer
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
 		//fmt.Println("pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted", "p", p.Name())
@@ -292,19 +325,17 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 	// Execute the Hacash handshake
 	if err := p.Handshake(); err != nil {
-		fmt.Println("Hacash handshake failed", "err", err)
+		pm.Log.Attention("p2p handshake failed", "err", err)
 		return err
 	}
 	// Register the peer locally
 	if err := pm.peers.Register(p); err != nil {
-		fmt.Println("Hacash peer registration failed", "err", err)
+		pm.Log.Warning("p2p peer registration failed", "err", err)
 		return err
 	}
 	defer pm.removePeer(p.id)
 
-	if pm.peers.Len() == 1 {
-		fmt.Println("hacash peer connected", "name:", p.Name())
-	}
+	pm.Log.News("p2p peer connected", "name:", p.Name())
 
 	//fmt.Println("syncTransactions", "name", p.Name())
 
@@ -335,6 +366,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	//fmt.Printf("handleMsg ++++++++++++++++++++++++++++++++++++++++++++++++++ peer: %s  \n", p.Name())
 
 	msg, err := p.rw.ReadMsg()
+
+	pm.Log.Noise("p2p peer", p.Name(), "push msg code", msg.Code)
 
 	//fmt.Printf("p.rw.ReadMsg ------ msg.Code ==  %d \n", msg.Code)
 
@@ -494,9 +527,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	case msg.Code == NewBlockExcavateMsg:
 
+		pm.Log.News("new block arrived to verify")
 		// 新区块被挖出
 		//fmt.Println("case msg.Code == NewBlockExcavateMsg: ")
 		if pm.onsyncminer {
+			pm.Log.Info("p2p on the syncing, not deal new block")
 			return nil // 正在同步 忽略新挖出区块
 		}
 		pm.onsyncminer = true
@@ -510,6 +545,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// 如果区块高度超过，先同步
 		mytarhei := pm.miner.State.CurrentHeight() + 1
 		if mytarhei < data.Height {
+			pm.Log.News("new block arrived height more than target, sync miner status right now")
 			pm.syncMinerStatus(p)
 			return nil
 		}
@@ -532,12 +568,31 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				fmt.Println("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions())-1, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
 				// 广播区块=
 				data.block = insert.Block
+				p.MarkBlock(insert.Block) // 标记区块
 				go pm.BroadcastBlock(&data)
 			}
 			pm.onsyncminer = false // 状态恢复
 			pm.miner.StartMining() // 可以开始挖矿
 
 		}()
+
+	case msg.Code == HeightHigherMsg:
+		// 发现更高的区块高度，广播通知大家同步
+		pm.Log.News("new block height to sync")
+		if pm.onsyncminer {
+			pm.Log.Info("p2p on the syncing, not deal higher height")
+			return nil // 正在同步 忽略新高度
+		}
+		var data MsgDataHeightHigher
+		if err := msg.Decode(&data); err != nil {
+			return fmt.Errorf("msg higher %v: %v", msg, err)
+		}
+		if data.Height <= pm.miner.State.CurrentHeight() {
+			return nil // 区块高度并不太高
+		}
+		// 开始同步
+		pm.onheighthigher = true
+		pm.syncMinerStatus(p)
 
 	default:
 		return fmt.Errorf("%v", msg.Code)

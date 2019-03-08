@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner/difficulty"
 	"github.com/hacash/blockmint/protocol/block1def"
 	"github.com/hacash/blockmint/sys/file"
+	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
 	"os"
 	"path"
@@ -26,10 +26,13 @@ var (
 type MinerState struct {
 	prevBlockHead         block.Block
 	prev288BlockTimestamp uint64 // 上一个288倍数区块的创建时间
+	Log                   log.Logger
 }
 
-func NewMinerState() *MinerState {
-	return &MinerState{}
+func NewMinerState(log log.Logger) *MinerState {
+	return &MinerState{
+		Log: log,
+	}
 }
 
 // 修改矿工状态
@@ -119,8 +122,9 @@ func (this *MinerState) FetchLoad() {
 		seek, _ = this.prevBlockHead.ParseMeta(valuebytes, seek)
 		this.prev288BlockTimestamp = binary.BigEndian.Uint64(valuebytes[seek : seek+8])
 		head := this.prevBlockHead
-		fmt.Println("MinerState FetchLoad", "Height", head.GetHeight(), "Hash", hex.EncodeToString(head.Hash()), "Difficulty", head.GetDifficulty())
+		this.Log.Attention("miner state load from file", "height", head.GetHeight(), "hash", hex.EncodeToString(head.Hash()), "difficulty", head.GetDifficulty())
 	} else {
+		this.Log.Warning("no find miner state file, set state with genesis block")
 		genesis := coin.GetGenesisBlock()
 		this.prevBlockHead = genesis                        // 创世
 		this.prev288BlockTimestamp = genesis.GetTimestamp() // uint64(time.Now().Unix())

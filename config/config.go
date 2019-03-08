@@ -26,6 +26,8 @@ var (
 var Config = struct {
 	Datadir string `default:"~/.hacash"` // 数据目录
 
+	Loglevel string `default:"News"`
+
 	Miner struct {
 		Forcestart  string   `default:"false"` // 启动时强制开始挖矿
 		Minfeeratio string   `default:"1Y"`    // 接受的最小手续费比例
@@ -54,11 +56,11 @@ func LoadConfigFile() {
 		fn := os.Args[1]
 		f, e := os.Open(fn)
 		if e == nil {
-			fmt.Printf("load config file `%s`\n", fn)
 			cnffile = fn // 尝试打开配置文件
 			f.Close()
 		}
 	}
+	fmt.Printf("load config file \"%s\"\n", cnffile)
 	// 加载配置
 	configor.Load(&Config, cnffile)
 	//fmt.Printf("config: %#v\n\n", Config)

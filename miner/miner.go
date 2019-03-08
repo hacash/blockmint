@@ -15,6 +15,7 @@ import (
 	"github.com/hacash/blockmint/miner/difficulty"
 	"github.com/hacash/blockmint/protocol/block1def"
 	"github.com/hacash/blockmint/service/txpool"
+	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
 	"strconv"
@@ -50,6 +51,8 @@ type HacashMiner struct {
 	// 成功挖掘新区快 事件订阅
 	discoveryNewBlockFeed      event.Feed
 	discoveryNewBlockFeedScope event.SubscriptionScope
+
+	Log log.Logger
 }
 
 type DiscoveryNewBlockEvent struct {
@@ -67,12 +70,13 @@ func GetGlobalInstanceHacashMiner() *HacashMiner {
 	globalInstanceHacashMinerMutex.Lock()
 	defer globalInstanceHacashMinerMutex.Unlock()
 	if globalInstanceHacashMiner == nil {
-		globalInstanceHacashMiner = NewHacashMiner()
+		lg := config.GetGlobalInstanceLogger()
+		globalInstanceHacashMiner = NewHacashMiner(lg)
 	}
 	return globalInstanceHacashMiner
 }
 
-func NewHacashMiner() *HacashMiner {
+func NewHacashMiner(logger log.Logger) *HacashMiner {
 	// 检查配置
 	sleepnano, e1 := strconv.ParseUint(config.Config.Miner.Stepsleepnano, 10, 0)
 	if e1 != nil {
@@ -84,7 +88,8 @@ func NewHacashMiner() *HacashMiner {
 	miningSleepNanosecond = sleepnano
 	// 创建
 	miner := &HacashMiner{}
-	miner.State = NewMinerState()
+	miner.Log = logger
+	miner.State = NewMinerState(logger)
 	miner.State.FetchLoad()
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
 	miner.stopingCh = make(chan bool, 1)
@@ -101,9 +106,10 @@ func (this *HacashMiner) Start() {
 
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
-	//fmt.Println("HacashMiner StartMining ...")
+	this.Log.Noise("hacash miner will start mining by call func StartMining()")
 	go func() {
 		if len(this.startingCh) == 0 {
+			this.Log.Info("start mining")
 			this.startingCh <- true
 		}
 	}()
@@ -111,32 +117,27 @@ func (this *HacashMiner) StartMining() {
 
 // 开始挖矿
 func (this *HacashMiner) StopMining() {
-	//fmt.Println("HacashMiner StopMining.")
+	this.Log.Noise("hacash miner will stop mining by call func StopMining()")
 	go func() {
 		if len(this.stopingCh) == 0 {
+			this.Log.Info("stop mining")
 			this.stopingCh <- true
 		}
 	}()
 }
 
-// 中断挖矿
-func (this *HacashMiner) InterruptMining(block block.Block) {
-	this.StopMining()
-	// 修改矿工状态
-	this.State.SetNewBlock(block)
-	// 重新开始
-	this.StartMining()
-}
-
 // 挖矿循环
 func (this *HacashMiner) miningLoop() {
 	for {
+		this.Log.Info("mining loop wait to start")
 		select {
 		case <-this.startingCh:
-			fmt.Println("miningLoop run again.")
+			this.Log.News("do mining start")
 			err := this.doMining()
 			if err != nil {
-				fmt.Println("miningLoop out:", err)
+				this.Log.Mark("mining process out for", err)
+			} else {
+				this.Log.News("mining process out")
 			}
 		}
 	}
@@ -144,7 +145,6 @@ func (this *HacashMiner) miningLoop() {
 
 // 执行挖矿
 func (this *HacashMiner) doMining() error {
-	//fmt.Println("=++++++++++++++++++++++++++++++++")
 	// 创建区块
 	newBlock, _, coinbase, _, e := this.CreateNewBlock()
 	if e != nil {
@@ -154,12 +154,13 @@ func (this *HacashMiner) doMining() error {
 	var targetHash []byte
 	targetDifficulty := newBlock.GetDifficulty()
 RESTART_TO_MINING:
+	this.Log.Info("create new block for mining", "height", newBlock.GetHeight())
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 	for i := uint32(0); i < 4294967295; i++ {
 		select {
 		case <-this.stopingCh:
-			return fmt.Errorf("mining break once, stop mining.") // 停止挖矿
+			return fmt.Errorf("mining break and stop mining") // 停止挖矿
 		default:
 		}
 		if miningSleepNanosecond > 0 {
@@ -171,6 +172,7 @@ RESTART_TO_MINING:
 		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
 		//fmt.Println(curdiff, targetDifficulty)
 		if curdiff < targetDifficulty {
+			this.Log.News("find a valid nonce for block", "height", newBlock.GetHeight())
 			// OK !!!!!!!!!!!!!!!
 			goto MINING_SUCCESS
 		}
@@ -182,13 +184,14 @@ MINING_SUCCESS:
 	insert := this.InsertBlockWait(newBlock, nil)
 	if insert.Success {
 		// 广播新区快信息
+		this.Log.Notice("mining success one block", "hash", targetHash)
 		go this.discoveryNewBlockFeed.Send(DiscoveryNewBlockEvent{
 			Block: newBlock,
 			Bodys: insert.Bodys,
 		})
 		// 打印相关信息
 		str_time := time.Unix(int64(newBlock.GetTimestamp()), 0).Format("01/02 15:04:05")
-		fmt.Printf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s\n",
+		this.Log.Attention(fmt.Sprintf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s\n",
 			int(newBlock.GetHeight()),
 			len(newBlock.GetTransactions())-1,
 			newBlock.GetDifficulty(),
@@ -197,7 +200,7 @@ MINING_SUCCESS:
 			rewardAddrReadble,
 			coinbase.Reward.ToFinString(),
 			str_time,
-		)
+		))
 	}
 	// 继续挖掘下一个区块
 	this.StartMining()
@@ -217,12 +220,21 @@ func (this *HacashMiner) InsertBlock(blk block.Block, bodys []byte) {
 // 插入区块
 func (this *HacashMiner) insertBlockLoop() {
 	for {
+		tk := time.NewTimer(time.Second * 3)
 		select {
 		case blk := <-this.insertBlocksCh:
+			this.Log.News("insert loop get one block", "height", blk.Block.GetHeight())
+			tk.Stop()
+			this.StopMining()
 			err := this.doInsertBlock(blk)
 			if err != nil {
-				fmt.Println("insertBlockLoop error:", err)
+				this.Log.Mark("insert block loop", "height", blk.Block.GetHeight(), "error", err)
+			} else {
+				this.Log.News("insert block ok", "height", blk.Block.GetHeight())
 			}
+		case <-tk.C:
+			//this.Log.Noise("no block to insert")
+			// this.StartMining() // 几秒后没有区块插入则自动开始挖矿
 		}
 	}
 }
@@ -335,15 +347,16 @@ func (this *HacashMiner) InsertBlockWait(blk block.Block, bodys []byte) Discover
 	insertCh := make(chan DiscoveryNewBlockEvent, 1)
 	subhandle := this.SubscribeInsertBlock(insertCh)
 	// 写入区块
+	this.Log.News("insert block to chain state with wait", "height", blk.GetHeight())
 	this.InsertBlock(blk, bodys)
 	// 等待返回
 	for {
 		res := <-insertCh
 		if bytes.Compare(res.Block.Hash(), blk.Hash()) == 0 {
+			this.Log.News("insert block wait return", "height", blk.GetHeight())
 			subhandle.Unsubscribe() // 取消注册
 			return res
 		}
-
 	}
 }
 
@@ -404,6 +417,7 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 		fee := fields.ParseAmount(trs.GetFee(), 0)
 		blockTotalFee, _ = blockTotalFee.Add(fee)
 	}
+	this.Log.News("create new block", "height", nextblock.Height, "transaction", nextblock.TransactionCount-1)
 
 	return nextblock, tempBlockState, coinbase, blockTotalFee, nil
 }

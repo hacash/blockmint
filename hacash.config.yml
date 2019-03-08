@@ -6,6 +6,8 @@
 #datadir: ~/.hacash
 datadir: /media/yangjie/500GB/Hacash/src/github.com/hacash/blockmint/database_debug
 
+loglevel: "Debug"
+
 # 矿工配置
 miner:
   forcestart: true

@@ -20,6 +20,7 @@ const (
 	GetSyncBlocksMsg    = 0x02
 	SyncBlocksMsg       = 0x03
 	NewBlockExcavateMsg = 0x04 // 新区块被挖出
+	HeightHigherMsg     = 0x05 // 发现新区块高度
 
 )
 
@@ -37,6 +38,10 @@ type MsgDataNewBlock struct {
 	block  block.Block
 	Height uint64
 	Datas  string
+}
+
+type MsgDataHeightHigher struct {
+	Height uint64
 }
 
 // NodeKey retrieves the currently configured private key of the node, checking

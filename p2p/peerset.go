@@ -93,6 +93,20 @@ func (ps *peerSet) PeersWithoutBlock(hash []byte) []*peer {
 	return list
 }
 
+// 所在高度不是更高的节点
+func (ps *peerSet) PeersWithoutHeight(height uint64) []*peer {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+
+	list := make([]*peer, 0, len(ps.peers))
+	for _, p := range ps.peers {
+		if p.knownHeight < height {
+			list = append(list, p)
+		}
+	}
+	return list
+}
+
 // PeersWithoutTx retrieves a list of peers that do not have a given transaction
 // in their set of known hashes.
 func (ps *peerSet) PeersWithoutTx(hash []byte) []*peer {
@@ -118,7 +132,7 @@ func (ps *peerSet) BestPeer() *peer {
 		bestHei  uint64
 	)
 	for _, p := range ps.peers {
-		if _, hei := p.Head(); p.blkok && (bestPeer == nil || hei > bestHei) {
+		if _, hei := p.Head(); bestPeer == nil || hei > bestHei {
 			bestPeer, bestHei = p, hei
 		}
 	}

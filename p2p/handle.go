@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/store"
+	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/miner"
 	"github.com/hacash/blockmint/service/txpool"
 	"github.com/hacash/blockmint/types/block"
@@ -135,6 +136,11 @@ func (pm *ProtocolManager) removePeer(id string) {
 	// Hard disconnect at the networking layer
 	if peer != nil {
 		peer.Peer.Disconnect(p2p.DiscUselessPeer)
+	}
+	// 如果连接数为零，且不为强制挖矿，则停止挖矿，避免在自己的分支上挖矿
+	if pm.peers.Len() == 0 && config.Config.Miner.Forcestart != "true" {
+		// 停止挖矿
+		fmt.Println("remove only peer ", peer.Name(), ", no peer connect now, stop mining !")
 	}
 }
 

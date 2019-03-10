@@ -106,22 +106,28 @@ func (this *HacashMiner) Start() {
 
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
-	this.Log.Noise("hacash miner will start mining by call func StartMining()")
-	if len(this.stopingCh) > 0 {
-		<-this.stopingCh // 防止停机
-	}
+	//this.Log.Noise("hacash miner will start mining by call func StartMining()")
 	if len(this.startingCh) == 0 {
 		this.Log.Info("start mining")
 		this.startingCh <- true
+		//this.Log.Info("start mining pk $$$")
 	}
+
+	//go func() {
+	//	fmt.Println("StopMining.")
+	//	time.Sleep(time.Second * 5)
+	//	fmt.Println("StopMining.StopMining.StopMining.")
+	//	this.StopMining()
+	//}()
 }
 
 // 开始挖矿
 func (this *HacashMiner) StopMining() {
-	this.Log.Noise("hacash miner will stop mining by call func StopMining()")
+	//this.Log.Noise("hacash miner will stop mining by call func StopMining()")
 	if len(this.stopingCh) == 0 {
 		this.Log.Info("stop mining")
 		this.stopingCh <- true
+		//this.Log.Noise("stop mining ok!!!")
 	}
 }
 
@@ -158,18 +164,17 @@ RESTART_TO_MINING:
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 	for i := uint32(0); i < 4294967295; i++ {
-		//this.Log.Noise(i)
+		// this.Log.Noise(i)
 		select {
 		case <-this.stopingCh:
-			this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
-			return fmt.Errorf("mining break and stop mining") // 停止挖矿
+			// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
+			return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
 		default:
 
 		}
 		if miningSleepNanosecond > 0 {
 			time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
 		}
-		//fmt.Println(i)
 		newBlock.SetNonce(i)
 		targetHash = newBlock.HashFresh()
 		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
@@ -205,6 +210,14 @@ MINING_SUCCESS:
 			coinbase.Reward.ToFinString(),
 			str_time,
 		))
+	}else{
+		blktxs := newBlock.GetTransactions()
+		length := len(blktxs)-1
+		this.Log.Warning("mining finish block", "hash", hex.EncodeToString(targetHash), "insert chain fail, reappend all txs", length, "and clear block")
+		for i:=length; i>0; i-- { // drop coinbase
+			this.TxPool.AddTx(blktxs[i]) // 倒序重新放入交易池
+		}
+
 	}
 	// 继续挖掘下一个区块
 	this.StartMining()
@@ -343,6 +356,8 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	// 保存用户状态
 	chainstate := state.GetGlobalInstanceChainState()
 	chainstate.TraversalCopy(newBlockChainState)
+	// 从交易池内清除已经出块的交易
+	this.TxPool.RemoveTxs( block.GetTransactions() )
 	// 更新矿工状态
 	this.State.SetNewBlock(block)
 	// 成功状态

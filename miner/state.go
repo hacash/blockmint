@@ -122,9 +122,9 @@ func (this *MinerState) FetchLoad() {
 		seek, _ = this.prevBlockHead.ParseMeta(valuebytes, seek)
 		this.prev288BlockTimestamp = binary.BigEndian.Uint64(valuebytes[seek : seek+8])
 		head := this.prevBlockHead
-		this.Log.Attention("miner state load from file", "height", head.GetHeight(), "hash", hex.EncodeToString(head.Hash()), "difficulty", head.GetDifficulty())
+		this.Log.Note("miner state load from file", "height", head.GetHeight(), "hash", hex.EncodeToString(head.Hash()), "difficulty", head.GetDifficulty())
 	} else {
-		this.Log.Warning("no find miner state file, set state with genesis block")
+		this.Log.Note("no find miner state file, set state with genesis block")
 		genesis := coin.GetGenesisBlock()
 		this.prevBlockHead = genesis                        // 创世
 		this.prev288BlockTimestamp = genesis.GetTimestamp() // uint64(time.Now().Unix())

@@ -83,7 +83,7 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 		panic("config.Config.Miner.Stepsleepnano not be " + config.Config.Miner.Stepsleepnano)
 	}
 	if sleepnano > 0 {
-		fmt.Println("miner step calculation sleep", sleepnano, "nanosecond")
+		logger.Note("miner step calculation sleep", sleepnano, "nanosecond")
 	}
 	miningSleepNanosecond = sleepnano
 	// 创建
@@ -131,12 +131,12 @@ func (this *HacashMiner) miningLoop() {
 		this.Log.Info("mining loop wait to start")
 		select {
 		case <-this.startingCh:
-			this.Log.News("do mining start")
+			this.Log.Info("do mining start")
 			err := this.doMining()
 			if err != nil {
-				this.Log.Mark("mining process out for", err)
+				this.Log.Info("mining process out for", err)
 			} else {
-				this.Log.News("mining process out")
+				this.Log.Info("mining process out")
 			}
 		}
 	}
@@ -147,6 +147,7 @@ func (this *HacashMiner) doMining() error {
 	// 创建区块
 	newBlock, _, coinbase, _, e := this.CreateNewBlock()
 	if e != nil {
+		this.Log.Warning("create new block for mining error", e)
 		return e
 	}
 	// 挖掘计算
@@ -157,10 +158,13 @@ RESTART_TO_MINING:
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 	for i := uint32(0); i < 4294967295; i++ {
+		//this.Log.Noise(i)
 		select {
 		case <-this.stopingCh:
+			this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
 			return fmt.Errorf("mining break and stop mining") // 停止挖矿
 		default:
+
 		}
 		if miningSleepNanosecond > 0 {
 			time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
@@ -171,7 +175,7 @@ RESTART_TO_MINING:
 		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
 		//fmt.Println(curdiff, targetDifficulty)
 		if curdiff < targetDifficulty {
-			this.Log.News("find a valid nonce for block", "height", newBlock.GetHeight())
+			this.Log.Info("find a valid nonce for block", "height", newBlock.GetHeight())
 			// OK !!!!!!!!!!!!!!!
 			goto MINING_SUCCESS
 		}
@@ -184,14 +188,14 @@ MINING_SUCCESS:
 	if insert.Success {
 		targethashhex := hex.EncodeToString(targetHash)
 		// 广播新区快信息
-		this.Log.Notice("mining success one block", "hash", targethashhex)
+		this.Log.Info("mining success one block", "hash", targethashhex)
 		go this.discoveryNewBlockFeed.Send(DiscoveryNewBlockEvent{
 			Block: newBlock,
 			Bodys: insert.Bodys,
 		})
 		// 打印相关信息
 		str_time := time.Unix(int64(newBlock.GetTimestamp()), 0).Format("01/02 15:04:05")
-		this.Log.Attention(fmt.Sprintf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s\n",
+		this.Log.Note(fmt.Sprintf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s",
 			int(newBlock.GetHeight()),
 			len(newBlock.GetTransactions())-1,
 			newBlock.GetDifficulty(),
@@ -218,23 +222,38 @@ func (this *HacashMiner) InsertBlock(blk block.Block, bodys []byte) {
 }
 
 // 插入区块
+func (this *HacashMiner) InsertBlocks(blks []block.Block) {
+	go func() {
+
+		for _, blk := range blks {
+			this.insertBlocksCh <- &DiscoveryNewBlockEvent{
+				false,
+				blk,
+				nil,
+			}
+		}
+
+	}()
+}
+
+// 插入区块
 func (this *HacashMiner) insertBlockLoop() {
 	for {
 		tk := time.NewTimer(time.Second * 9)
 		select {
 		case blk := <-this.insertBlocksCh:
-			this.Log.News("insert loop get one block", "height", blk.Block.GetHeight())
+			this.Log.Info("insert loop get one block", "height", blk.Block.GetHeight())
 			tk.Stop()
 			this.StopMining()
 			err := this.doInsertBlock(blk)
 			if err != nil {
-				this.Log.Mark("insert block loop", "height", blk.Block.GetHeight(), "error", err)
+				this.Log.Info("insert block loop", "height", blk.Block.GetHeight(), "error", err)
 			} else {
-				this.Log.News("insert block ok", "height", blk.Block.GetHeight())
+				this.Log.Info("insert block ok", "height", blk.Block.GetHeight())
 			}
 		case <-tk.C:
-			this.Log.Noise("no block to insert")
-			this.StartMining() // 几秒后没有区块插入则自动开始挖矿
+			// this.Log.Noise("no block to insert")
+			// this.StartMining() // 几秒后没有区块插入则自动开始挖矿
 		}
 	}
 }
@@ -347,13 +366,13 @@ func (this *HacashMiner) InsertBlockWait(blk block.Block, bodys []byte) Discover
 	insertCh := make(chan DiscoveryNewBlockEvent, 1)
 	subhandle := this.SubscribeInsertBlock(insertCh)
 	// 写入区块
-	this.Log.News("insert block to chain state with wait", "height", blk.GetHeight())
+	this.Log.Debug("insert block to chain state with wait", "height", blk.GetHeight())
 	this.InsertBlock(blk, bodys)
 	// 等待返回
 	for {
 		res := <-insertCh
 		if bytes.Compare(res.Block.Hash(), blk.Hash()) == 0 {
-			this.Log.News("insert block wait return", "height", blk.GetHeight())
+			this.Log.Debug("insert block return", "height", blk.GetHeight())
 			subhandle.Unsubscribe() // 取消注册
 			return res
 		}
@@ -374,7 +393,7 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 
 	hei, dfct, info := this.State.NextHeightTargetDifficultyCompact()
 	if info != nil && *info != "" {
-		fmt.Println(*info)
+		this.Log.Note(*info)
 	}
 	nextblock.Height = fields.VarInt5(hei)
 	nextblock.Difficulty = fields.VarInt4(dfct)
@@ -387,7 +406,7 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 	stoblk := store.GetGlobalInstanceBlocksDataStore()
 	blockSize := uint32(block1def.ByteSizeBlockBeforeTransaction)
 	blockTotalFee := fields.NewEmptyAmount()
-	for true {
+	for {
 		trs := this.TxPool.PopTxByHighestFee()
 		if trs == nil {
 			break // nothing
@@ -417,7 +436,7 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 		fee := fields.ParseAmount(trs.GetFee(), 0)
 		blockTotalFee, _ = blockTotalFee.Add(fee)
 	}
-	this.Log.News("create new block", "height", nextblock.Height, "transaction", nextblock.TransactionCount-1)
+	this.Log.Info("create new block", "height", nextblock.Height, "transaction", nextblock.TransactionCount-1)
 
 	return nextblock, tempBlockState, coinbase, blockTotalFee, nil
 }
@@ -443,26 +462,30 @@ func (this *HacashMiner) setMinerForCoinbase(coinbase *transactions.Transaction_
 }
 
 // 倒退区块
-func (this *HacashMiner) BackTheWorldInHeight(target_height uint64) error {
+func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Block, error) {
 
 	current_height := this.State.CurrentHeight()
 	if target_height >= current_height {
 		// do nothing
-		return nil
+		return []block.Block{}, nil
 	}
+
+	// 被回退的区块
+	var backblks = make([]block.Block, current_height-target_height-1)
 
 	db := store.GetGlobalInstanceBlocksDataStore()
 	state := state.GetGlobalInstanceChainState()
 	for {
 		blkbts, err := db.GetBlockBytesByHeight(current_height, true, true)
 		if err != nil {
-			return err
+			return backblks, err
 		}
 		blkobj, _, e2 := blocks.ParseBlock(blkbts, 0)
 		if e2 != nil {
-			return e2
+			return backblks, e2
 		}
-		fmt.Println("delete height", current_height, "hash", hex.EncodeToString(blkobj.Hash()), "prev_hash", hex.EncodeToString(blkobj.GetPrevHash()[0:16])+"...")
+		backblks = append(backblks, blkobj)
+		this.Log.Note("delete height", current_height, "hash", hex.EncodeToString(blkobj.Hash()), "prev_hash", hex.EncodeToString(blkobj.GetPrevHash()[0:16])+"...")
 		// 回退状态
 		blkobj.RecoverChainState(state)
 		// 删除数据
@@ -476,12 +499,12 @@ func (this *HacashMiner) BackTheWorldInHeight(target_height uint64) error {
 	// 修改矿工状态
 	blkhdbts, e0 := db.GetBlockBytesByHeight(current_height, true, true)
 	if e0 != nil {
-		return e0
+		return backblks, e0
 	}
 	//fmt.Println("head bytes ", hex.EncodeToString(blkhdbts))
 	blkhead, _, e2 := blocks.ParseBlock(blkhdbts, 0)
 	if e2 != nil {
-		return e2
+		return backblks, e2
 	}
 	prev288blkhei := current_height - (current_height % config.ChangeDifficultyBlockNumber)
 	if prev288blkhei == 0 {
@@ -490,18 +513,18 @@ func (this *HacashMiner) BackTheWorldInHeight(target_height uint64) error {
 	} else {
 		blkhdbts_prev288, e1 := db.GetBlockBytesByHeight(prev288blkhei, true, false)
 		if e1 != nil {
-			return e1
+			return backblks, e1
 		}
 		blkhead_prev288, _, e3 := blocks.ParseBlockHead(blkhdbts_prev288, 0)
 		if e3 != nil {
-			return e3
+			return backblks, e3
 		}
 		this.State.prev288BlockTimestamp = blkhead_prev288.GetTimestamp() // 时间戳
 		//fmt.Println("修改矿工状态 height", blkhead.GetHeight(), "hash", hex.EncodeToString(blkhead.Hash()))
 	}
 	this.State.SetNewBlock(blkhead)
 	// ok
-	return nil
+	return backblks, nil
 }
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -19,13 +19,10 @@ type handShakeStatusData struct {
 	// status
 	CurrentBlockHeight uint64
 	CurrentBlockHash   []byte
-	Completed          bool // 数据完备状态
-
 }
 
 func CreateHandShakeStatusData() handShakeStatusData {
 	blockminer := miner.GetGlobalInstanceHacashMiner()
-	ptcmng := GetGlobalInstanceProtocolManager()
 	return handShakeStatusData{
 		GenesisBlockHash:   coin.GetGenesisBlock().Hash(),
 		BlockVersion:       1,
@@ -33,7 +30,6 @@ func CreateHandShakeStatusData() handShakeStatusData {
 		ActionKind:         0, // not use
 		CurrentBlockHeight: blockminer.State.CurrentHeight(),
 		CurrentBlockHash:   blockminer.State.CurrentBlockHash(),
-		Completed:          ptcmng.onsyncminer == false,
 	}
 }
 

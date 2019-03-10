@@ -14,6 +14,7 @@ import (
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -38,6 +39,16 @@ type heightsync struct {
 	height uint64
 }
 
+type hashssync struct {
+	p   *peer
+	msg *MsgDataSyncHashs
+}
+
+type blockssync struct {
+	p   *peer
+	msg *MsgDataSyncBlocks
+}
+
 type ProtocolManager struct {
 	TxsCh               chan []block.Transaction          // 交易广播
 	DiscoveryNewBlockCh chan miner.DiscoveryNewBlockEvent // 挖出新区块广播
@@ -51,11 +62,15 @@ type ProtocolManager struct {
 	miner  *miner.HacashMiner
 
 	// 同步交易
-	txsyncCh       chan *txsync
-	minersyncCh    chan *minersync
-	heightsyncCh   chan *heightsync
-	onsyncminer    bool // 是否正在同步状态
-	onheighthigher bool // 是否是发现了新高度状态
+	txsyncCh     chan *txsync
+	minersyncCh  chan *minersync
+	heightsyncCh chan *heightsync
+
+	// 状态同步
+	hashssyncCh  chan *hashssync
+	blockssyncCh chan *blockssync
+
+	currentStatus uint32 // 当前的状态
 
 	Log log.Logger
 }
@@ -78,13 +93,11 @@ func GetGlobalInstanceProtocolManager() *ProtocolManager {
 func NewProtocolManager(log log.Logger) *ProtocolManager {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
-		maxPeers:       25,
-		peers:          newPeerSet(),
-		txpool:         txpool.GetGlobalInstanceMemTxPool(),
-		miner:          miner.GetGlobalInstanceHacashMiner(),
-		onsyncminer:    false,
-		onheighthigher: false,
-		Log:            log,
+		maxPeers: 25,
+		peers:    newPeerSet(),
+		txpool:   txpool.GetGlobalInstanceMemTxPool(),
+		miner:    miner.GetGlobalInstanceHacashMiner(),
+		Log:      log,
 	}
 
 	manager.SubProtocols = make([]p2p.Protocol, 0, 1)
@@ -125,6 +138,10 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	// sync transactions in pool
 	pm.txsyncCh = make(chan *txsync)
 	go pm.txsyncLoop()
+
+	// 状态同步
+	pm.hashssyncCh = make(chan *hashssync)
+	pm.blockssyncCh = make(chan *blockssync)
 
 	// 矿工状态同步
 	pm.minersyncCh = make(chan *minersync)
@@ -245,11 +262,13 @@ func (pm *ProtocolManager) BroadcastHeight(height uint64) {
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
 func (pm *ProtocolManager) syncTransactions(p *peer) {
-	var txs = make([]block.Transaction, 0, 16)
-	// read txs
-	if len(txs) == 0 {
-		return
+	//var txs = make([]block.Transaction, 0, 16)
+	// 读取交易
+	txs := pm.txpool.GetTxs()
+	if len(txs) > 0 {
+		pm.Log.Debug("push txs to peer", p.Name(), "num", len(txs))
 	}
+	// 推给对方
 	pm.txsyncCh <- &txsync{p, txs}
 }
 
@@ -260,34 +279,211 @@ func (pm *ProtocolManager) syncMinerStatus(p *peer) {
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
 func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
-	pm.Log.Noise("p2p to sync miner status")
-	//fmt.Println("func DoSyncMinerStatus, onsyncminer:", pm.onsyncminer)
-	//if pm.onsyncminer {
-	//	return // 正在同步
-	//}
-	_, tarhei := p.Head()
-	minerdb := pm.miner
-	fromhei := minerdb.State.CurrentHeight() + 1
-	if tarhei >= fromhei {
-		//fmt.Println("tarhei >= fromhei")
-		//fmt.Println("pm.onsyncminer = true")
-		pm.onsyncminer = true // 开始同步
-		pm.Log.Mark("request sync blocks from height", fromhei)
-		go func() {
-			p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
-				fromhei,
-			})
-		}()
-	} else {
-		pm.Log.Mark("all block status sync finish, start mining ...")
-		pm.onsyncminer = false
-		minerdb.StartMining() // 可以开始挖矿
-		if pm.onheighthigher == true {
-			// 如果是发现了新高度， 则广播通知大家
-			pm.onheighthigher = false
-			pm.BroadcastHeight(tarhei)
+	pm.Log.Noise("p2p sync miner status")
+	if atomic.LoadUint32(&pm.currentStatus) > 0 {
+		return // 正在同步状态，返回
+	}
+	blkhash, peer_height := p.Head()
+	if bytes.Compare(pm.miner.State.CurrentBlockHash(), blkhash) == 0 {
+		pm.Log.News("all block status is sync ok, peer head match")
+		pm.miner.StartMining() // 开始挖矿
+		return                 // 状态一致，不需要同步
+	}
+	self_height := pm.miner.State.CurrentHeight()
+	if peer_height <= self_height {
+		pm.Log.News("all block status is sync ok, peer height less than or equal with me")
+		pm.miner.StartMining() // 开始挖矿
+		return                 // 高度小于我，或各自在一条高度相同的分叉上，不需要同步，等待下一个区块的出现
+	}
+	// 对方区块高度大于我，开始同步
+	pm.miner.StopMining() // 停止挖矿
+	pm.Log.Note("peer", p.Name(), "height", peer_height, "more than me height", self_height, "to check block fork and sync blocks")
+
+	match_height, err := pm.checkBlockFork(p, peer_height, self_height)
+	if err != nil {
+		pm.regainStatusToSimple() // 恢复状态
+		pm.Log.Error("check block fork error:", err)
+		return
+	}
+	var backblks []block.Block
+	if match_height < self_height {
+		// 回退区块
+		pm.Log.News("back chain block height from", self_height, "to", match_height)
+		backblks, err = pm.miner.BackTheWorldToHeight(match_height)
+		if err != nil {
+			pm.Log.Error("check block fork back to height", match_height, "error:", err)
 		}
 	}
+
+	// 同步区块
+	err = pm.syncBlocksFormPeer(p, match_height+1, peer_height)
+	if err != nil {
+		pm.Log.Error("check block fork sync blocks form peer", p.Name(), "error:", err)
+		// 重新插入 恢复区块
+		pm.miner.BackTheWorldToHeight(match_height)
+		pm.miner.InsertBlocks(backblks)
+		return
+	}
+	// 同步区块完成，开始挖矿
+	pm.regainStatusToSimple() // 恢复状态
+	pm.miner.StartMining()
+
+	/*
+
+
+		fromhei := pm.miner.State.CurrentHeight() + 1
+		if peer_height >= fromhei {
+			//fmt.Println("tarhei >= fromhei")
+			//fmt.Println("pm.onsyncminer = true")
+			pm.onsyncminer = true // 开始同步
+			pm.Log.Info("request sync blocks from height", fromhei)
+			go func() {
+				p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
+					fromhei,
+				})
+			}()
+		} else {
+			pm.Log.Info("all block status sync finish, start mining ...")
+			pm.onsyncminer = false
+			pm.miner.StartMining() // 可以开始挖矿
+			if pm.onheighthigher == true {
+				// 如果是发现了新高度， 则广播通知大家
+				pm.onheighthigher = false
+				pm.BroadcastHeight(peer_height)
+			}
+		}
+
+	*/
+}
+
+// 恢复状态
+func (pm *ProtocolManager) regainStatusToSimple() {
+	atomic.StoreUint32(&pm.currentStatus, SimpleStatus) // 恢复
+}
+
+// 读取同步区块
+func (pm *ProtocolManager) syncBlocksFormPeer(p *peer, startHeight uint64, peer_height uint64) error {
+	// 设置状态
+	atomic.StoreUint32(&pm.currentStatus, SyncBlocksStatus) // 同步区块
+
+	for {
+		p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
+			startHeight,
+		})
+		pm.Log.Debug("send GetSyncBlocksMsg to peer", p.Name(), "wait for data response")
+		msg := <-pm.blockssyncCh // 等待读取消息
+		if msg.p.id != p.id {
+			return fmt.Errorf("sync blocks form peer %s not send msg to peer", msg.p.Name(), p.Name())
+		}
+		pm.Log.Info("got blocks height [", msg.msg.FromHeight, ",", msg.msg.ToHeight, "] insert to chain")
+		data := msg.msg
+		// 解包区块，依次插入
+		segblocks := make([]block.Block, 0, 100)
+		segbodys := make([][]byte, 0, 100)
+		stuffbytes := []byte(data.Datas)
+		seek := uint32(0)
+		for {
+			if seek >= uint32(len(stuffbytes)) {
+				break
+			}
+			blk, sk, e := blocks.ParseBlock(stuffbytes, seek)
+			if e != nil {
+				return fmt.Errorf("sync blocks parse block error:", e)
+			}
+			segblocks = append(segblocks, blk)
+			segbodys = append(segbodys, stuffbytes[seek:sk])
+			seek = sk
+		}
+		pm.Log.Note(fmt.Sprintf("got blocks [%d,%d], inserting ... ", data.FromHeight, data.ToHeight))
+		insertCh := make(chan miner.DiscoveryNewBlockEvent, len(segblocks))
+		subhandle := pm.miner.SubscribeInsertBlock(insertCh)
+		go func() { // 写入区块
+			for i := 0; i < len(segblocks); i++ {
+				//fmt.Println("minerdb.InsertBlock", segblocks[i].GetHeight())
+				pm.miner.InsertBlock(segblocks[i], segbodys[i])
+			}
+		}()
+		for {
+			insert := <-insertCh
+			//fmt.Println("insert := <-insertCh ",insert.Block.GetHeight(), insert.Success)
+			if !insert.Success {
+				pm.removePeer(p.id) // 区块失败
+				break
+			}
+			if insert.Block.GetHeight() == data.ToHeight { // insert ok
+				subhandle.Unsubscribe()
+				//fmt.Println("subhandle.Unsubscribe() pm.syncMinerStatus(p)")
+				pm.Log.Note("OK")
+				break
+			}
+		}
+		// 判断是否已经全部完成
+		if data.ToHeight == peer_height {
+			pm.Log.Note(fmt.Sprintf("all blocks height (%d,%d) sync finish\n", startHeight, peer_height))
+			return nil // 全部区块同步完成 ！！！！
+		}
+		// 下一轮次
+		startHeight = data.ToHeight + 1
+	}
+
+}
+
+// 检查区块分叉
+func (pm *ProtocolManager) checkBlockFork(p *peer, peer_height uint64, self_height uint64) (uint64, error) {
+	if self_height == 0 {
+		return 0, nil // 无区块
+	}
+	// 设置状态
+	atomic.StoreUint32(&pm.currentStatus, SyncHashsStatus) // 正在检查分叉
+	// 发起读取 区块哈希列表 hash
+	startHeight := self_height
+	endHight := self_height
+	blkdb := store.GetGlobalInstanceBlocksDataStore()
+	for {
+		p2p.Send(p.rw, GetSyncHashsMsg, MsgDataGetSyncHashs{
+			startHeight,
+			endHight,
+		})
+		pm.Log.Debug("send GetSyncHashsMsg to peer", p.Name(), "wait for data response")
+		msg := <-pm.hashssyncCh // 等待读取消息
+		if msg.p.id != p.id {
+			return 0, fmt.Errorf("check block fork get data from peer %s not send msg to peer %s", msg.p.Name(), p.Name())
+		}
+		// 检查hash是否匹配
+		if msg.msg.StartHeight != startHeight || msg.msg.EndHeight != endHight {
+			return 0, fmt.Errorf("check block fork peer %s send wrong hashs", p.Name())
+		}
+		for i := uint64(len(msg.msg.Hashs)) - 1; i > 0; i-- {
+			lihash := []byte(msg.msg.Hashs[i])
+			liheight := startHeight + i
+			var selfheihash []byte
+			if liheight == self_height {
+				selfheihash = pm.miner.State.CurrentBlockHash()
+			} else {
+				var err error
+				selfheihash, err = blkdb.GetBlockHashByHeight(liheight)
+				if err != nil {
+					return 0, fmt.Errorf("check block fork get self block hash error: %s", err)
+				}
+			}
+			// 对比hash是否一致
+			if bytes.Compare(lihash, selfheihash) == 0 {
+				// 检查 哈希成功
+				return liheight, nil // SUCCESS
+			}
+		}
+		if endHight+100 < self_height {
+			// 分叉太长，不能回退
+			return 0, fmt.Errorf("block fork to long, cannot to switch back !!!")
+		}
+		// 都不匹配，则读取下一个片段
+		endHight = startHeight - 1
+		startHeight = endHight - 11
+		if startHeight < 1 {
+			return 0, fmt.Errorf("block fork to long, cannot to switch back !!!")
+		}
+	}
+
 }
 
 func (pm *ProtocolManager) txsyncLoop() {
@@ -333,7 +529,10 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		pm.Log.Warning("p2p peer registration failed", "err", err)
 		return err
 	}
-	defer pm.removePeer(p.id)
+	defer func() {
+		pm.Log.Info("peer", p.Name(), "be removed by handle msg end")
+		pm.removePeer(p.id)
+	}()
 
 	pm.Log.News("p2p peer connected", "name:", p.Name())
 
@@ -351,7 +550,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			//fmt.Println("Hacash message handling failed", "err", err)
+			pm.Log.Warning("peer", p.Name(), "handle msg error:", err)
 			return err
 		}
 	}
@@ -398,7 +597,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&sdtxs); err != nil {
 			return fmt.Errorf("msg %v: %v", msg, err)
 		}
-
+		if len(sdtxs) > 0 {
+			pm.Log.Info("txs be got num", len(sdtxs), "from peer", p.Name())
+		}
 		//fmt.Println(" peer from ", p.Info())
 		//fmt.Println("myMessage ::::::::: ", sdtxs)
 
@@ -412,9 +613,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// 加入我的交易池
 			pe := pm.txpool.AddTx(tx)
 			if pe != nil {
-				// fmt.Println("pm.txpool.AddTx error:", pe)
+				pm.Log.Attention("add tx to pool error", pe)
+			} else {
+				pm.Log.News("add tx", hex.EncodeToString(tx.Hash()), "to my txpool success")
 			}
-			//fmt.Println("pm.txpool.AddTx(tx) 加入我的交易池  txtxtxtxtxtxtxtxtxtx ", hex.EncodeToString(tx.HashNoFee()))
 		}
 
 	case msg.Code == GetSyncBlocksMsg:
@@ -440,7 +642,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				blkbytes, e := bkdb.GetBlockBytesByHeight(height, true, true)
 				size := len(blkbytes)
 				if e != nil || size == 0 {
-					fmt.Printf(" not give block by height: %d, len: %d \n", height, size)
+					fmt.Printf(" not give block by height: %d, len: %d, error: %s\n", height, size, e)
 					return // 不能提供
 				}
 				//fmt.Printf("blocks = append(blocks, string(blkbytes)), height=%d, length=%d, string=%s \n", height, len(blkbytes), hex.EncodeToString(blkbytes))
@@ -473,68 +675,129 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&data); err != nil {
 			return fmt.Errorf("msg %v: %v", msg, err)
 		}
-		// 检查
-		minerdb := pm.miner
-		if minerdb.State.CurrentHeight()+1 != data.FromHeight {
+		// 检查状态
+		if atomic.LoadUint32(&pm.currentStatus) != SyncBlocksStatus {
 			return nil
 		}
-		//fmt.Printf("SyncBlocksMsg, FromHeight: %d, ToHeight: %d,  \n", data.FromHeight, data.ToHeight)
-		go func() {
-			// 解包区块，依次插入
-			segblocks := make([]block.Block, 0, 100)
-			segbodys := make([][]byte, 0, 100)
-			stuffbytes := []byte(data.Datas)
-			seek := uint32(0)
-			for {
-				if seek >= uint32(len(stuffbytes)) {
-					break
-				}
-				blk, sk, e := blocks.ParseBlock(stuffbytes, seek)
-				if e != nil {
-					pm.syncMinerStatus(p) // 区块数据错误，重新同步
-					return
-				}
-				segblocks = append(segblocks, blk)
-				segbodys = append(segbodys, stuffbytes[seek:sk])
-				seek = sk
+		// 抛出数据
+		pm.blockssyncCh <- &blockssync{
+			p,
+			&data,
+		}
+
+		/*
+
+			// 检查
+			minerdb := pm.miner
+			if minerdb.State.CurrentHeight()+1 != data.FromHeight {
+				return nil
 			}
-			fmt.Printf("got blocks (%d > %d), inserting ... ", data.FromHeight, data.ToHeight)
-			insertCh := make(chan miner.DiscoveryNewBlockEvent, len(segblocks))
-			subhandle := minerdb.SubscribeInsertBlock(insertCh)
-			go func() { // 写入区块
-				for i := 0; i < len(segblocks); i++ {
-					//fmt.Println("minerdb.InsertBlock", segblocks[i].GetHeight())
-					minerdb.InsertBlock(segblocks[i], segbodys[i])
+
+			//fmt.Printf("SyncBlocksMsg, FromHeight: %d, ToHeight: %d,  \n", data.FromHeight, data.ToHeight)
+			go func() {
+				// 解包区块，依次插入
+				segblocks := make([]block.Block, 0, 100)
+				segbodys := make([][]byte, 0, 100)
+				stuffbytes := []byte(data.Datas)
+				seek := uint32(0)
+				for {
+					if seek >= uint32(len(stuffbytes)) {
+						break
+					}
+					blk, sk, e := blocks.ParseBlock(stuffbytes, seek)
+					if e != nil {
+						pm.syncMinerStatus(p) // 区块数据错误，重新同步
+						return
+					}
+					segblocks = append(segblocks, blk)
+					segbodys = append(segbodys, stuffbytes[seek:sk])
+					seek = sk
+				}
+				fmt.Printf("got blocks (%d > %d), inserting ... ", data.FromHeight, data.ToHeight)
+				insertCh := make(chan miner.DiscoveryNewBlockEvent, len(segblocks))
+				subhandle := minerdb.SubscribeInsertBlock(insertCh)
+				go func() { // 写入区块
+					for i := 0; i < len(segblocks); i++ {
+						//fmt.Println("minerdb.InsertBlock", segblocks[i].GetHeight())
+						minerdb.InsertBlock(segblocks[i], segbodys[i])
+					}
+				}()
+				for {
+					insert := <-insertCh
+					//fmt.Println("insert := <-insertCh ",insert.Block.GetHeight(), insert.Success)
+					if !insert.Success {
+						pm.removePeer(p.id) // 区块失败
+						break
+					}
+					if insert.Block.GetHeight() == data.ToHeight { // insert ok
+						subhandle.Unsubscribe()
+						//fmt.Println("subhandle.Unsubscribe() pm.syncMinerStatus(p)")
+						fmt.Printf("OK\n")
+						pm.onsyncminer = false // 完成
+						pm.syncMinerStatus(p)  // 再次同步
+						break
+					}
 				}
 			}()
-			for {
-				insert := <-insertCh
-				//fmt.Println("insert := <-insertCh ",insert.Block.GetHeight(), insert.Success)
-				if !insert.Success {
-					pm.removePeer(p.id) // 区块失败
-					break
+
+		*/
+
+	case msg.Code == GetSyncHashsMsg:
+		// 获取hash列表
+		var data MsgDataGetSyncHashs
+		if err := msg.Decode(&data); err != nil {
+			return fmt.Errorf("msg %v: %v", msg, err)
+		}
+		self_height := pm.miner.State.CurrentHeight()
+		if self_height < data.EndHeight {
+			return nil // 不能提供
+		}
+		// 查询hash并返回
+		go func() {
+			bkdb := store.GetGlobalInstanceBlocksDataStore()
+			var hashs = make([]string, 0)
+			for height := data.StartHeight; height <= self_height && height <= data.EndHeight; height++ {
+				hash, e := bkdb.GetBlockHashByHeight(height)
+				if e != nil {
+					return
 				}
-				if insert.Block.GetHeight() == data.ToHeight { // insert ok
-					subhandle.Unsubscribe()
-					//fmt.Println("subhandle.Unsubscribe() pm.syncMinerStatus(p)")
-					fmt.Printf("OK\n")
-					pm.onsyncminer = false // 完成
-					pm.syncMinerStatus(p)  // 再次同步
-					break
-				}
+				//fmt.Println("append string(hash)", hash)
+				hashs = append(hashs, string(hash))
 			}
+			// 发送
+			sdmsgdt := MsgDataSyncHashs{
+				StartHeight: data.StartHeight,
+				EndHeight:   data.EndHeight,
+				Hashs:       hashs,
+			}
+			pm.Log.Info(fmt.Sprintf("send sync hashs to peer %s height <%d,%d>", p.Name(), sdmsgdt.StartHeight, sdmsgdt.EndHeight))
+			go p2p.Send(p.rw, SyncHashsMsg, sdmsgdt)
 		}()
 
-	case msg.Code == NewBlockExcavateMsg:
+	case msg.Code == SyncHashsMsg:
+		//
+		var data MsgDataSyncHashs
+		if err := msg.Decode(&data); err != nil {
+			return fmt.Errorf("msg %v: %v", msg, err)
+		}
+		// 检查状态
+		if atomic.LoadUint32(&pm.currentStatus) != SyncHashsStatus {
+			return nil
+		}
+		// 抛出数据
+		pm.hashssyncCh <- &hashssync{
+			p,
+			&data,
+		}
 
+	case msg.Code == NewBlockExcavateMsg:
+		// 检查状态
+		if atomic.LoadUint32(&pm.currentStatus) != SimpleStatus {
+			pm.Log.Debug("p2p on the syncing not to deal NewBlockExcavateMsg")
+			return nil
+		}
 		pm.Log.News("new block arrived to verify")
 		// 新区块被挖出
-		//fmt.Println("case msg.Code == NewBlockExcavateMsg: ")
-		if pm.onsyncminer {
-			pm.Log.Info("p2p on the syncing, not deal new block")
-			return nil // 正在同步 忽略新挖出区块
-		}
-		pm.onsyncminer = true
 		// 新区块被挖出
 		//fmt.Println("var data MsgDataNewBlock")
 		var data MsgDataNewBlock
@@ -565,13 +828,13 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			insert := pm.miner.InsertBlockWait(blk, blkbts)
 			if insert.Success { // insert ok
 				str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
-				fmt.Println("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions())-1, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
+				pm.Log.Note("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions())-1, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
 				// 广播区块=
 				data.block = insert.Block
 				p.MarkBlock(insert.Block) // 标记区块
 				go pm.BroadcastBlock(&data)
 			}
-			pm.onsyncminer = false // 状态恢复
+			// 状态恢复
 			pm.miner.StartMining() // 可以开始挖矿
 
 		}()
@@ -579,10 +842,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == HeightHigherMsg:
 		// 发现更高的区块高度，广播通知大家同步
 		pm.Log.News("new block height to sync")
-		if pm.onsyncminer {
-			pm.Log.Info("p2p on the syncing, not deal higher height")
-			return nil // 正在同步 忽略新高度
-		}
 		var data MsgDataHeightHigher
 		if err := msg.Decode(&data); err != nil {
 			return fmt.Errorf("msg higher %v: %v", msg, err)
@@ -591,7 +850,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return nil // 区块高度并不太高
 		}
 		// 开始同步
-		pm.onheighthigher = true
 		pm.syncMinerStatus(p)
 
 	default:

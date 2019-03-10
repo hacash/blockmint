@@ -1,10 +1,12 @@
 package toolshell
 
 import (
+	"bufio"
 	"encoding/hex"
 	"fmt"
 	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/blockmint/core/account"
+	"os"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -50,20 +52,15 @@ func RunTest() {
 		printLoadAddress(acc)
 	}
 
-	//params := gjson.Parse("[\"127717zvZWFjEghjEpyyRSnitEEbnMuuLn\",\"1AihFeuaC5xvqDP8nVcphCpvMrTR7gUdMH\",\"HCX5:248\",\"HCX1:244\"]").Array()
+	//params := gjson.Parse("[\"127717zvZWFjEghjEpyyRSnitEEbnMuuLn\",\"1AihFeuaC5xvqDP8nVcphCpvMrTR7gUdMH\",\"HCX2:244\",\"HCX1:244\"]").Array()
 	//genTxSimpleTransfer(params)
 	//params1 := gjson.Parse("[\"127717zvZWFjEghjEpyyRSnitEEbnMuuLn\",\"1969418WSUCXPBSyGeLytkAqKUspDZJYWt\",\"HCX100:244\",\"HCX1:244\"]").Array()
 	//genTxSimpleTransfer(params1)
 
-	//tx1 := "01005c6fefc4000c1fa1c032d90fd7afc54deb03941e87b4c59756f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df801010001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d5c1747e672eab9cfb909c1797bd778894c4da5b6eefff5e6d44d40a7158d7c4342fc43fbe7bb2856e2d3350e16a2d0bdb604eed36c47d9a7c7c6dfff77ba3057c0000"
-	//tx1 := "01005c81edc2000c1fa1c032d90fd7afc54deb03941e87b4c59756f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df801010001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d5065b5279a7c0160d6e95115f94a4ae02ecc5ba631226c900b205948e7eb5de50520abf982bdb12c1b2527c0e912e3d0a84e98623eb9212a7011e0330a3de49af0000"
-	//tx1 := "01005c81edd5000c1fa1c032d90fd7afc54deb03941e87b4c59756f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df801020001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d508293f31215b6f2e9aeb6ecf1613e0923ec8a593f7bd50c52ffb1e36997011022a0a26d04dd2fd69a3398d0fdac21ea1442e5bf37699c0172027f5a1cabf63470000"
-	//tx1 := "01005c81ede2000c1fa1c032d90fd7afc54deb03941e87b4c59756f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df801030001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d5cb45909f5b66656a90fad029c42e5a9d4c1e9c6f68ba5f21d9dded1973ecbcce2839fd3e17cf9d1baeef6c0cd78dfefd59cef9f3a9d9b7bbd125a11dc7033d730000"
-	//tx1 := "01005c6fefc40016b3a82d6bd43c0dd145f405062a080a582ceeb3f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df901010001028879668b8d649e731bd2815142eb38b025fd6ff07544cb3380c24edc4abdca34d3a3d0dabe2a5c688232b482fe5c5d242c987b8c201c61550b991d35723fcf7b0edcb5299b2567c005402429a422050aa92f32defd64cb56a045bd32afb27be10000"
-	//tx1 := "01005c81edf0000c1fa1c032d90fd7afc54deb03941e87b4c59756f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df801050001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d5a6eb8485d551864f18d6d27133acb971b3e961752c204ddd33d5e39f895314562a2ffa258ebc321846314e37c0db60888232aaa2fa5223a11c618a97f31cb77b0000"
-	//tx2 := "01005c6fefc4000c1fa1c032d90fd7afc54deb03941e87b4c59756f40101000100010058b9ceaea0e0bd4cfcca96ef2cec052234a5e6d3f601010001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d569346d85c3e589c05fd8c18249b811bed76096e81ebcf13e43c67960d1922a0422fe26f886794c1933b6ff3648ac6bb034a047842de7d6a8fa33ad942783a4ff0000"
-	//params3 := gjson.Parse("[\"" + tx1 + "\",\"49.51.34.40:3338\"]").Array()
-	//sendTxToMiner(params3)
+	//tx1 := "01005c851002000c1fa1c032d90fd7afc54deb03941e87b4c59756f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df401030001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d540accd693d83f9dd56557a2c4db752ec3e9d0f66885da3219950faebf1e93c1b3aac4150c94bdc9610a9360b526e233aa0a76497ff47fd553e97ae87579fd2720000"
+	tx2 := "01005c851012000c1fa1c032d90fd7afc54deb03941e87b4c59756f4010100010001006a9bc9a70fafe1ba1b760341807af30d094bb20df401020001039ffe91e6b39c21c32d282272ce83ce852d021cd34044181e94dad754b0f7c7d519da9900eb5fb038060e99aa1fbf9317a1e437d2c6012f002a2db44cacff01162edb31eddf0e75d78f2fc432cb9d59760b948e484752b0f445f8ef5c39b749940000"
+	params3 := gjson.Parse("[\"" + tx2 + "\",\"127.0.0.1:33383\"]").Array()
+	sendTxToMiner(params3)
 
 }
 
@@ -73,19 +70,26 @@ func RunToolShell() {
 
 	for true {
 		fmt.Print(">>")
-		fmt.Scanln(&currentInputContent)
+		inputReader := bufio.NewReader(os.Stdin)
+		input, err := inputReader.ReadString('\n')
+		if err != nil {
+			continue
+		}
+		//fmt.Scanln(&currentInputContent)
+		currentInputContent = strings.TrimRight(input, "\n")
 		// exit
 		if currentInputContent == "exit" ||
 			currentInputContent == "exit()" ||
 			currentInputContent == "quit" ||
 			currentInputContent == "quit()" {
-			fmt.Println("Bye.")
+			fmt.Println("Bye")
 			break
 		}
 		// empty
 		if currentInputContent == "" {
 			continue
 		}
+
 		// route call
 		fcnx := strings.IndexByte(currentInputContent, byte('('))
 		if fcnx == -1 {

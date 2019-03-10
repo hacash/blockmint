@@ -91,6 +91,15 @@ func (this *BlockIndexDB) FindBlockHeadBytes(hash []byte) (*BlockLocation, []byt
 	return &loc, result[start : start+block1def.ByteSizeBlockHead], nil
 }
 
+func (this *BlockIndexDB) FindBlockHashByPosition(keyprefix []byte, ptrnum uint32) ([]byte, error) {
+	hashsize := int64(32)
+	valuebytes, e := this.treedb.ReadBytesByPositionWithLength(keyprefix, ptrnum, hashsize)
+	if e != nil {
+		return nil, e
+	}
+	return valuebytes, nil
+}
+
 func (this *BlockIndexDB) FindBlockHeadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]byte, error) {
 	valuebytes, e := this.treedb.ReadBytesByPosition(keyprefix, ptrnum)
 	if e != nil {

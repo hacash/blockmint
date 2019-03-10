@@ -52,7 +52,9 @@ func NewP2PService(log log.Logger) *P2PServer {
 	}
 	key := NodeKey()
 	newser.config = p2p.Config{
-		StaticNodes: bootnodes,
+		BootstrapNodes: bootnodes,
+		StaticNodes:    bootnodes,
+		TrustedNodes:   bootnodes,
 		/////////////////////////////////////
 		Name:            config.Config.P2p.Myname,
 		PrivateKey:      key,
@@ -78,7 +80,7 @@ func (this *P2PServer) Start() error {
 	if er != nil {
 		panic(er)
 	}
-	this.Log.Attention(fmt.Sprintf("p2p node started name %s url %s", srv.NodeInfo().Name, srv.NodeInfo().Enode))
+	this.Log.Note(fmt.Sprintf("p2p node started name %s url %s", srv.NodeInfo().Name, srv.NodeInfo().Enode))
 
 	return nil
 }

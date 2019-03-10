@@ -120,6 +120,12 @@ func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 
 // 建立数据操作
 func (this *HashTreeDB) ReadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]byte, error) {
+	segsize := this.getSegmentSize()
+	return this.ReadBytesByPositionWithLength(keyprefix, ptrnum, int64(segsize))
+}
+
+// 建立数据操作
+func (this *HashTreeDB) ReadBytesByPositionWithLength(keyprefix []byte, ptrnum uint32, length int64) ([]byte, error) {
 
 	//fmt.Println(keyprefix)
 
@@ -134,7 +140,7 @@ func (this *HashTreeDB) ReadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]
 	}
 	// 读取内容
 	segsize := this.getSegmentSize()
-	var valuebody = make([]byte, segsize)
+	var valuebody = make([]byte, length)
 	_, e1 := curfile.ReadAt(valuebody, int64(segsize)*int64(ptrnum))
 	if e1 != nil {
 		return nil, e1

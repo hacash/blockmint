@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/config"
+	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
 	"sync"
@@ -28,14 +29,16 @@ type MemTxItem struct {
 
 type MemTxPool struct {
 	TxHead *MemTxItem
-	Length int
-	Size   uint64
+	Length int    // 交易数量
+	Size   uint64 // 交易总体积大小
 
 	mulk sync.Mutex // 互斥锁
 
 	// 事件订阅
 	txFeed      event.Feed
 	txFeedScope event.SubscriptionScope
+
+	Log log.Logger
 }
 
 var (
@@ -47,9 +50,11 @@ func GetGlobalInstanceMemTxPool() service.TxPool {
 	GlobalInstanceMemTxPoolMutex.Lock()
 	defer GlobalInstanceMemTxPoolMutex.Unlock()
 	if GlobalInstanceMemTxPool == nil {
+		lg := config.GetGlobalInstanceLogger()
 		GlobalInstanceMemTxPool = &MemTxPool{
 			Length: 0,
 			Size:   0,
+			Log:    lg,
 		}
 	}
 	return GlobalInstanceMemTxPool
@@ -70,13 +75,14 @@ func (this *MemTxPool) CheckTxExist(block.Transaction) bool {
 	return false
 }
 
-func (this *MemTxPool) pickUpTrs(hashnofee []byte) *MemTxItem {
+// 取出一笔交易
+func (this *MemTxPool) pickUpTx(hashnofee []byte) *MemTxItem {
 	if this.TxHead == nil {
 		return nil
 	}
 	prev := this.TxHead
 	next := this.TxHead
-	for true {
+	for {
 		if next == nil {
 			break
 		}
@@ -146,7 +152,7 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 		Tx:        tx,
 		next:      nil,
 	}
-	hashave := this.pickUpTrs(hashnofee)
+	hashave := this.pickUpTx(hashnofee)
 	if hashave != nil {
 		if txItem.FeePer <= hashave.FeePer { // 手续费不能比原有的低
 			return fmt.Errorf("Tx FeePurity value equal or less than the exist")
@@ -158,20 +164,21 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 	if this.TxHead == nil {
 		this.TxHead = txItem
 		// 插入链表 广播添加事件
-		go this.txFeed.Send([]block.Transaction{tx})
+		this.feedTx(hashnofee, tx) // 广播
 		return nil
 	}
 	txSeekPtr := this.TxHead
-	for true {
+	for {
 		if txSeekPtr.next == nil {
 			txSeekPtr.next = txItem
+			this.feedTx(hashnofee, tx) // 广播
 			break
 		}
 		if txSeekPtr.next.FeePer < txItem.FeePer {
 			txItem.next = txSeekPtr.next
 			txSeekPtr.next = txItem
 			// 插入链表 广播添加事件
-			go this.txFeed.Send([]block.Transaction{tx})
+			this.feedTx(hashnofee, tx) // 广播
 			break
 		}
 		// 下一个
@@ -181,12 +188,11 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 	return nil
 }
 
-/*
-func (this *MemTxPool) RemoveTx(hashNoFee []byte) error {
-
-	return nil
+// 广播交易
+func (this *MemTxPool) feedTx(hashnofee []byte, tx block.Transaction) {
+	this.Log.Info("mempool add tx", hex.EncodeToString(hashnofee), "send to subscribe feed")
+	go this.txFeed.Send([]block.Transaction{tx})
 }
-*/
 
 // 弹出手续费最高的一笔交易
 func (this *MemTxPool) PopTxByHighestFee() block.Transaction {
@@ -204,4 +210,30 @@ func (this *MemTxPool) PopTxByHighestFee() block.Transaction {
 // 订阅交易池加入新交易事件
 func (this *MemTxPool) SubscribeNewTx(txCh chan<- []block.Transaction) event.Subscription {
 	return this.txFeedScope.Track(this.txFeed.Subscribe(txCh))
+}
+
+func (this *MemTxPool) GetTxs() []block.Transaction {
+	this.Lock()
+	defer this.Unlock()
+	var results = make([]block.Transaction, 0, this.Length)
+	next := this.TxHead
+	for {
+		if next == nil {
+			break
+		}
+		results = append(results, next.Tx)
+		next = next.next
+	}
+	return results
+}
+
+// 过滤、清除交易
+func (this *MemTxPool) RemoveTxs(txs []block.Transaction) {
+	this.Lock()
+	defer this.Unlock()
+
+	for _, tx := range txs {
+		this.pickUpTx(tx.HashNoFee()) // 取出并丢弃
+	}
+
 }

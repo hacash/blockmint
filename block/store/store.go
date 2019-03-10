@@ -236,6 +236,23 @@ func (this *BlocksDataStore) CheckTransactionExist(hashNoFee []byte) (bool, erro
 
 }
 
+func (this *BlocksDataStore) GetBlockHashByHeight(height uint64) ([]byte, error) {
+	finditem, e := this.heidxdb.Find(height)
+	if e != nil {
+		return nil, e
+	}
+	if finditem == nil {
+		return nil, nil
+	}
+
+	hash, e1 := this.indexdb.FindBlockHashByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
+	if e1 != nil {
+		return nil, e1
+	}
+
+	return hash, nil
+}
+
 func (this *BlocksDataStore) GetBlockBytesByHeight(height uint64, gethead bool, getbody bool) ([]byte, error) {
 	finditem, e := this.heidxdb.Find(height)
 	if e != nil {

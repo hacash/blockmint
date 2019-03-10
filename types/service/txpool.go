@@ -10,7 +10,10 @@ type TxPool interface {
 	CheckTxExist(block.Transaction) bool
 	// 添加交易
 	AddTx(block.Transaction) error
-	// RemoveTxs([]block.Transaction) error
+	// 获取全部交易
+	GetTxs() []block.Transaction
+	// 过滤、清除交易
+	RemoveTxs([]block.Transaction)
 	// 获取手续费最高的一笔交易
 	PopTxByHighestFee() block.Transaction
 	// 订阅交易池加入新交易事件

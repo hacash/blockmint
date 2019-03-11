@@ -68,6 +68,11 @@ func (lg *Logger) Note(stuff ...interface{}) {
 		fmt.Println(stuff...)
 	}
 }
+func (lg *Logger) NoteEx(stuff ...interface{}) {
+	if lg.Level >= 1 {
+		fmt.Print(stuff...)
+	}
+}
 
 func (lg *Logger) News(stuff ...interface{}) {
 	if lg.Level >= 2 {

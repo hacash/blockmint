@@ -394,7 +394,7 @@ func (pm *ProtocolManager) syncBlocksFormPeer(p *peer, startHeight uint64, peer_
 			segbodys = append(segbodys, stuffbytes[seek:sk])
 			seek = sk
 		}
-		pm.Log.Note(fmt.Sprintf("got blocks [%d,%d], inserting ... ", data.FromHeight, data.ToHeight))
+		pm.Log.NoteEx(fmt.Sprintf("got blocks [%d,%d], inserting ... ", data.FromHeight, data.ToHeight))
 		insertCh := make(chan miner.DiscoveryNewBlockEvent, len(segblocks))
 		subhandle := pm.miner.SubscribeInsertBlock(insertCh)
 		go func() { // 写入区块
@@ -419,7 +419,7 @@ func (pm *ProtocolManager) syncBlocksFormPeer(p *peer, startHeight uint64, peer_
 		}
 		// 判断是否已经全部完成
 		if data.ToHeight == peer_height {
-			pm.Log.Note(fmt.Sprintf("all blocks height (%d,%d) sync finish\n", startHeight, peer_height))
+			pm.Log.Note(fmt.Sprintf("all blocks height (%d,%d) sync finish", startHeight, peer_height))
 			return nil // 全部区块同步完成 ！！！！
 		}
 		// 下一轮次

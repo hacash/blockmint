@@ -1,0 +1,38 @@
+#
+# 节点启动配置
+#
+
+# 数据目录
+datadir: ~/.hacash_mainnet
+
+# 日志打印级别：1:Error 2:Warning 3:Attention 4:Debug 5:Noise
+loglevel: "Error"
+
+# 矿工配置
+miner:
+#  forcestart: true # 无论是否连接其它节点，强制开始挖矿
+#  backtoheight: 800 # 区块状态退回到指定高度
+  stepsleepnano: 500K # 挖矿单步执行休眠（纳秒），防止CPU跑满，影响机器上其它服务
+  minfeeratio: 100Y # 最低交易手续费含量（单位：铢/Byte）少于此的不接受
+  rewards: # coinbase矿工奖励收取地址，每次随机取一个
+  - 171886bjEvpDVcYmaFKQhpDatHTPXHnJRN
+  - 188255WMwyMQrHEFEsFTxCUvtnCJuNGGay
+  - 158481337EtoFJnusXpbzoXUvXJubohmXz
+
+
+## ------------------------------------------------------- ##
+
+
+
+# p2p 配置
+p2p:
+  port: { node: 3337, rpc: 3338 } # 节点p2p和接口rpc端口
+  myname: hacash_one_node_new # 你设置的节点名称，用于p2p标识
+  bootnodes: # 初始连接节点，用于首次加入网络
+  - enode://d33aa16dab275d7982b4ad4f95ca203a6a24208d598e4f39ddefd00c176ec6f0b3502f516c334b4cf35bcd36d172055ba3215269b6641c3c7c837d4e41b2ee2a@47.244.26.14:3337
+
+
+
+
+
+

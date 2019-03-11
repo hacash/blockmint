@@ -23,5 +23,6 @@ go get -x github.com/hacash/bitcoin
 # utils
 go get -x github.com/deckarep/golang-set
 
-
+# finish
+echo "all pkg go get finish."
 

@@ -3,25 +3,25 @@
 # go get all
 
 # p2p
-go get github.com/ethereum/go-ethereum/p2p
+go get -x github.com/ethereum/go-ethereum/p2p
 
 # config
-go get github.com/jinzhu/configor
+go get -x github.com/jinzhu/configor
 
 # json
-go get github.com/tidwall/gjson
+go get -x github.com/tidwall/gjson
 
 # x16rs
-go get github.com/hacash/x16rs
+go get -x github.com/hacash/x16rs
 
 # hash
-go get golang.org/x/crypto/sha3
+go get -x golang.org/x/crypto/sha3
 
 # bitcoin
-go get github.com/hacash/bitcoin
+go get -x github.com/hacash/bitcoin
 
 # utils
-go get github.com/deckarep/golang-set
+go get -x github.com/deckarep/golang-set
 
 
 

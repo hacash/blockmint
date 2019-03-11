@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # go get all
 
 # p2p

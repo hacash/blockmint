@@ -114,7 +114,7 @@ func (this *HacashMiner) Start() {
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
 	//this.Log.Noise("hacash miner will start mining by call func StartMining()")
-	if atomic.CompareAndSwapUint32(&this.miningStatus, 0, 1) {
+	if 0 == atomic.LoadUint32(&this.miningStatus) {
 		// 如果是停止状态
 		this.Log.Info("start mining")
 		this.startingCh <- true
@@ -125,7 +125,7 @@ func (this *HacashMiner) StartMining() {
 // 开始挖矿
 func (this *HacashMiner) StopMining() {
 	//this.Log.Noise("hacash miner will stop mining by call func StopMining()")
-	if atomic.CompareAndSwapUint32(&this.miningStatus, 1, 0) {
+	if 1 == atomic.LoadUint32(&this.miningStatus) {
 		this.Log.Info("stop mining")
 		this.stopingCh <- true
 		//this.Log.Noise("stop mining ok!!!")
@@ -160,6 +160,7 @@ func (this *HacashMiner) doMining() error {
 	// 挖掘计算
 	var targetHash []byte
 	targetDifficulty := newBlock.GetDifficulty()
+	atomic.StoreUint32(&this.miningStatus, 1) // 标记开始
 RESTART_TO_MINING:
 	this.Log.Info("create new block for mining", "height", newBlock.GetHeight())
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
@@ -168,7 +169,8 @@ RESTART_TO_MINING:
 		// this.Log.Noise(i)
 		select {
 		case <-this.stopingCh:
-			this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+			this.reputAllTxsFromBlock(newBlock)       // 重新放入所有交易到交易池
+			atomic.StoreUint32(&this.miningStatus, 0) // 标记停止
 			// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
 			return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
 		default:

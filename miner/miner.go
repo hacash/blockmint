@@ -39,6 +39,9 @@ type HacashMiner struct {
 	startingCh chan bool // 标记
 	stopingCh  chan bool // 是否停止
 
+	// 矿工状态标识
+	miningStatusCh chan bool
+
 	// 正在插入区块
 	insertBlock sync.Mutex
 
@@ -98,6 +101,8 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
 	miner.stopingCh = make(chan bool, 10)
 	miner.startingCh = make(chan bool, 10)
+	miner.miningStatusCh = make(chan bool, 200)
+
 	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
 
 	atomic.StoreUint32(&miner.miningStatus, 0) // 启动时为停止状态
@@ -114,22 +119,29 @@ func (this *HacashMiner) Start() {
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
 	//this.Log.Noise("hacash miner will start mining by call func StartMining()")
-	if 0 == len(this.startingCh) {
-		// 如果是停止状态
-		this.Log.Info("start mining")
-		this.startingCh <- true
-		// 切换到
-	}
+	this.miningStatusCh <- true
+
+	/*
+		if 0 == len(this.startingCh) {
+			// 如果是停止状态
+			this.Log.Info("start mining")
+			this.startingCh <- true
+			// 切换到
+		}
+	*/
 }
 
 // 开始挖矿
 func (this *HacashMiner) StopMining() {
 	//this.Log.Noise("hacash miner will stop mining by call func StopMining()")
-	if 1 == atomic.LoadUint32(&this.miningStatus) {
-		this.Log.Info("stop mining")
-		this.stopingCh <- true
-		//this.Log.Noise("stop mining ok!!!")
-	}
+	this.miningStatusCh <- false
+	/*
+		if 1 == atomic.LoadUint32(&this.miningStatus) {
+			this.Log.Info("stop mining")
+			this.stopingCh <- true
+			//this.Log.Noise("stop mining ok!!!")
+		}
+	*/
 }
 
 // 挖矿循环
@@ -137,7 +149,10 @@ func (this *HacashMiner) miningLoop() {
 	for {
 		this.Log.Info("mining loop wait to start")
 		select {
-		case <-this.startingCh:
+		case stat := <-this.miningStatusCh:
+			if stat == false {
+				continue // 停止状态
+			}
 			this.Log.Info("do mining start")
 			err := this.doMining()
 			if err != nil {
@@ -171,10 +186,12 @@ RESTART_TO_MINING:
 	for i := uint32(0); i < 4294967295; i++ {
 		// this.Log.Noise(i)
 		select {
-		case <-this.stopingCh:
-			this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
-			// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
-			return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
+		case stat := <-this.miningStatusCh:
+			if stat == false {
+				this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+				// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
+				return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
+			}
 		default:
 
 		}

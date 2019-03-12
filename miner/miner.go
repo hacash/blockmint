@@ -142,8 +142,11 @@ func (this *HacashMiner) miningLoop() {
 			err := this.doMining()
 			if err != nil {
 				this.Log.Info("mining process out for", err)
+				atomic.StoreUint32(&this.miningStatus, 0) // 标记停止, 等待开启
 			} else {
 				this.Log.Info("mining process out")
+				// 继续挖掘下一个区块
+				this.StartMining()
 			}
 		}
 	}
@@ -169,8 +172,7 @@ RESTART_TO_MINING:
 		// this.Log.Noise(i)
 		select {
 		case <-this.stopingCh:
-			this.reputAllTxsFromBlock(newBlock)       // 重新放入所有交易到交易池
-			atomic.StoreUint32(&this.miningStatus, 0) // 标记停止
+			this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
 			// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
 			return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
 		default:
@@ -218,9 +220,6 @@ MINING_SUCCESS:
 		length := this.reputAllTxsFromBlock(newBlock)
 		this.Log.Warning("mining finish block", "height", newBlock.GetHeight(), "hash", hex.EncodeToString(newBlock.Hash()), "insert chain fail, reappend all txs", length, "and clear block")
 	}
-	// 继续挖掘下一个区块
-	this.StartMining()
-
 	return nil
 }
 

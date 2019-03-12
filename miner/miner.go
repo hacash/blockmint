@@ -96,8 +96,8 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 	miner.State = NewMinerState(logger)
 	miner.State.FetchLoad()
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
-	miner.stopingCh = make(chan bool, 1)
-	miner.startingCh = make(chan bool, 1)
+	miner.stopingCh = make(chan bool, 10)
+	miner.startingCh = make(chan bool, 10)
 	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
 
 	atomic.StoreUint32(&miner.miningStatus, 0) // 启动时为停止状态
@@ -114,7 +114,7 @@ func (this *HacashMiner) Start() {
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
 	//this.Log.Noise("hacash miner will start mining by call func StartMining()")
-	if 0 == atomic.LoadUint32(&this.miningStatus) {
+	if 0 == len(this.startingCh) {
 		// 如果是停止状态
 		this.Log.Info("start mining")
 		this.startingCh <- true

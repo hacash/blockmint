@@ -283,16 +283,21 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	if atomic.LoadUint32(&pm.currentStatus) > 0 {
 		return // 正在同步状态，返回
 	}
+	peerone := pm.peers.Len() == 1
 	blkhash, peer_height := p.Head()
 	if bytes.Compare(pm.miner.State.CurrentBlockHash(), blkhash) == 0 {
 		pm.Log.News("all block status is sync ok, peer head match")
-		pm.miner.StartMining() // 开始挖矿
+		if peerone { // 开始挖矿
+			pm.miner.StartMining()
+		}
 		return                 // 状态一致，不需要同步
 	}
 	self_height := pm.miner.State.CurrentHeight()
 	if peer_height <= self_height {
 		pm.Log.News("all block status is sync ok, peer height less than or equal with me")
-		pm.miner.StartMining() // 开始挖矿
+		if peerone { // 开始挖矿
+			pm.miner.StartMining()
+		}
 		return                 // 高度小于我，或各自在一条高度相同的分叉上，不需要同步，等待下一个区块的出现
 	}
 	// 对方区块高度大于我，开始同步
@@ -302,6 +307,7 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	match_height, err := pm.checkBlockFork(p, peer_height, self_height)
 	if err != nil {
 		pm.regainStatusToSimple() // 恢复状态
+		pm.miner.StartMining() // 开始挖矿
 		pm.Log.Error("check block fork error:", err)
 		return
 	}
@@ -322,38 +328,11 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 		// 重新插入 恢复区块
 		pm.miner.BackTheWorldToHeight(match_height)
 		pm.miner.InsertBlocks(backblks)
-		return
 	}
 	// 同步区块完成，开始挖矿
 	pm.regainStatusToSimple() // 恢复状态
 	pm.miner.StartMining()
 
-	/*
-
-
-		fromhei := pm.miner.State.CurrentHeight() + 1
-		if peer_height >= fromhei {
-			//fmt.Println("tarhei >= fromhei")
-			//fmt.Println("pm.onsyncminer = true")
-			pm.onsyncminer = true // 开始同步
-			pm.Log.Info("request sync blocks from height", fromhei)
-			go func() {
-				p2p.Send(p.rw, GetSyncBlocksMsg, MsgDataGetSyncBlocks{
-					fromhei,
-				})
-			}()
-		} else {
-			pm.Log.Info("all block status sync finish, start mining ...")
-			pm.onsyncminer = false
-			pm.miner.StartMining() // 可以开始挖矿
-			if pm.onheighthigher == true {
-				// 如果是发现了新高度， 则广播通知大家
-				pm.onheighthigher = false
-				pm.BroadcastHeight(peer_height)
-			}
-		}
-
-	*/
 }
 
 // 恢复状态

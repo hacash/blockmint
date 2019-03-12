@@ -107,6 +107,7 @@ func (this *HacashMiner) Start() {
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
 	//this.Log.Noise("hacash miner will start mining by call func StartMining()")
+
 	if len(this.startingCh) == 0 {
 		this.Log.Info("start mining")
 		this.startingCh <- true
@@ -167,6 +168,7 @@ RESTART_TO_MINING:
 		// this.Log.Noise(i)
 		select {
 		case <-this.stopingCh:
+			this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
 			// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
 			return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
 		default:
@@ -185,7 +187,7 @@ RESTART_TO_MINING:
 			goto MINING_SUCCESS
 		}
 	}
-	goto RESTART_TO_MINING
+	goto RESTART_TO_MINING // 下一轮次
 MINING_SUCCESS:
 
 	// 插入并等待结果
@@ -211,18 +213,21 @@ MINING_SUCCESS:
 			str_time,
 		))
 	}else{
-		blktxs := newBlock.GetTransactions()
-		length := len(blktxs)-1
-		this.Log.Warning("mining finish block", "hash", hex.EncodeToString(targetHash), "insert chain fail, reappend all txs", length, "and clear block")
-		for i:=length; i>0; i-- { // drop coinbase
-			this.TxPool.AddTx(blktxs[i]) // 倒序重新放入交易池
-		}
-
+		this.reputAllTxsFromBlock(newBlock)
 	}
 	// 继续挖掘下一个区块
 	this.StartMining()
 
 	return nil
+}
+
+func (this *HacashMiner) reputAllTxsFromBlock(newBlock block.Block)  {
+	blktxs := newBlock.GetTransactions()
+	length := len(blktxs)-1
+	this.Log.Warning("mining finish block", "hash", hex.EncodeToString(newBlock.Hash()), "insert chain fail, reappend all txs", length, "and clear block")
+	for i:=length; i>0; i-- { // drop coinbase
+		this.TxPool.AddTx(blktxs[i]) // 倒序重新放入交易池
+	}
 }
 
 // 插入区块
@@ -252,11 +257,11 @@ func (this *HacashMiner) InsertBlocks(blks []block.Block) {
 // 插入区块
 func (this *HacashMiner) insertBlockLoop() {
 	for {
-		tk := time.NewTimer(time.Second * 9)
+		//tk := time.NewTimer(time.Second * 9)
 		select {
 		case blk := <-this.insertBlocksCh:
 			this.Log.Info("insert loop get one block", "height", blk.Block.GetHeight())
-			tk.Stop()
+			//tk.Stop()
 			this.StopMining()
 			err := this.doInsertBlock(blk)
 			if err != nil {
@@ -264,7 +269,7 @@ func (this *HacashMiner) insertBlockLoop() {
 			} else {
 				this.Log.Info("insert block ok", "height", blk.Block.GetHeight())
 			}
-		case <-tk.C:
+		//case <-tk.C:
 			// this.Log.Noise("no block to insert")
 			// this.StartMining() // 几秒后没有区块插入则自动开始挖矿
 		}
@@ -339,8 +344,6 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 			return fmt.Errorf("tx %s is exist", hex.EncodeToString(txhashnofee))
 		}
 	}
-	// 停止挖矿
-	this.StopMining()
 	// 验证交易
 	newBlockChainState := state.NewTempChainState(nil)
 	blksterr := block.ChangeChainState(newBlockChainState)

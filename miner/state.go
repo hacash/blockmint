@@ -35,6 +35,11 @@ func NewMinerState(log log.Logger) *MinerState {
 	}
 }
 
+// 获取
+func (this *MinerState) GetBlockHead() block.Block {
+	return this.prevBlockHead
+}
+
 // 修改矿工状态
 func (this *MinerState) SetNewBlock(block block.Block) {
 	this.prevBlockHead = block

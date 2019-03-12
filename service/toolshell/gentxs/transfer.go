@@ -1,4 +1,4 @@
-package toolshell
+package gentxs
 
 import (
 	"bytes"
@@ -9,24 +9,24 @@ import (
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/transactions"
-	"github.com/tidwall/gjson"
+	"github.com/hacash/blockmint/service/toolshell/ctx"
 	"strconv"
 )
 
 // 创建一笔交易
-func genTxSimpleTransfer(params []gjson.Result) {
+func GenTxSimpleTransfer(ctx ctx.Context, params []string) {
 	if len(params) < 3 {
 		fmt.Println("params not enough")
 		return
 	}
-	from := params[0].String()
-	to := params[1].String()
-	finamt := params[2].String()
-	finfee := params[3].String()
-	if notLoadedYetAccountAddress(from) {
+	from := params[0]
+	to := params[1]
+	finamt := params[2]
+	finfee := params[3]
+	if ctx.NotLoadedYetAccountAddress(from) {
 		return
 	}
-	if isInvalidAccountAddress(to) {
+	if ctx.IsInvalidAccountAddress(to) {
 		return
 	}
 	amt, e1 := fields.NewAmountFromFinString(finamt)
@@ -50,6 +50,7 @@ func genTxSimpleTransfer(params []gjson.Result) {
 		return
 	}
 	newTrs, e5 := transactions.NewEmptyTransaction_1_Simple(fields.Address(masterAddr))
+	newTrs.Timestamp = fields.VarInt5(ctx.UseTimestamp()) // 使用 hold 的时间戳
 	if e5 != nil {
 		fmt.Println("create transaction error, " + e5.Error())
 		return
@@ -58,7 +59,7 @@ func genTxSimpleTransfer(params []gjson.Result) {
 	tranact := actions.NewAction_1_SimpleTransfer(toAddr, *amt)
 	newTrs.AppendAction(tranact)
 	// sign
-	e6 := newTrs.FillNeedSigns(AllPrivateKeyBytes)
+	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes())
 	if e6 != nil {
 		fmt.Println("sign transaction error, " + e6.Error())
 		return
@@ -88,12 +89,14 @@ func genTxSimpleTransfer(params []gjson.Result) {
 
 	// ok
 	fmt.Println("transaction create success! ")
-	fmt.Println("hash: <" + hex.EncodeToString(newTrs.Hash()) + ">")
-	fmt.Println("hash_no_fee: <" + hex.EncodeToString(newTrs.HashNoFee()) + ">")
-	fmt.Println("body length is " + strconv.Itoa(len(bodybytes)) + " bytes, hex body is:")
+	fmt.Println("hash: <" + hex.EncodeToString(newTrs.HashNoFee()) + ">, hash_with_fee: <" + hex.EncodeToString(newTrs.Hash()) + ">")
+	fmt.Println("body length " + strconv.Itoa(len(bodybytes)) + " bytes, hex body is:")
 	fmt.Println("-------- TRANSACTION BODY START --------")
 	fmt.Println(hex.EncodeToString(bodybytes))
 	//fmt.Println( hex.EncodeToString( bodybytes2 ) )
 	fmt.Println("-------- TRANSACTION BODY END   --------")
+
+	// 记录
+	ctx.SetTxToRecord(newTrs.HashNoFee(), newTrs)
 
 }

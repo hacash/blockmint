@@ -20,7 +20,6 @@ import (
 	"github.com/hacash/blockmint/types/service"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -35,9 +34,6 @@ type HacashMiner struct {
 	State *MinerState
 
 	TxPool service.TxPool
-
-	startingCh chan bool // 标记
-	stopingCh  chan bool // 是否停止
 
 	// 矿工状态标识
 	miningStatusCh chan bool
@@ -55,9 +51,6 @@ type HacashMiner struct {
 	// 成功挖掘新区快 事件订阅
 	discoveryNewBlockFeed      event.Feed
 	discoveryNewBlockFeedScope event.SubscriptionScope
-
-	// 当前的状态 0=挖矿停止   1=挖矿正在运行
-	miningStatus uint32
 
 	Log log.Logger
 }
@@ -99,13 +92,9 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 	miner.State = NewMinerState(logger)
 	miner.State.FetchLoad()
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
-	miner.stopingCh = make(chan bool, 10)
-	miner.startingCh = make(chan bool, 10)
 	miner.miningStatusCh = make(chan bool, 200)
 
 	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
-
-	atomic.StoreUint32(&miner.miningStatus, 0) // 启动时为停止状态
 
 	return miner
 }
@@ -157,7 +146,6 @@ func (this *HacashMiner) miningLoop() {
 			err := this.doMining()
 			if err != nil {
 				this.Log.Info("mining process out for", err)
-				atomic.StoreUint32(&this.miningStatus, 0) // 标记停止, 等待开启
 			} else {
 				this.Log.Info("mining process out")
 				// 继续挖掘下一个区块
@@ -178,7 +166,6 @@ func (this *HacashMiner) doMining() error {
 	// 挖掘计算
 	var targetHash []byte
 	targetDifficulty := newBlock.GetDifficulty()
-	atomic.StoreUint32(&this.miningStatus, 1) // 标记开始
 RESTART_TO_MINING:
 	this.Log.Info("create new block for mining", "height", newBlock.GetHeight())
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase

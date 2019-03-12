@@ -14,6 +14,7 @@ import (
 	"github.com/hacash/blockmint/service/rpc"
 	"os"
 	"os/signal"
+	"time"
 )
 
 func main() {
@@ -54,8 +55,12 @@ func StartHacash() {
 	var miner = miner.GetGlobalInstanceHacashMiner()
 	go miner.Start()
 	if config.Config.Miner.Forcestart == "true" {
-		miner.StartMining() // 开始挖矿
-		fmt.Println("HacashMiner start mining in force on start ...")
+		go func() {
+			fmt.Println("HacashMiner start mining in force on start ...")
+			t := time.NewTimer(5 * time.Second)
+			<-t.C
+			miner.StartMining() // 开始挖矿
+		}()
 	}
 
 	var ptcmng = p2p2.GetGlobalInstanceProtocolManager()

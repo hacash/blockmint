@@ -36,6 +36,7 @@ type Block interface {
 	GetDifficulty() uint32
 	GetPrevHash() []byte
 	GetTimestamp() uint64
+	GetTransactionCount() uint32
 
 	SetMrklRoot([]byte)
 	SetNonce(uint32)

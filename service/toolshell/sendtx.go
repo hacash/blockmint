@@ -4,29 +4,27 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/hacash/blockmint/block/blocks"
-	"github.com/tidwall/gjson"
+	"github.com/hacash/blockmint/service/toolshell/ctx"
 	"io/ioutil"
 	"net/http"
 )
 
 // 发送一笔交易给矿工
-func sendTxToMiner(params []gjson.Result) {
+func sendTxToMiner(ctx ctx.Context, params []string) {
 	if len(params) < 2 {
 		fmt.Println("params not enough")
 		return
 	}
-	txbody := params[0].String()
-	minerAddress := params[1].String()
-
-	txbytes, e0 := hex.DecodeString(txbody)
+	txhash, e0 := hex.DecodeString(params[0])
 	if e0 != nil {
-		fmt.Println("Tx body hex error")
+		fmt.Println("tx hash format error")
 		return
 	}
-	tx, _, e1 := blocks.ParseTransaction(txbytes, 0)
-	if e1 != nil {
-		fmt.Println("Tx body error")
+
+	minerAddress := params[1]
+
+	tx := ctx.GetTxFromRecord(txhash)
+	if tx == nil {
 		return
 	}
 	sigok, e2 := tx.VerifyNeedSigns()
@@ -38,6 +36,7 @@ func sendTxToMiner(params []gjson.Result) {
 	// post 发送
 	body := new(bytes.Buffer)
 	body.Write([]byte{0, 0, 0, 1}) // opcode
+	txbytes, _ := tx.Serialize()
 	body.Write(txbytes)
 	req, e3 := http.NewRequest("POST", "http://"+minerAddress+"/operate", body)
 	if e3 != nil {
@@ -53,7 +52,6 @@ func sendTxToMiner(params []gjson.Result) {
 		return
 	}
 	defer resp.Body.Close()
-
 	// ok
 	fmt.Println("add tx to " + minerAddress + ", the response is:")
 	resbody, _ := ioutil.ReadAll(resp.Body)

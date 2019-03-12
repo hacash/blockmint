@@ -2,16 +2,53 @@ package rpc
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"github.com/hacash/blockmint/block/blocks"
+	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/config"
+	miner2 "github.com/hacash/blockmint/miner"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func dealHome(response http.ResponseWriter, request *http.Request) {
-	response.Write([]byte("hacash rpc."))
+	// 矿工状态
+	var responseStrAry = []string{}
+	var miner = miner2.GetGlobalInstanceHacashMiner()
+	curheight := miner.State.CurrentHeight()
+	minerblkhead := miner.State.GetBlockHead()
+	prevheight := int64(curheight) - (288 * 7)
+	if prevheight <= 0 {
+		prevheight = 1
+	}
+	responseStrAry = append(responseStrAry, fmt.Sprintf(
+		"height: %d, tx: %d, hash: %s, difficulty: %d, create_time: %s",
+		curheight,
+		minerblkhead.GetTransactionCount()-1,
+		hex.EncodeToString(miner.State.CurrentBlockHash()),
+		minerblkhead.GetDifficulty(),
+		time.Unix(int64(minerblkhead.GetTimestamp()), 0).Format("2006/01/02 15:04:05"),
+	))
+	// 出块统计
+	prevblockbytes, _ := store.GetGlobalInstanceBlocksDataStore().GetBlockBytesByHeight(uint64(prevheight), true, false)
+	prevblock, _, _ := blocks.ParseBlockHead(prevblockbytes, 0)
+	costtotalmiao := minerblkhead.GetTimestamp() - prevblock.GetTimestamp()
+	costmiao := costtotalmiao / (288 * 7)
+	prevblock.GetTimestamp()
+	responseStrAry = append(responseStrAry, fmt.Sprintf(
+		"last week block average time: %s ( %d / 300 = %f S)",
+		time.Unix(int64(costmiao), 0).Format("04:05"),
+		costmiao,
+		(float32(costmiao)/300),
+	))
+
+	// Write
+	responseStrAry = append(responseStrAry, "")
+	response.Write([]byte("<html>" + strings.Join(responseStrAry, "\n\n<br><br> ") + "</html>"))
 }
 
 func dealQuery(response http.ResponseWriter, request *http.Request) {

@@ -288,17 +288,20 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	if bytes.Compare(pm.miner.State.CurrentBlockHash(), blkhash) == 0 {
 		pm.Log.News("all block status is sync ok, peer head match")
 		if peerone { // 开始挖矿
+			pm.Log.Note("start mining...")
 			pm.miner.StartMining()
+		} else {
 		}
-		return                 // 状态一致，不需要同步
+		return // 状态一致，不需要同步
 	}
 	self_height := pm.miner.State.CurrentHeight()
 	if peer_height <= self_height {
 		pm.Log.News("all block status is sync ok, peer height less than or equal with me")
 		if peerone { // 开始挖矿
+			pm.Log.Note("start mining...")
 			pm.miner.StartMining()
 		}
-		return                 // 高度小于我，或各自在一条高度相同的分叉上，不需要同步，等待下一个区块的出现
+		return // 高度小于我，或各自在一条高度相同的分叉上，不需要同步，等待下一个区块的出现
 	}
 	// 对方区块高度大于我，开始同步
 	pm.miner.StopMining() // 停止挖矿
@@ -307,7 +310,7 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	match_height, err := pm.checkBlockFork(p, peer_height, self_height)
 	if err != nil {
 		pm.regainStatusToSimple() // 恢复状态
-		pm.miner.StartMining() // 开始挖矿
+		pm.miner.StartMining()    // 开始挖矿
 		pm.Log.Error("check block fork error:", err)
 		return
 	}

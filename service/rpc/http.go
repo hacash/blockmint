@@ -8,6 +8,7 @@ import (
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/config"
 	miner2 "github.com/hacash/blockmint/miner"
+	"github.com/hacash/blockmint/types/block"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,9 +22,13 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	var miner = miner2.GetGlobalInstanceHacashMiner()
 	curheight := miner.State.CurrentHeight()
 	minerblkhead := miner.State.GetBlockHead()
-	prevheight := int64(curheight) - (288 * 7)
-	if prevheight <= 0 {
-		prevheight = 1
+	prev288_7height := uint64(curheight) - (288 * 7)
+	prev288height := uint64(curheight) - (288)
+	if prev288_7height <= 0 {
+		prev288_7height = 1
+	}
+	if prev288height <= 0 {
+		prev288height = 1
 	}
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
 		"height: %d, tx: %d, hash: %s, difficulty: %d, create_time: %s",
@@ -34,21 +39,30 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 		time.Unix(int64(minerblkhead.GetTimestamp()), 0).Format("2006/01/02 15:04:05"),
 	))
 	// 出块统计
-	prevblockbytes, _ := store.GetGlobalInstanceBlocksDataStore().GetBlockBytesByHeight(uint64(prevheight), true, false)
-	prevblock, _, _ := blocks.ParseBlockHead(prevblockbytes, 0)
-	costtotalmiao := minerblkhead.GetTimestamp() - prevblock.GetTimestamp()
-	costmiao := costtotalmiao / (288 * 7)
-	prevblock.GetTimestamp()
+	cost288_7miao := getMiao(minerblkhead, prev288_7height, 288*7)
+	cost288miao := getMiao(minerblkhead, prev288height, 288)
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
-		"last week block average time: %s ( %d / 300 = %f S)",
-		time.Unix(int64(costmiao), 0).Format("04:05"),
-		costmiao,
-		(float32(costmiao)/300),
+		"block average time, last week : %s ( %ds/300s = %f), last day : %s ( %ds/300s = %f)",
+		time.Unix(int64(cost288_7miao), 0).Format("04:05"),
+		cost288_7miao,
+		(float32(cost288_7miao)/300),
+		time.Unix(int64(cost288miao), 0).Format("04:05"),
+		cost288miao,
+		(float32(cost288miao)/300),
 	))
 
 	// Write
 	responseStrAry = append(responseStrAry, "")
 	response.Write([]byte("<html>" + strings.Join(responseStrAry, "\n\n<br><br> ") + "</html>"))
+}
+
+func getMiao(minerblkhead block.Block, prev288height uint64, blknum uint64) uint64 {
+	storedb := store.GetGlobalInstanceBlocksDataStore()
+	prevblockbytes, _ := storedb.GetBlockBytesByHeight(uint64(prev288height), true, false)
+	prevblock, _, _ := blocks.ParseBlockHead(prevblockbytes, 0)
+	costtotalmiao := minerblkhead.GetTimestamp() - prevblock.GetTimestamp()
+	costmiao := costtotalmiao / blknum
+	return costmiao
 }
 
 func dealQuery(response http.ResponseWriter, request *http.Request) {

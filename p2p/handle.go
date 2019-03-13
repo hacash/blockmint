@@ -171,7 +171,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	// 如果连接数为零，且不为强制挖矿，则停止挖矿，避免在自己的分支上挖矿
 	if pm.peers.Len() == 0 && config.Config.Miner.Forcestart != "true" {
 		// 停止挖矿
-		pm.Log.Warning("only one peer removed", peer.Name(), "no connect now, stop mining !")
+		pm.Log.Error("only one peer removed", peer.Name(), "no connect now, stop mining !")
 	}
 }
 

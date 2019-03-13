@@ -295,6 +295,7 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 			pm.Log.Note("start mining...")
 			pm.miner.StartMining()
 		} else {
+
 		}
 		return // 状态一致，不需要同步
 	}

@@ -88,7 +88,11 @@ func (this *MemTxPool) pickUpTx(hashnofee []byte) *MemTxItem {
 		}
 		if bytes.Compare(next.HashNoFee, hashnofee) == 0 {
 			prev.next = next.next
-			return next // 返回
+			// 更新统计
+			this.Length -= 1
+			this.Size -= uint64(next.Tx.Size())
+			// 返回
+			return next
 		}
 		prev = next
 		next = next.next
@@ -202,9 +206,13 @@ func (this *MemTxPool) PopTxByHighestFee() block.Transaction {
 	if this.TxHead == nil {
 		return nil
 	}
-	ret := this.TxHead
-	this.TxHead = this.TxHead.next
-	return ret.Tx
+	head := this.TxHead
+	this.TxHead = head.next
+	// 更新统计
+	this.Length -= 1
+	this.Size -= uint64(head.Tx.Size())
+	// 返回
+	return head.Tx
 }
 
 // 订阅交易池加入新交易事件

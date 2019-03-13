@@ -17,6 +17,7 @@
 *.hd
 *.idx
 *.log
+*fuse_*
 
 .git/
 .idea/

@@ -450,7 +450,7 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 		errun := trs.ChangeChainState(hxstate)
 		if errun != nil {
 			hxstate.Destroy()
-			continue // error
+			continue // error , give up tx
 		}
 		// ok copy state
 		tempBlockState.TraversalCopy(hxstate)

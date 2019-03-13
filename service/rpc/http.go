@@ -8,6 +8,8 @@ import (
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/config"
 	miner2 "github.com/hacash/blockmint/miner"
+	"github.com/hacash/blockmint/p2p"
+	txpool2 "github.com/hacash/blockmint/service/txpool"
 	"github.com/hacash/blockmint/types/block"
 	"io/ioutil"
 	"log"
@@ -16,7 +18,18 @@ import (
 	"time"
 )
 
+var (
+	dealHomePrintCacheTime  = time.Now()
+	dealHomePrintCacheBytes []byte
+)
+
 func dealHome(response http.ResponseWriter, request *http.Request) {
+
+	if len(dealHomePrintCacheBytes) > 0 && time.Now().Unix() < dealHomePrintCacheTime.Unix()+57 {
+		response.Write(dealHomePrintCacheBytes)
+		return
+	}
+	dealHomePrintCacheTime = time.Now()
 	// 矿工状态
 	var responseStrAry = []string{}
 	var miner = miner2.GetGlobalInstanceHacashMiner()
@@ -42,7 +55,7 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	cost288_7miao := getMiao(minerblkhead, prev288_7height, 288*7)
 	cost288miao := getMiao(minerblkhead, prev288height, 288)
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
-		"block average time, last week : %s ( %ds/300s = %f), last day : %s ( %ds/300s = %f)",
+		"block average time, last week: %s ( %ds/300s = %f), last day: %s ( %ds/300s = %f)",
 		time.Unix(int64(cost288_7miao), 0).Format("04:05"),
 		cost288_7miao,
 		(float32(cost288_7miao)/300),
@@ -50,10 +63,32 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 		cost288miao,
 		(float32(cost288miao)/300),
 	))
+	// 交易池信息
+	txpool := txpool2.GetGlobalInstanceMemTxPool()
+	if pool, ok := txpool.(*txpool2.MemTxPool); ok {
+		responseStrAry = append(responseStrAry, fmt.Sprintf(
+			"txpool length: %d, size: %fkb",
+			pool.Length,
+			float64(pool.Size)/1024,
+		))
+	}
+	// 节点连接信息
+	p2pserver := p2p.GetGlobalInstanceP2PServer()
+	nodeinfo := p2pserver.GetServer().NodeInfo()
+	p2pobj := p2p.GetGlobalInstanceProtocolManager()
+	peers := p2pobj.GetPeers()
+	responseStrAry = append(responseStrAry, fmt.Sprintf(
+		"p2p peer name: %s, enode: %s, connected: %d, best connect: %s",
+		nodeinfo.Name,
+		nodeinfo.Enode,
+		peers.Len(),
+		peers.BestPeer().Name(),
+	))
 
 	// Write
 	responseStrAry = append(responseStrAry, "")
-	response.Write([]byte("<html>" + strings.Join(responseStrAry, "\n\n<br><br> ") + "</html>"))
+	dealHomePrintCacheBytes = []byte("<html>" + strings.Join(responseStrAry, "\n\n<br><br> ") + "</html>")
+	response.Write(dealHomePrintCacheBytes)
 }
 
 func getMiao(minerblkhead block.Block, prev288height uint64, blknum uint64) uint64 {

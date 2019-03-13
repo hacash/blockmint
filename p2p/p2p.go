@@ -72,6 +72,10 @@ func NewP2PService(log log.Logger) *P2PServer {
 	return newser
 }
 
+func (this *P2PServer) GetServer() *p2p.Server {
+	return this.running
+}
+
 func (this *P2PServer) Start() error {
 
 	srv := this.running

@@ -1,6 +1,7 @@
 package account
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -39,6 +40,13 @@ func GetAccountByPriviteKey(byte []byte) (*Account, error) {
 func CreateAccountByPassword(password string) *Account {
 	digest := sha256.Sum256([]byte(password))
 	privite, _ := btcec.PrivKeyFromBytes(btcec.S256(), digest[:])
+	return genAccountByPrivateKey(*privite)
+}
+
+func CreateNewAccount() *Account {
+	digest := make([]byte, 32)
+	rand.Read(digest)
+	privite, _ := btcec.PrivKeyFromBytes(btcec.S256(), digest)
 	return genAccountByPrivateKey(*privite)
 }
 

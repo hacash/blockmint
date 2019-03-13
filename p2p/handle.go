@@ -115,6 +115,10 @@ func NewProtocolManager(log log.Logger) *ProtocolManager {
 	return manager
 }
 
+func (pm *ProtocolManager) GetPeers() *peerSet {
+	return pm.peers
+}
+
 func (pm *ProtocolManager) Start(maxPeers int) {
 	if maxPeers > 0 {
 		pm.maxPeers = maxPeers

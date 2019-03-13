@@ -13,12 +13,10 @@ import (
 )
 
 var (
-	MyAccounts         = make(map[string]account.Account, 0)
-	AllPrivateKeyBytes = make(map[string][]byte, 0)
-	Transactions       = make(map[string]block.Transaction, 0)
-
-	TargetTime time.Time
-
+	MyAccounts          = make(map[string]account.Account, 0)
+	AllPrivateKeyBytes  = make(map[string][]byte, 0)
+	Transactions        = make(map[string]block.Transaction, 0)
+	TargetTime          time.Time // 使用的时间
 	currentInputContent string
 )
 
@@ -69,7 +67,7 @@ func (ctxToolShell) UseTimestamp() uint64 { // 当前使用的时间戳
 var welcomeContent = `
 Welcome to Hacash tool shell, you can:
 --------
-passwd $XXX $XXX  |  prikey $0xAB123D...  |  accounts  |  update
+passwd $XXX $XXX  |  prikey $0xAB123D...  |  newkey  |  accounts  |  update
 --------
 gentx sendcash $FROM_ADDRESS $TO_ADDRESS $AMOUNT $FEE  |  loadtx $0xTXBODYBYTES  |  txs
 --------
@@ -127,6 +125,8 @@ func RunToolShell() {
 			setPrivateKeyByPassword(parabody)
 		case "prikey":
 			setPrivateKey(parabody)
+		case "newkey":
+			createNewPrivateKey(parabody)
 		case "gentx":
 			genTx(ctxToolShell{}, parabody)
 		case "sendtx":
@@ -189,6 +189,12 @@ func setPrivateKeyByPassword(params []string) {
 		acc := account.CreateAccountByPassword(passwd)
 		printLoadAddress(acc)
 	}
+}
+
+// 随机创建私钥
+func createNewPrivateKey(params []string) {
+	acc := account.CreateNewAccount()
+	printLoadAddress(acc)
 }
 
 func printLoadAddress(acc *account.Account) {

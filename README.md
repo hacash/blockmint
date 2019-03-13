@@ -80,7 +80,7 @@ Hacash是一种运用通道链有序多签名实时冲销结算方法，可无�
   ## 以上命令执行结果代表生成了一笔交易（交易hash为f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718）并自动用账户12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE签名了交易。
   ## HCX1:248 代表你将要转账给地址 14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 的金额（一枚HCX币），而后面的 HCX1:244 表示将要支付给矿工的手续费（万分之一枚HCX币，具体记账规则详见技术白皮书）
   ```
-  以上 `gentx sendcash` 表示创建一笔发送现金的交易，12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 为付款账户，14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 为收款庄户， HCX1:248 为付款数额， HCX1:244 为手续费数量。 生成的交易hash为：f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718，现在你可以向矿工发送这笔交易：
+  以上 `gentx sendcash` 表示创建一笔发送现金的交易，12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 为付款账户，14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 为收款账户， HCX1:248 为付款数额， HCX1:244 为手续费数量。 生成的交易hash为：f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718，现在你可以向矿工发送这笔交易：
   ```
   >>sendtx f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718 hacash.org:3338
   ```
@@ -91,6 +91,10 @@ Hacash是一种运用通道链有序多签名实时冲销结算方法，可无�
   ```
   以上信息表示交易已经发送给矿工 hacash.org 端口为 3338（也可以采用IP+PORT形式，例如 47.244.26.14:3338 ）
   如果账户 12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 内拥有充足余额的话，这笔转账交易将被确认并打包、广播验证。如果余额不足，则交易将被简单地忽略丢弃。
+  ```
+  >>exit  ## 退出、关闭交易生成工具
+  ```
+  toolshell 为 Hacash 的专有交易创建、签名、发送的工具，类似钱包。更多功能及命令请参见文档。
 
 
 

@@ -14,9 +14,14 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+*.hd
+*.idx
+*.log
+
 .git/
 .idea/
 .DS_Store
 build/
+localtestcnf/
 database/
 database*/

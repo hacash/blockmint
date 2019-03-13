@@ -8,9 +8,6 @@ go get -x github.com/ethereum/go-ethereum/p2p
 # config
 go get -x github.com/jinzhu/configor
 
-# json
-go get -x github.com/tidwall/gjson
-
 # x16rs
 go get -x github.com/hacash/x16rs
 

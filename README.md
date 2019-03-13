@@ -58,16 +58,16 @@ Hacash是一种运用通道链有序多签名实时冲销结算方法，可无�
   ```
   运行以上编译生成的可执行文件，即进入交互式命令行工具，将显示一下欢迎和帮助信息，并显示读取输入的提示符`>>`。通过在其中输入一些简单的命令，即可完成创建账户、创建交易和发送交易等事项：
   ```
-  >>passwd XXXXXXXXXX  ##  passwd 指令表示通过密码（或助记词，不包含空格）生成一个账户地址，并登录至工具总，可用于后续签名交易
+  >>passwd XXXXXXXXXX  ##  passwd 指令表示通过密码（或助记词，不包含空格）生成一个账户地址，并登录至工具中，可用于后续签名交易
   ```
   输出结果：
   ```
   Ok, has loaded your account private key: 0x5b09369749b5240d619e70883c4c89030708917c1b2f5f81e2dc1094c451fff9 address: 12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE
-  ## 0x5b09369749b5240d619e70883c4c89030708917c1b2f5f81e2dc1094c451fff9 即为通过密码 XXXXXXXXXX 生成的账户私钥（用于签名交易、付款），12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 为你的账户地址（用于收款）
+  ## 0x5b09369749b5240d619e70883c4c89030708917c1b2f5f81e2dc1094c451fff9 即为通过密码 XXXXXXXXXX 生成的账户私钥（用于签名交易、付款），12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 为你的账户地址（用于付款或收款）
   ```
   生成一笔交易：
   ```
-  gentx sendcash 12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 HCX1:248 HCX1:244 
+  >>gentx sendcash 12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 HCX1:248 HCX1:244 
   ```
   输出结果为：
   ```
@@ -80,7 +80,7 @@ Hacash是一种运用通道链有序多签名实时冲销结算方法，可无�
   ## 以上命令执行结果代表生成了一笔交易（交易hash为f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718）并自动用账户12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE签名了交易。
   ## HCX1:248 代表你将要转账给地址 14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 的金额（一枚HCX币），而后面的 HCX1:244 表示将要支付给矿工的手续费（万分之一枚HCX币，具体记账规则详见技术白皮书）
   ```
-  以上 `gentx sendcash` 表示创建一笔发送现金的交易，12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 为付款账户，14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 为收款账户， HCX1:248 为付款数额， HCX1:244 为手续费数量。 生成的交易hash为：f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718，现在你可以向矿工发送这笔交易：
+  以上 `gentx sendcash` 命令表示创建一笔发送现金的交易，12ra7bS1ZGLbXSApbbPPbWmX7jaMe4ajcE 为付款账户，14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 为收款账户， HCX1:248 为付款数额， HCX1:244 为手续费数量。 生成的交易hash为：f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718，现在你可以向矿工发送这笔交易：
   ```
   >>sendtx f78852cc862c57d11f5b4e9d1be1adba0a68476a4fe9e7f2e0c273051f39e718 hacash.org:3338
   ```
@@ -95,7 +95,7 @@ Hacash是一种运用通道链有序多签名实时冲销结算方法，可无�
   >>exit  ## 退出、关闭交易生成工具
   ```
   toolshell 为 Hacash 的专有交易创建、签名、发送的工具，类似钱包。更多功能及命令请参见文档。
-  转账后，可以通过数据接口查看账户余额，访问： http://hacash.org:3338/query?action=balance&address=14qc3pDBYL43Q5HvKag32gqhgffRLSudg8，结果为
+  转账后，可以通过数据接口查看账户余额，访问： http://hacash.org:3338/query?action=balance&address=14qc3pDBYL43Q5HvKag32gqhgffRLSudg8 ，结果为
   ```
   {
     amount: "ㄜ0:0"   ## 表示余额为零

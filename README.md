@@ -95,6 +95,12 @@ Hacash是一种运用通道链有序多签名实时冲销结算方法，可无�
   >>exit  ## 退出、关闭交易生成工具
   ```
   toolshell 为 Hacash 的专有交易创建、签名、发送的工具，类似钱包。更多功能及命令请参见文档。
+  转账后，可以通过数据接口查看账户余额，访问： http://hacash.org:3338/query?action=balance&address=14qc3pDBYL43Q5HvKag32gqhgffRLSudg8，结果为
+  ```
+  {
+    amount: "ㄜ0:0"   ## 表示余额为零
+  }
+  ```
 
 
 

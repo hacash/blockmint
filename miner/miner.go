@@ -169,7 +169,7 @@ func (this *HacashMiner) doMining() error {
 RESTART_TO_MINING:
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
-	this.Log.Note("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
+	this.Log.News("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
 	for i := uint32(0); i < 4294967295; i++ {
 		// this.Log.Noise(i)
 		select {

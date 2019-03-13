@@ -167,9 +167,9 @@ func (this *HacashMiner) doMining() error {
 	var targetHash []byte
 	targetDifficulty := newBlock.GetDifficulty()
 RESTART_TO_MINING:
-	this.Log.Info("create new block for mining", "height", newBlock.GetHeight())
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
+	this.Log.Note("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
 	for i := uint32(0); i < 4294967295; i++ {
 		// this.Log.Noise(i)
 		select {

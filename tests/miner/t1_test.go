@@ -34,7 +34,7 @@ func Test_t1(t *testing.T) {
 	fmt.Println(len(dttypes))
 
 	var miner = miner.NewHacashMiner(log.New())
-	nextblk, _ := miner.CreateBlock()
+	nextblk, _, _, _, _ := miner.CreateNewBlock()
 	nexttypes, _ := nextblk.Serialize()
 	hash2 := nextblk.Hash()
 	fmt.Println(hash2)

@@ -17,6 +17,12 @@ import (
 	"time"
 )
 
+
+/**
+ * go build -o miner_node_hacash run/miner/main/main.go && ./miner_node_hacash
+ */
+
+
 func main() {
 
 	// config

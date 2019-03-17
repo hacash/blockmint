@@ -117,7 +117,7 @@ func RunToolShell() {
 			continue
 		}
 		// some opration
-		params := strings.Split(currentInputContent, " ")
+		params := strings.Fields(currentInputContent)
 		funcname := params[0]
 		parabody := params[1:]
 		switch params[0] {

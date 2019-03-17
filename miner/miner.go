@@ -18,6 +18,7 @@ import (
 	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
+	"math/big"
 	"strconv"
 	"sync"
 	"time"
@@ -165,7 +166,8 @@ func (this *HacashMiner) doMining() error {
 	}
 	// 挖掘计算
 	var targetHash []byte
-	targetDifficulty := newBlock.GetDifficulty()
+	targetDifficulty := new(big.Int).SetBytes( difficulty.Uint32ToHash256( newBlock.GetDifficulty() ) )
+
 RESTART_TO_MINING:
 	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
 	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
@@ -187,9 +189,10 @@ RESTART_TO_MINING:
 		}
 		newBlock.SetNonce(i)
 		targetHash = newBlock.HashFresh()
-		curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
+		// curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
+		curdiff := difficulty.HashToBig(targetHash)
 		//fmt.Println(curdiff, targetDifficulty)
-		if curdiff < targetDifficulty {
+		if curdiff.Cmp(targetDifficulty) == -1 {
 			this.Log.Info("find a valid nonce for block", "height", newBlock.GetHeight())
 			// OK !!!!!!!!!!!!!!!
 			goto MINING_SUCCESS
@@ -324,14 +327,35 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 			hex.EncodeToString(this.State.prevBlockHead.GetPrevHash()),
 		)
 	}
+	// 判断时间
+	prevblocktime := this.State.GetBlockHead().GetTimestamp()
+	blktime := block.GetTimestamp()
+	if blktime <= prevblocktime || blktime > uint64(time.Now().Unix()) {
+		str_time := time.Unix(int64(blktime), 0).Format("01/02 15:04:05")
+		str_time_prev := time.Unix(int64(prevblocktime), 0).Format("01/02 15:04:05")
+		return fmt.Errorf("block %d timestamp %s cannot be accept, prev blocktime is %s", block.GetHeight(), str_time, str_time_prev )
+	}
 	// 检查难度值
 	blkhash := block.HashFresh()
-	hxdift := difficulty.BigToCompact(difficulty.HashToBig(&blkhash))
+	hxdift := difficulty.Hash256ToUint32(blkhash)
 	tardift := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
 	if hxdift > tardift {
 		return fmt.Errorf("difficulty not satisfy, height %d, accept %d, but got %d", block.GetHeight(), tardift, hxdift)
 	}
-	// 验证签名
+	// 检查coinbase
+	txs := block.GetTransactions()
+	if len(txs) < 1 {
+		return fmt.Errorf("block %d need coinbase transaction", block.GetHeight())
+	}
+	coinbase, ok := txs[0].(*transactions.Transaction_0_Coinbase)
+	if ! ok {
+		return fmt.Errorf("block %d need coinbase transaction", block.GetHeight())
+	}
+	targetreward := coin.BlockCoinBaseReward( block.GetHeight() )
+	if ! targetreward.Equal( coinbase.GetReward() ) {
+		return fmt.Errorf("block %d coinbase reward need %s but get %s", block.GetHeight(), targetreward.ToFinString(), coinbase.GetReward().ToFinString())
+	}
+	// 验证全部交易签名
 	sigok, e1 := block.VerifyNeedSigns()
 	if e1 != nil {
 		return e1
@@ -341,7 +365,6 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}
 	// 判断交易是否已经存在
 	blockdb := store.GetGlobalInstanceBlocksDataStore()
-	txs := block.GetTransactions()
 	if len(txs) < 1 {
 		return fmt.Errorf("block is empty")
 	}

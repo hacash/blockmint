@@ -30,6 +30,10 @@ func NewTransaction_0_Coinbase() *Transaction_0_Coinbase {
 	}
 }
 
+func (trs *Transaction_0_Coinbase) GetReward() *fields.Amount {
+	return &trs.Reward
+}
+
 func (trs *Transaction_0_Coinbase) Type() uint8 {
 	return 0
 }

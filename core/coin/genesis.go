@@ -28,6 +28,7 @@ func GetGenesisBlock() block.Block {
 	//fmt.Println( ttt )
 	genesis.Timestamp = fields.VarInt5(ttt)
 	genesis.Nonce = fields.VarInt4(160117829)
+	genesis.Difficulty = fields.VarInt4(0)
 	// coinbase
 	addrreadble := "1271438866CSDpJUqrnchoJAiGGBFSQhjd"
 	addr, e0 := fields.CheckReadableAddress(addrreadble)

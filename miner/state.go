@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	LowestDifficultyCompact = uint32(532110000) // 532110000 // 首次调整难度前的预设难度值
+	LowestDifficultyCompact = uint32(4132110000) // 532110000 // 首次调整难度前的预设难度值
 
 	// 保存文件尺寸
 	distFileSize = block1def.ByteSizeBlockBeforeTransaction + 8
@@ -56,7 +56,8 @@ func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) ui
 		return LowestDifficultyCompact
 	}
 	head := this.prevBlockHead
-	targetdiff := difficulty.CalculateNextWorkTarget(
+	//targetdiff := difficulty.CalculateNextWorkTarget(
+	targetdiff := difficulty.CalculateNextTargetDifficulty(
 		head.GetDifficulty(),
 		height,
 		this.prev288BlockTimestamp,

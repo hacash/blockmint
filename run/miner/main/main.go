@@ -62,9 +62,10 @@ func StartHacash() {
 	go miner.Start()
 	if config.Config.Miner.Forcestart == "true" {
 		go func() {
-			fmt.Println("HacashMiner start mining in force on start ...")
+			fmt.Println("HacashMiner start mining in force on start...")
 			t := time.NewTimer(5 * time.Second)
 			<-t.C
+			fmt.Println("start mining...")
 			miner.StartMining() // 开始挖矿
 		}()
 	}

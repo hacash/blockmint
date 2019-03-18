@@ -221,6 +221,9 @@ func (block *Block_v1) GetDifficulty() uint32 {
 func (block *Block_v1) GetTransactionCount() uint32 {
 	return uint32(block.TransactionCount)
 }
+func (block *Block_v1) GetMrklRoot() []byte {
+	return block.MrklRoot
+}
 func (block *Block_v1) SetMrklRoot(root []byte) {
 	block.MrklRoot = root
 }

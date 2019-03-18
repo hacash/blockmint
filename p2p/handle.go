@@ -312,6 +312,7 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	pm.miner.StopMining() // 停止挖矿
 	pm.Log.Note("peer", p.Name(), "height", peer_height, "more than me height", self_height, "to check block fork and sync blocks")
 
+	/* TODO: 同步区块，暂时关闭分叉检测 */
 	match_height, err := pm.checkBlockFork(p, peer_height, self_height)
 	if err != nil {
 		pm.regainStatusToSimple() // 恢复状态

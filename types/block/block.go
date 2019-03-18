@@ -37,6 +37,7 @@ type Block interface {
 	GetPrevHash() []byte
 	GetTimestamp() uint64
 	GetTransactionCount() uint32
+	GetMrklRoot() []byte
 
 	SetMrklRoot([]byte)
 	SetNonce(uint32)

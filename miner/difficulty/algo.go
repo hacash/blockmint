@@ -18,12 +18,12 @@ func CalculateNextTargetDifficulty(
 	eachblocktime uint64,
 	changeblocknum uint64,
 	printInfo *string,
-	) uint32 {
+	) (*big.Int, uint32) {
 
 	powTargetTimespan := time.Second * time.Duration(eachblocktime*changeblocknum) // 一分钟一个快
 	// 如果新区块height不是 288 的整数倍，则不需要更新，仍然是最后一个区块的 bits
 	if currentHeight%changeblocknum != 0 {
-		return currentBits
+		return Uint32ToBig(currentBits), currentBits
 	}
 	prev2016blockTimestamp := time.Unix(int64(prevTimestamp), 0)
 	lastBlockTimestamp := time.Unix(int64(lastTimestamp), 0)
@@ -37,7 +37,7 @@ func CalculateNextTargetDifficulty(
 		actualTimespan = powTargetTimespan * 4
 	}
 
-	lastTarget := new(big.Int).SetBytes( Uint32ToHash256(currentBits) )
+	lastTarget := Uint32ToBig(currentBits)
 	// 计算公式： target = lastTarget * actualTime / expectTime
 	newTarget := lastTarget.Mul(lastTarget, big.NewInt(int64(actualTimespan.Seconds())))
 	newTarget = newTarget.Div(newTarget, big.NewInt(int64(powTargetTimespan.Seconds())))
@@ -57,10 +57,17 @@ func CalculateNextTargetDifficulty(
 		*printInfo = printStr
 	}
 
-	return nextBits
+	return newTarget, nextBits
 }
 
 
+
+
+
+func Uint32ToBig(number uint32) *big.Int {
+	resbytes := Uint32ToHash256(number)
+	return new(big.Int).SetBytes(resbytes)
+}
 
 
 func HashToBig(hash []byte) *big.Int {
@@ -93,6 +100,9 @@ func BigToUint32(bignum *big.Int) uint32 {
 	bytes := bignum.Bytes()
 	bytes32 := make([]byte, 32)
 	start := 32-len(bytes)
+	if start < 0 {
+		start = 0
+	}
 	copy(bytes32[start:], bytes)
 	return Hash256ToUint32( bytes32 )
 }

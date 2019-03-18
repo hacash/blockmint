@@ -158,6 +158,7 @@ func (this *HacashMiner) miningLoop() {
 
 // 执行挖矿
 func (this *HacashMiner) doMining() error {
+	//return fmt.Errorf("not do")
 	// 创建区块
 	newBlock, _, coinbase, _, e := this.CreateNewBlock()
 	if e != nil {
@@ -275,7 +276,7 @@ func (this *HacashMiner) insertBlockLoop() {
 			this.StopMining() // 停止挖矿
 			err := this.doInsertBlock(blk)
 			if err != nil {
-				this.Log.Info("insert block loop", "height", blk.Block.GetHeight(), "error", err)
+				this.Log.Error("do insert block loop", "height", blk.Block.GetHeight(), "error", err)
 			} else {
 				this.Log.Info("insert block ok", "height", blk.Block.GetHeight())
 			}
@@ -309,6 +310,62 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 			blockBytes,
 		})
 	}()
+
+	/*
+	// // // // // // // // // // // // // // // // // // // // // //
+    // 部署新的区块， 修改区块难度值
+
+    prevhead := this.State.prevBlockHead
+    blockv1, _ := block.(*blocks.Block_v1)
+    // 修改时间
+    nexttime := prevhead.GetTimestamp()
+    if block.GetHeight() > 8000 {
+		// nexttime += 10 + uint64(rand.Intn(200))
+		nexttime += 100 + uint64(rand.Intn(400))
+	}else{
+		nexttime += 100 + uint64(rand.Intn(400))
+	}
+	blockv1.Timestamp = fields.VarInt5(nexttime)
+    // 修改上一个区块hash
+	blockv1.PrevHash = prevhead.Hash()
+    // 修改难度
+	taegetbig, tardift111 := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
+	blockv1.Difficulty = fields.VarInt4(tardift111)
+	// 挖掘一段时间
+	oldDiff := difficulty.HashToBig( blockv1.HashFresh() )
+	totalstep := uint32(2000)
+	i := uint32(0)
+RRRKKK:
+	targetNonce := uint32(0);
+	for ; i<totalstep; i++ {
+		blockv1.Nonce = fields.VarInt4(i)
+		hashfresh := blockv1.HashFresh()
+		//fmt.Println(hex.EncodeToString(hashfresh))
+		newdiff := difficulty.HashToBig(hashfresh)
+		//fmt.Println(targetDiff.String())
+		//fmt.Println(oldDiff.String())
+		//fmt.Println(newdiff.String())
+		//fmt.Println(newdiff.Cmp( oldDiff ), newdiff.Cmp( targetDiff ))
+		if newdiff.Cmp( oldDiff ) == -1 && newdiff.Cmp( taegetbig ) == -1 {
+			//fmt.Println("-------------------------", i)
+			targetNonce = i
+			oldDiff = newdiff
+		}
+	}
+	if targetNonce == 0 {
+		i = totalstep
+		totalstep = totalstep*2
+		goto RRRKKK
+	}
+	blockv1.Nonce = fields.VarInt4(targetNonce)
+	str_time := time.Unix(int64(block.GetTimestamp()), 0).Format("01/02 15:04:05")
+	fmt.Println("------------", block.GetHeight(), "------", block.GetDifficulty(), "------", block.GetTransactionCount()-1, targetNonce, hex.EncodeToString(blockv1.HashFresh()), str_time)
+
+	// // // // // // // // // // // // // // // // // // // // // //
+	*/
+
+
+
 	// 判断高度
 	var fail_height = this.State.CurrentHeight()+1 != block.GetHeight()
 	var fail_prevhash = bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0
@@ -338,9 +395,24 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	// 检查难度值
 	blkhash := block.HashFresh()
 	hxdift := difficulty.Hash256ToUint32(blkhash)
-	tardift := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
-	if hxdift > tardift {
+	tardgbig, tardift := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
+	if tardgbig.Cmp( difficulty.HashToBig(blkhash) ) == -1  {
 		return fmt.Errorf("difficulty not satisfy, height %d, accept %d, but got %d", block.GetHeight(), tardift, hxdift)
+	}
+	// 判断默克尔root
+	mrklRoot := blocks.CalculateMrklRoot( block.GetTransactions() )
+	if bytes.Compare( mrklRoot, block.GetMrklRoot() ) != 0 {
+		return fmt.Errorf("block %d mrkl root hash wrong, accept %s, but got %s",
+			block.GetHeight(),
+			hex.EncodeToString(mrklRoot),
+			hex.EncodeToString(block.GetMrklRoot()))
+	}
+	// 检查交易数量
+	if uint32(len(block.GetTransactions())) != block.GetTransactionCount() {
+		return fmt.Errorf("block %d transaction count wrong, accept %d, but got %d",
+			block.GetHeight(),
+			len(block.GetTransactions()),
+			block.GetTransactionCount())
 	}
 	// 检查coinbase
 	txs := block.GetTransactions()

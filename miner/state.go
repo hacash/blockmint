@@ -12,12 +12,13 @@ import (
 	"github.com/hacash/blockmint/sys/file"
 	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
+	"math/big"
 	"os"
 	"path"
 )
 
-var (
-	LowestDifficultyCompact = uint32(4132110000) // 532110000 // 首次调整难度前的预设难度值
+var (                             // 4294967295
+	LowestDifficultyCompact = uint32(4294967294) // 首次调整难度前的预设难度值
 
 	// 保存文件尺寸
 	distFileSize = block1def.ByteSizeBlockBeforeTransaction + 8
@@ -50,14 +51,14 @@ func (this *MinerState) SetNewBlock(block block.Block) {
 }
 
 // 获取下一个区块的难度值
-func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) uint32 {
+func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) (*big.Int, uint32) {
 	// 预设难度
 	if height < config.ChangeDifficultyBlockNumber {
-		return LowestDifficultyCompact
+		return difficulty.Uint32ToBig(LowestDifficultyCompact), LowestDifficultyCompact
 	}
 	head := this.prevBlockHead
 	//targetdiff := difficulty.CalculateNextWorkTarget(
-	targetdiff := difficulty.CalculateNextTargetDifficulty(
+	targetbig, targetdiff := difficulty.CalculateNextTargetDifficulty(
 		head.GetDifficulty(),
 		height,
 		this.prev288BlockTimestamp,
@@ -67,14 +68,14 @@ func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) ui
 		print,
 	)
 	//fmt.Println("targetdiff", targetdiff)
-	return targetdiff
+	return targetbig, targetdiff
 }
 
 // 获取下一个区块的难度值
 func (this *MinerState) NextHeightTargetDifficultyCompact() (uint64, uint32, *string) {
 	nextHei := this.CurrentHeight() + 1
 	print := new(string)
-	target := this.TargetDifficultyCompact(nextHei, print)
+	_, target := this.TargetDifficultyCompact(nextHei, print)
 	return nextHei, target, print
 }
 

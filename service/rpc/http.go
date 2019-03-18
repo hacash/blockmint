@@ -77,12 +77,16 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	nodeinfo := p2pserver.GetServer().NodeInfo()
 	p2pobj := p2p.GetGlobalInstanceProtocolManager()
 	peers := p2pobj.GetPeers()
+	bestpeername := ""
+	if peers.Len() > 0 {
+		bestpeername = peers.BestPeer().Name()
+	}
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
 		"p2p peer name: %s, enode: %s, connected: %d, best connect: %s",
 		nodeinfo.Name,
 		nodeinfo.Enode,
 		peers.Len(),
-		peers.BestPeer().Name(),
+		bestpeername,
 	))
 
 	// Write

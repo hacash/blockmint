@@ -41,13 +41,13 @@ func StartHacash() {
 	if config.Config.Miner.Backtoheight > 0 {
 		tarhei := config.Config.Miner.Backtoheight
 		// 区块状态倒退
-		fmt.Println("Back the block chain data state to the specified height ", tarhei)
+		fmt.Println("go back the block chain data state to the specified height ", tarhei)
 		var miner = miner.GetGlobalInstanceHacashMiner()
 		_, err := miner.BackTheWorldToHeight(tarhei)
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			fmt.Println("Ok, back to height", tarhei, "now.")
+			fmt.Println("ok, back to height", tarhei, "now.")
 		}
 		return
 	}

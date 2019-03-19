@@ -293,7 +293,7 @@ func recursTraversalCopy(file *os.File, fileseek int64, segmentSize uint32, get 
 		return // end
 	}
 	// down
-	for i := 0; i < int(segmentSize/5)-1; i++ {
+	for i := 0; i < int(segmentSize/5); i++ {
 		start := i * 5
 		//fmt.Println(segment)
 		//fmt.Println(len(segment))

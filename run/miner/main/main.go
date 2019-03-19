@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/blockmint/block/blocks"
@@ -8,6 +9,7 @@ import (
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/block/transactions"
 	state2 "github.com/hacash/blockmint/chain/state"
+	"github.com/hacash/blockmint/chain/state/db"
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/miner"
 	p2p2 "github.com/hacash/blockmint/p2p"
@@ -29,7 +31,7 @@ func main() {
 	config.LoadConfigFile()
 
 	//Test_coinbaseAmt()
-	//return
+	//Test_coinbaseAddress(16183)
 
 	StartHacash()
 
@@ -80,6 +82,58 @@ func StartHacash() {
 	fmt.Println("Got signal:", s)
 
 }
+
+
+//
+
+
+// 测试打印区块奖励地址
+func Test_coinbaseAddress(height uint64) {
+
+	blkbts, _ := hex.DecodeString("010000003f37005c90a5b80000000d0d0af1c87d65c581310bd7ae803b23c69754be16df02a7b156c03c87aadd0ada0615668c7bf3658efeab80ef2a6be1e884a2844d52afdb88fa82f5c6000000010070db79e48fffa400000000ff89de02003bea1b64e8d5659d314c078ad37551f801012020202020202020202020202020202000")
+	blk, _, _ := blocks.ParseBlock(blkbts, 0)
+	// 保存
+	sss := state2.GetGlobalInstanceChainState()
+	ssstemp := state2.NewTempChainState( sss )
+	blk.ChangeChainState( ssstemp )
+	sss.TraversalCopy( ssstemp )
+
+	trs := blk.GetTransactions()
+	if coinbase, ok := trs[0].(*transactions.Transaction_0_Coinbase); ok {
+		fmt.Println("hash", hex.EncodeToString(blk.HashFresh()), "prev", hex.EncodeToString(blk.GetPrevHash()))
+		addr := base58check.Encode(coinbase.Address)
+		fmt.Println(addr, coinbase.Reward.ToFinString())
+		amtread := sss.Balance(coinbase.Address)
+		fmt.Println("111111111111111111111111111111111111111")
+		fmt.Println(amtread.ToFinString())
+		fmt.Println("222222222222222222222222222222222222222")
+		amtread2 := ssstemp.Balance(coinbase.Address)
+		fmt.Println(amtread2.ToFinString())
+
+
+
+
+		blcdb := db.GetGlobalInstanceBalanceDB()
+		finditem, e1 := blcdb.Read(coinbase.Address)
+		if e1 != nil {
+			fmt.Println(e1)
+		}
+		if finditem != nil {
+			fmt.Println("amount", finditem.Amount.ToFinString())
+		}
+
+
+
+
+	}
+
+
+
+
+
+}
+
+
 
 // 测试打印余额
 func Test_coinbaseAmt() {

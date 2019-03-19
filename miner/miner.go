@@ -290,7 +290,7 @@ func (this *HacashMiner) insertBlockLoop() {
 // 插入区块
 func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	if blk.Block == nil && (blk.Bodys == nil || len(blk.Bodys) == 0) {
-		fmt.Errorf("data is empty")
+		return fmt.Errorf("data is empty")
 	}
 	if blk.Block == nil {
 		b, _, e := blocks.ParseBlock(blk.Bodys, 0)
@@ -364,6 +364,9 @@ RRRKKK:
 	// // // // // // // // // // // // // // // // // // // // // //
 	*/
 
+	//if block.GetHeight() > 16183 {
+	//	return fmt.Errorf("")
+	//}
 
 
 	// 判断高度

@@ -165,47 +165,62 @@ func (this *HacashMiner) doMining() error {
 		this.Log.Warning("create new block for mining error", e)
 		return e
 	}
-	// 挖掘计算
-	var targetHash []byte
-	targetDifficulty := new(big.Int).SetBytes( difficulty.Uint32ToHash256( newBlock.GetDifficulty() ) )
+	var rewardAddrReadble string
+	var targetFinishHash []byte
+	// 是否为多线程挖矿
+	if config.Config.Miner.Supervene > 0 {
+		// 多线程并发挖矿
+		rewardAddrReadble = this.setMinerForCoinbase(coinbase)
+		newBlock = this.calculateNextBlock( newBlock, coinbase )
+		if newBlock == nil {
+			return fmt.Errorf("mining break by set sign stoping chan on supervene") // 停止挖矿
+		}
 
-RESTART_TO_MINING:
-	rewardAddrReadble := this.setMinerForCoinbase(coinbase)                    // coinbase
-	newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
-	this.Log.News("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
-	for i := uint32(0); i < 4294967295; i++ {
-		// this.Log.Noise(i)
-		select {
-		case stat := <-this.miningStatusCh:
-			if stat == false {
-				this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
-				// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
-				return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
+	}else{
+		// 普通挖矿 挖掘计算
+		targetDifficulty := new(big.Int).SetBytes( difficulty.Uint32ToHash256( newBlock.GetDifficulty() ) )
+
+	RESTART_TO_MINING:
+		rewardAddrReadble = this.setMinerForCoinbase(coinbase)                    // coinbase
+		newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
+		this.Log.News("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
+		for i := uint32(0); i < 4294967295; i++ {
+			// this.Log.Noise(i)
+			select {
+			case stat := <-this.miningStatusCh:
+				if stat == false {
+					this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+					// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
+					return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
+				}
+			default:
+
 			}
-		default:
+			if miningSleepNanosecond > 0 {
+				time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
+			}
+			newBlock.SetNonce(i)
+			targetFinishHash = newBlock.HashFresh()
+			// curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
+			curdiff := difficulty.HashToBig(targetFinishHash)
+			//fmt.Println(curdiff, targetDifficulty)
+			if curdiff.Cmp(targetDifficulty) == -1 {
+				this.Log.Info("find a valid nonce for block", "height", newBlock.GetHeight())
+				// OK !!!!!!!!!!!!!!!
+				goto MINING_SUCCESS
+			}
+		}
+		goto RESTART_TO_MINING // 下一轮次
+	MINING_SUCCESS:
 
-		}
-		if miningSleepNanosecond > 0 {
-			time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
-		}
-		newBlock.SetNonce(i)
-		targetHash = newBlock.HashFresh()
-		// curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
-		curdiff := difficulty.HashToBig(targetHash)
-		//fmt.Println(curdiff, targetDifficulty)
-		if curdiff.Cmp(targetDifficulty) == -1 {
-			this.Log.Info("find a valid nonce for block", "height", newBlock.GetHeight())
-			// OK !!!!!!!!!!!!!!!
-			goto MINING_SUCCESS
-		}
 	}
-	goto RESTART_TO_MINING // 下一轮次
-MINING_SUCCESS:
+
+	// 挖矿成功！！！
 
 	// 插入并等待结果
 	insert := this.InsertBlockWait(newBlock, nil)
 	if insert.Success {
-		targethashhex := hex.EncodeToString(targetHash)
+		targethashhex := hex.EncodeToString(targetFinishHash)
 		// 广播新区快信息
 		this.Log.Info("mining success one block", "hash", targethashhex)
 		go this.discoveryNewBlockFeed.Send(DiscoveryNewBlockEvent{
@@ -514,9 +529,9 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 	//}
 	//////////////// test ////////////////
 
-	hei, dfct, info := this.State.NextHeightTargetDifficultyCompact()
-	if info != nil && *info != "" {
-		this.Log.Note(*info)
+	hei, _, dfct, print := this.State.NextHeightTargetDifficultyCompact()
+	if print != nil && *print != "" {
+		this.Log.Note(*print)
 	}
 	nextblock.Height = fields.VarInt5(hei)
 	nextblock.Difficulty = fields.VarInt4(dfct)

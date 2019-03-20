@@ -49,15 +49,19 @@ func ParseBlockHead(buf []byte, seek uint32) (typesblock.Block, uint32, error) {
 //////////////////////////////////
 
 func CalculateBlockHash(block typesblock.Block) []byte {
+	stuff := CalculateBlockHashBaseStuff(block)
+	hashbase := sha3.Sum256( stuff )
+	//fmt.Println( hex.EncodeToString( hashbase[:] ) )
+	return x16rs.HashX16RS(hashbase[:])
+}
+
+func CalculateBlockHashBaseStuff(block typesblock.Block) []byte {
 	var buffer bytes.Buffer
 	head, _ := block.SerializeHead()
 	meta, _ := block.SerializeMeta()
 	buffer.Write(head)
 	buffer.Write(meta)
-	//fmt.Println( hex.EncodeToString( meta ) )
-	hashbase := sha3.Sum256(buffer.Bytes())
-	//fmt.Println( hex.EncodeToString( hashbase[:] ) )
-	return x16rs.HashX16RS(hashbase[:])
+	return buffer.Bytes()
 }
 
 func CalculateMrklRoot(transactions []typesblock.Transaction) []byte {

@@ -206,6 +206,11 @@ func (block *Block_v1) HashFresh() []byte {
 	block.hash = CalculateBlockHash(block)
 	return block.hash
 }
+// 刷新所有缓存数据
+func (block *Block_v1) Fresh(){
+	block.hash = nil
+}
+
 func (block *Block_v1) GetHeight() uint64 {
 	return uint64(block.Height)
 }

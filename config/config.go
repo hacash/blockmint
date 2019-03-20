@@ -32,6 +32,8 @@ var Config = struct {
 		Forcestart  string   `default:"false"` // 启动时强制开始挖矿
 		Minfeeratio string   `default:"1Y"`    // 接受的最小手续费比例
 		Rewards     []string // 矿工奖励地址
+		Supervene   uint64 // 启动多线程挖矿，指定线程数量（数量必须小于200）
+		Markword    string // 矿工寄语/标识，例如 hacash.org （不超过 15位）
 		// 慎重参数
 		Backtoheight  uint64 // state 数据状态退回到指定区块高低
 		Stepsleepnano string `default:"1KK"` // 矿工单次计算后休眠时间 纳秒  1秒=1000*1000*1000纳秒

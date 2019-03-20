@@ -28,6 +28,7 @@ type Block interface {
 	// HASH
 	Hash() []byte
 	HashFresh() []byte
+	Fresh() // 刷新所有缓存数据
 
 	GetTransactions() []Transaction
 	AddTransaction(Transaction)

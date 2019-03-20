@@ -72,11 +72,11 @@ func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) (*
 }
 
 // 获取下一个区块的难度值
-func (this *MinerState) NextHeightTargetDifficultyCompact() (uint64, uint32, *string) {
+func (this *MinerState) NextHeightTargetDifficultyCompact() (uint64, *big.Int, uint32, *string) {
 	nextHei := this.CurrentHeight() + 1
 	print := new(string)
-	_, target := this.TargetDifficultyCompact(nextHei, print)
-	return nextHei, target, print
+	tarbig, target := this.TargetDifficultyCompact(nextHei, print)
+	return nextHei, tarbig, target, print
 }
 
 func (this *MinerState) CurrentHeight() uint64 {

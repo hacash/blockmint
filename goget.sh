@@ -12,8 +12,8 @@ go get -x github.com/jinzhu/configor
 go get -x github.com/hacash/x16rs
 
 # hash
-go get -x golang.org/x/crypto/ripemd160
-go get -x golang.org/x/crypto/sha3
+# go get -x golang.org/x/crypto/ripemd160
+# go get -x golang.org/x/crypto/sha3
 
 # bitcoin
 go get -x github.com/hacash/bitcoin

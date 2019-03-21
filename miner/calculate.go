@@ -2,6 +2,7 @@ package miner
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/transactions"
@@ -46,11 +47,14 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 		// update mrkl root
 		newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions()))
 		basestuff := blocks.CalculateBlockHashBaseStuff(newBlock)
-		//fmt.Println(i, hex.EncodeToString(basestuff))
+		this.Log.Info("start supercpu", i, hex.EncodeToString(basestuff))
+		//fmt.Println("start supercpu", i, hex.EncodeToString(basestuff))
 		go func(i uint8) {
 			// 开始挖矿
 			nonce_bytes := x16r.MinerNonceHashX16RS( stopsign, targethashdiff, basestuff )
 			nonce := binary.BigEndian.Uint32(nonce_bytes)
+			this.Log.Info("end supercpu", i, nonce)
+			//fmt.Println("end supercpu", i, nonce)
 			if nonce > 0 {
 				// 成功挖出
 				successMsgi = i

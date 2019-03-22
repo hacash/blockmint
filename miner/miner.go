@@ -171,18 +171,18 @@ func (this *HacashMiner) doMining() error {
 	if config.Config.Miner.Supervene > 0 {
 		// 多线程并发挖矿
 		rewardAddrReadble = this.setMinerForCoinbase(coinbase)
-		newBlock = this.calculateNextBlock( newBlock, coinbase )
+		newBlock = this.calculateNextBlock(newBlock, coinbase)
 		if newBlock == nil {
 			return fmt.Errorf("mining break by set sign stoping chan on supervene") // 停止挖矿
 		}
 		targetFinishHash = newBlock.Hash()
 
-	}else{
+	} else {
 		// 普通挖矿 挖掘计算
-		targetDifficulty := new(big.Int).SetBytes( difficulty.Uint32ToHash256( newBlock.GetDifficulty() ) )
+		targetDifficulty := new(big.Int).SetBytes(difficulty.Uint32ToHash256(newBlock.GetDifficulty()))
 
 	RESTART_TO_MINING:
-		rewardAddrReadble = this.setMinerForCoinbase(coinbase)                    // coinbase
+		rewardAddrReadble = this.setMinerForCoinbase(coinbase)                     // coinbase
 		newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 		this.Log.News("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
 		for i := uint32(0); i < 4294967295; i++ {
@@ -213,7 +213,6 @@ func (this *HacashMiner) doMining() error {
 		}
 		goto RESTART_TO_MINING // 下一轮次
 	MINING_SUCCESS:
-
 	}
 
 	// 挖矿成功！！！
@@ -230,7 +229,7 @@ func (this *HacashMiner) doMining() error {
 		})
 		// 打印相关信息
 		str_time := time.Unix(int64(newBlock.GetTimestamp()), 0).Format("01/02 15:04:05")
-		this.Log.Note(fmt.Sprintf("〓%s, bh: %d, tx: %d, hx: %s, px: %s, df: %d, cm: %s, tt: %s",
+		this.Log.Note(fmt.Sprintf("⬤  %s, bh: %d, tx: %d, hx: %s, px: %s, df: %d, cm: %s, tt: %s",
 			coinbase.Reward.ToFinString(),
 			int(newBlock.GetHeight()),
 			len(newBlock.GetTransactions())-1,
@@ -328,62 +327,61 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}()
 
 	/*
-	// // // // // // // // // // // // // // // // // // // // // //
-    // 部署新的区块， 修改区块难度值
+		// // // // // // // // // // // // // // // // // // // // // //
+	    // 部署新的区块， 修改区块难度值
 
-    prevhead := this.State.prevBlockHead
-    blockv1, _ := block.(*blocks.Block_v1)
-    // 修改时间
-    nexttime := prevhead.GetTimestamp()
-    if block.GetHeight() > 8000 {
-		// nexttime += 10 + uint64(rand.Intn(200))
-		nexttime += 100 + uint64(rand.Intn(400))
-	}else{
-		nexttime += 100 + uint64(rand.Intn(400))
-	}
-	blockv1.Timestamp = fields.VarInt5(nexttime)
-    // 修改上一个区块hash
-	blockv1.PrevHash = prevhead.Hash()
-    // 修改难度
-	taegetbig, tardift111 := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
-	blockv1.Difficulty = fields.VarInt4(tardift111)
-	// 挖掘一段时间
-	oldDiff := difficulty.HashToBig( blockv1.HashFresh() )
-	totalstep := uint32(2000)
-	i := uint32(0)
-RRRKKK:
-	targetNonce := uint32(0);
-	for ; i<totalstep; i++ {
-		blockv1.Nonce = fields.VarInt4(i)
-		hashfresh := blockv1.HashFresh()
-		//fmt.Println(hex.EncodeToString(hashfresh))
-		newdiff := difficulty.HashToBig(hashfresh)
-		//fmt.Println(targetDiff.String())
-		//fmt.Println(oldDiff.String())
-		//fmt.Println(newdiff.String())
-		//fmt.Println(newdiff.Cmp( oldDiff ), newdiff.Cmp( targetDiff ))
-		if newdiff.Cmp( oldDiff ) == -1 && newdiff.Cmp( taegetbig ) == -1 {
-			//fmt.Println("-------------------------", i)
-			targetNonce = i
-			oldDiff = newdiff
+	    prevhead := this.State.prevBlockHead
+	    blockv1, _ := block.(*blocks.Block_v1)
+	    // 修改时间
+	    nexttime := prevhead.GetTimestamp()
+	    if block.GetHeight() > 8000 {
+			// nexttime += 10 + uint64(rand.Intn(200))
+			nexttime += 100 + uint64(rand.Intn(400))
+		}else{
+			nexttime += 100 + uint64(rand.Intn(400))
 		}
-	}
-	if targetNonce == 0 {
-		i = totalstep
-		totalstep = totalstep*2
-		goto RRRKKK
-	}
-	blockv1.Nonce = fields.VarInt4(targetNonce)
-	str_time := time.Unix(int64(block.GetTimestamp()), 0).Format("01/02 15:04:05")
-	fmt.Println("------------", block.GetHeight(), "------", block.GetDifficulty(), "------", block.GetTransactionCount()-1, targetNonce, hex.EncodeToString(blockv1.HashFresh()), str_time)
+		blockv1.Timestamp = fields.VarInt5(nexttime)
+	    // 修改上一个区块hash
+		blockv1.PrevHash = prevhead.Hash()
+	    // 修改难度
+		taegetbig, tardift111 := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
+		blockv1.Difficulty = fields.VarInt4(tardift111)
+		// 挖掘一段时间
+		oldDiff := difficulty.HashToBig( blockv1.HashFresh() )
+		totalstep := uint32(2000)
+		i := uint32(0)
+	RRRKKK:
+		targetNonce := uint32(0);
+		for ; i<totalstep; i++ {
+			blockv1.Nonce = fields.VarInt4(i)
+			hashfresh := blockv1.HashFresh()
+			//fmt.Println(hex.EncodeToString(hashfresh))
+			newdiff := difficulty.HashToBig(hashfresh)
+			//fmt.Println(targetDiff.String())
+			//fmt.Println(oldDiff.String())
+			//fmt.Println(newdiff.String())
+			//fmt.Println(newdiff.Cmp( oldDiff ), newdiff.Cmp( targetDiff ))
+			if newdiff.Cmp( oldDiff ) == -1 && newdiff.Cmp( taegetbig ) == -1 {
+				//fmt.Println("-------------------------", i)
+				targetNonce = i
+				oldDiff = newdiff
+			}
+		}
+		if targetNonce == 0 {
+			i = totalstep
+			totalstep = totalstep*2
+			goto RRRKKK
+		}
+		blockv1.Nonce = fields.VarInt4(targetNonce)
+		str_time := time.Unix(int64(block.GetTimestamp()), 0).Format("01/02 15:04:05")
+		fmt.Println("------------", block.GetHeight(), "------", block.GetDifficulty(), "------", block.GetTransactionCount()-1, targetNonce, hex.EncodeToString(blockv1.HashFresh()), str_time)
 
-	// // // // // // // // // // // // // // // // // // // // // //
+		// // // // // // // // // // // // // // // // // // // // // //
 	*/
 
 	//if block.GetHeight() > 16183 {
 	//	return fmt.Errorf("")
 	//}
-
 
 	// 判断高度
 	var fail_height = this.State.CurrentHeight()+1 != block.GetHeight()
@@ -409,18 +407,18 @@ RRRKKK:
 	if blktime <= prevblocktime || blktime > uint64(time.Now().Unix()) {
 		str_time := time.Unix(int64(blktime), 0).Format("01/02 15:04:05")
 		str_time_prev := time.Unix(int64(prevblocktime), 0).Format("01/02 15:04:05")
-		return fmt.Errorf("block %d timestamp %s cannot be accept, prev blocktime is %s", block.GetHeight(), str_time, str_time_prev )
+		return fmt.Errorf("block %d timestamp %s cannot be accept, prev blocktime is %s", block.GetHeight(), str_time, str_time_prev)
 	}
 	// 检查难度值
 	blkhash := block.HashFresh()
 	hxdift := difficulty.Hash256ToUint32(blkhash)
 	tardgbig, tardift := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
-	if tardgbig.Cmp( difficulty.HashToBig(blkhash) ) == -1  {
+	if tardgbig.Cmp(difficulty.HashToBig(blkhash)) == -1 {
 		return fmt.Errorf("difficulty not satisfy, height %d, accept %d, but got %d", block.GetHeight(), tardift, hxdift)
 	}
 	// 判断默克尔root
-	mrklRoot := blocks.CalculateMrklRoot( block.GetTransactions() )
-	if bytes.Compare( mrklRoot, block.GetMrklRoot() ) != 0 {
+	mrklRoot := blocks.CalculateMrklRoot(block.GetTransactions())
+	if bytes.Compare(mrklRoot, block.GetMrklRoot()) != 0 {
 		return fmt.Errorf("block %d mrkl root hash wrong, accept %s, but got %s",
 			block.GetHeight(),
 			hex.EncodeToString(mrklRoot),
@@ -439,11 +437,11 @@ RRRKKK:
 		return fmt.Errorf("block %d need coinbase transaction", block.GetHeight())
 	}
 	coinbase, ok := txs[0].(*transactions.Transaction_0_Coinbase)
-	if ! ok {
+	if !ok {
 		return fmt.Errorf("block %d need coinbase transaction", block.GetHeight())
 	}
-	targetreward := coin.BlockCoinBaseReward( block.GetHeight() )
-	if ! targetreward.Equal( coinbase.GetReward() ) {
+	targetreward := coin.BlockCoinBaseReward(block.GetHeight())
+	if !targetreward.Equal(coinbase.GetReward()) {
 		return fmt.Errorf("block %d coinbase reward need %s but get %s", block.GetHeight(), targetreward.ToFinString(), coinbase.GetReward().ToFinString())
 	}
 	// 验证全部交易签名

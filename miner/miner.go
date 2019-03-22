@@ -175,6 +175,7 @@ func (this *HacashMiner) doMining() error {
 		if newBlock == nil {
 			return fmt.Errorf("mining break by set sign stoping chan on supervene") // 停止挖矿
 		}
+		targetFinishHash = newBlock.Hash()
 
 	}else{
 		// 普通挖矿 挖掘计算
@@ -229,14 +230,14 @@ func (this *HacashMiner) doMining() error {
 		})
 		// 打印相关信息
 		str_time := time.Unix(int64(newBlock.GetTimestamp()), 0).Format("01/02 15:04:05")
-		this.Log.Note(fmt.Sprintf("bh: %d, tx: %d, df: %d, hx: %s, px: %s, cm: %s, rw: %s, tt: %s",
+		this.Log.Note(fmt.Sprintf("〓%s, bh: %d, tx: %d, hx: %s, px: %s, df: %d, cm: %s, tt: %s",
+			coinbase.Reward.ToFinString(),
 			int(newBlock.GetHeight()),
 			len(newBlock.GetTransactions())-1,
-			newBlock.GetDifficulty(),
 			targethashhex,
-			hex.EncodeToString(newBlock.GetPrevHash()[0:16])+"...",
+			hex.EncodeToString(newBlock.GetPrevHash()[0:10])+"...",
+			newBlock.GetDifficulty(),
 			rewardAddrReadble,
-			coinbase.Reward.ToFinString(),
 			str_time,
 		))
 	} else {

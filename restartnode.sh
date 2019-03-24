@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /root/go/src/github.com/hacash/blockmint
+
 ./goget.sh
 
 cp ../x16rs/libx16rs_hash.a ./

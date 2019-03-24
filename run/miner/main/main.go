@@ -31,7 +31,7 @@ func main() {
 	config.LoadConfigFile()
 
 	//Test_coinbaseAmt()
-	//Test_coinbaseAddress(16183)
+	//Test_coinbaseAddress(16231)
 
 	StartHacash()
 
@@ -85,10 +85,28 @@ func StartHacash() {
 
 
 //
+// 测试打印区块奖励地址
+func Test_coinbaseAddress(height uint64) {
+
+	blkbts, _ := store.GetGlobalInstanceBlocksDataStore().GetBlockBytesByHeight(height, true, true)
+	blk, _, _ := blocks.ParseBlock(blkbts, 0)
+
+	trs := blk.GetTransactions()
+	if coinbase, ok := trs[0].(*transactions.Transaction_0_Coinbase); ok {
+
+		addr := base58check.Encode(coinbase.Address)
+		fmt.Println(addr, coinbase.Reward.ToFinString())
+
+	}
+
+
+
+}
+
 
 
 // 测试打印区块奖励地址
-func Test_coinbaseAddress(height uint64) {
+func Test_database_store(height uint64) {
 
 	blkbts, _ := hex.DecodeString("010000003f37005c90a5b80000000d0d0af1c87d65c581310bd7ae803b23c69754be16df02a7b156c03c87aadd0ada0615668c7bf3658efeab80ef2a6be1e884a2844d52afdb88fa82f5c6000000010070db79e48fffa400000000ff89de02003bea1b64e8d5659d314c078ad37551f801012020202020202020202020202020202000")
 	blk, _, _ := blocks.ParseBlock(blkbts, 0)

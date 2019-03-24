@@ -816,7 +816,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			insert := pm.miner.InsertBlockWait(blk, blkbts)
 			if insert.Success { // insert ok
 				str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
-				pm.Log.Note("discovery new block, insert success.", "height", data.Height, "tx", len(insert.Block.GetTransactions())-1, "hash", hex.EncodeToString(insert.Block.Hash()), "prev", hex.EncodeToString(insert.Block.GetPrevHash()[0:16])+"...", "time", str_time)
+				pm.Log.Note("ht:", data.Height, "tx:", len(insert.Block.GetTransactions())-1, "hash:", hex.EncodeToString(insert.Block.Hash()), "prev:", hex.EncodeToString(insert.Block.GetPrevHash()[0:10])+"...", "discovery new block insert success.", "time:", str_time)
 				// 广播区块=
 				data.block = insert.Block
 				p.MarkBlock(insert.Block) // 标记区块

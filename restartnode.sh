@@ -2,11 +2,15 @@
 
 cd /root/go/src/github.com/hacash/blockmint
 
+##
+# go build -ldflags '-w -s' -o mmmhcx run/miner/main/main.go && ./mmmhcx run/miner/main/localtestcnf/4.yml
+##
+
+
 ./goget.sh
 
-cp ../x16rs/libx16rs_hash.a ./
 
-go build -o miner_node_hacash run/miner/main/main.go
+go build -ldflags '-w -s' -o miner_node_hacash run/miner/main/main.go
 
 # kill
 ps -ef | grep miner_node_hacash | grep -v grep | awk '{print $2}' | xargs --no-run-if-empty kill

@@ -22,9 +22,11 @@ func GetGenesisBlock() block.Block {
 		return genesisBlock
 	}
 	genesis := blocks.NewEmptyBlock_v1(nil)
-	loc, _ := time.LoadLocation("Asia/Chongqing")
+	//loc, _ := time.LoadLocation("Asia/Chongqing")
+	secondsEastOfUTC := int((8 * time.Hour).Seconds())
+	loc_chongqing := time.FixedZone("Asia/Chongqing", secondsEastOfUTC)
 	//fmt.Println(time.Now().In(loc))
-	ttt := time.Date(2019, time.February, 4, 11, 25, 0, 0, loc).Unix()
+	ttt := time.Date(2019, time.February, 4, 11, 25, 0, 0, loc_chongqing).Unix()
 	//fmt.Println( ttt )
 	genesis.Timestamp = fields.VarInt5(ttt)
 	genesis.Nonce = fields.VarInt4(160117829)

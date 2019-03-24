@@ -60,10 +60,6 @@ func CalculateNextTargetDifficulty(
 	return newTarget, nextBits
 }
 
-
-
-
-
 func Uint32ToBig(number uint32) *big.Int {
 	resbytes := Uint32ToHash256(number)
 	return new(big.Int).SetBytes(resbytes)
@@ -76,7 +72,7 @@ func HashToBig(hash []byte) *big.Int {
 
 func Uint32ToHash256(number uint32) []byte {
 	resbytes := Uint32ToHash(number)
-	results := make([]byte, 32)
+	results := bytes.Repeat([]byte{0}, 32)
 	copy(results, resbytes)
 	return results
 }
@@ -95,15 +91,20 @@ func Uint32ToHash(number uint32) []byte {
 	return resbytes
 }
 
-func BigToUint32(bignum *big.Int) uint32 {
-
-	bytes := bignum.Bytes()
-	bytes32 := make([]byte, 32)
-	start := 32-len(bytes)
+func BigToHash256(bignum *big.Int) []byte {
+	bigbytes := bignum.Bytes()
+	bytes32 := bytes.Repeat([]byte{0}, 32)
+	start := 32-len(bigbytes)
 	if start < 0 {
 		start = 0
 	}
-	copy(bytes32[start:], bytes)
+	copy(bytes32[start:], bigbytes)
+	return bytes32
+}
+
+func BigToUint32(bignum *big.Int) uint32 {
+
+	bytes32 := BigToHash256(bignum)
 	return Hash256ToUint32( bytes32 )
 }
 

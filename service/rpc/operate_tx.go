@@ -9,6 +9,12 @@ import (
 
 func addTxToPool(w http.ResponseWriter, value []byte) {
 
+	defer func() {
+		if err := recover(); err != nil {
+			w.Write([]byte("Transaction body data error"))
+		}
+	}()
+
 	var tx, _, e = blocks.ParseTransaction(value, 0)
 	if e != nil {
 		w.Write([]byte("Transaction format error"))
@@ -26,6 +32,6 @@ func addTxToPool(w http.ResponseWriter, value []byte) {
 	// ok
 	hashnofee := tx.HashNoFee()
 	hashnofeestr := hex.EncodeToString(hashnofee)
-	w.Write([]byte("{\"success\":\"Transaction <" + hashnofeestr + "> Add to MemTxPool success !\"}"))
+	w.Write([]byte("{\"success\":\"Transaction add to MemTxPool successfully !\",\"txhash\":\"" + hashnofeestr + "\"}"))
 
 }

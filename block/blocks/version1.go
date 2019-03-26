@@ -206,8 +206,9 @@ func (block *Block_v1) HashFresh() []byte {
 	block.hash = CalculateBlockHash(block)
 	return block.hash
 }
+
 // 刷新所有缓存数据
-func (block *Block_v1) Fresh(){
+func (block *Block_v1) Fresh() {
 	block.hash = nil
 }
 
@@ -336,6 +337,9 @@ func NewTransactionByType(ty uint8) (typesblock.Transaction, error) {
 }
 
 func ParseTransaction(buf []byte, seek uint32) (typesblock.Transaction, uint32, error) {
+	if seek >= uint32(len(buf)) {
+		return nil, 0, fmt.Errorf("buf length over range")
+	}
 	ty := uint8(buf[seek])
 	var trx, _ = NewTransactionByType(ty)
 	var mv, err = trx.Parse(buf, seek+1)

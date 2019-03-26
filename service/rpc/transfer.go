@@ -153,6 +153,6 @@ func txStatus(params map[string]string) map[string]string {
 	confirm_height := miner.State.CurrentHeight() - txblkhead.GetHeight()
 	result["confirm_height"] = strconv.Itoa(int(confirm_height))           // 确认区块数
 	result["block_height"] = strconv.FormatUint(txblkhead.GetHeight(), 10) // 所属区块高度
-	result["block_hash"] = hex.EncodeToString(txblkhead.Hash())            // 所属区块hash
+	result["block_hash"] = hex.EncodeToString(txblkhead.HashFresh())       // 所属区块hash
 	return result
 }

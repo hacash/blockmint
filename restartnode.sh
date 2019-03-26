@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /root/go/src/github.com/hacash/blockmint
+
 ##
 # go build -ldflags '-w -s' -o mmmhcx run/miner/main/main.go && ./mmmhcx run/miner/main/localtestcnf/4.yml
 ##
@@ -7,7 +9,6 @@
 
 ./goget.sh
 
-cp ../x16rs/libx16rs_hash.a ./
 
 go build -ldflags '-w -s' -o miner_node_hacash run/miner/main/main.go
 

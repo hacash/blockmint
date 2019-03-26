@@ -245,7 +245,11 @@ func (this *MemTxPool) SubscribeNewTx(txCh chan<- []block.Transaction) event.Sub
 func (this *MemTxPool) GetTxs() []block.Transaction {
 	this.Lock()
 	defer this.Unlock()
-	var results = make([]block.Transaction, 0, this.Length)
+	cup := this.Length
+	if cup <= 0 {
+		cup = 0
+	}
+	var results = make([]block.Transaction, 0, cup)
 	next := this.TxHead
 	for {
 		if next == nil {

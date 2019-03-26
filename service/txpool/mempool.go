@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/hacash/blockmint/block/store"
+	"github.com/hacash/blockmint/chain/state"
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
@@ -69,6 +70,16 @@ func (this *MemTxPool) Unlock() {
 	this.mulk.Unlock()
 }
 
+// 从交易池里查询一笔交易
+func (this *MemTxPool) FindTxByHash(txhash []byte) (block.Transaction, bool) {
+	hashave := this.pickUpTx(txhash, false)
+	if hashave != nil && hashave.Tx != nil {
+		return hashave.Tx, true
+	} else {
+		return nil, false
+	}
+}
+
 // 检查交易是否已经存在
 func (this *MemTxPool) CheckTxExist(block.Transaction) bool {
 	panic("func not ok !")
@@ -76,7 +87,7 @@ func (this *MemTxPool) CheckTxExist(block.Transaction) bool {
 }
 
 // 取出一笔交易
-func (this *MemTxPool) pickUpTx(hashnofee []byte) *MemTxItem {
+func (this *MemTxPool) pickUpTx(hashnofee []byte, drop bool) *MemTxItem {
 	if this.TxHead == nil {
 		return nil
 	}
@@ -87,10 +98,12 @@ func (this *MemTxPool) pickUpTx(hashnofee []byte) *MemTxItem {
 			break
 		}
 		if bytes.Compare(next.HashNoFee, hashnofee) == 0 {
-			prev.next = next.next
-			// 更新统计
-			this.Length -= 1
-			this.Size -= uint64(next.Tx.Size())
+			if drop {
+				prev.next = next.next
+				// 更新统计
+				this.Length -= 1
+				this.Size -= uint64(next.Tx.Size())
+			}
 			// 返回
 			return next
 		}
@@ -104,14 +117,17 @@ func (this *MemTxPool) checkTx(tx block.Transaction) error {
 	if this.Length > MemTxPoolMaxLimit {
 		return fmt.Errorf("Mem Tx Pool Over Max Limit %d", MemTxPoolMaxLimit)
 	}
-
+	// 检查签名
 	ok, e1 := tx.VerifyNeedSigns()
 	if !ok || e1 != nil {
 		return fmt.Errorf("Transaction Verify Signature error")
 	}
-
+	// 检查最低手续费
+	if tx.FeePurity() < uint64(config.MinimalFeePurity) {
+		return fmt.Errorf("The handling fee is too low for miners to accept.")
+	}
 	hashnofee := tx.HashNoFee()
-
+	// 检查是否已经存在
 	stoblk := store.GetGlobalInstanceBlocksDataStore()
 	ext, e2 := stoblk.CheckTransactionExist(hashnofee)
 	if e2 != nil {
@@ -121,11 +137,14 @@ func (this *MemTxPool) checkTx(tx block.Transaction) error {
 		hashnofeestr := hex.EncodeToString(hashnofee)
 		return fmt.Errorf("Transaction " + hashnofeestr + " already exist")
 	}
-	// 最低手续费
-	if tx.FeePurity() < uint64(config.MinimalFeePurity) {
-		return fmt.Errorf("The handling fee is too low for miners to accept.")
+	// 尝试执行，检查余额
+	state_base := state.GetGlobalInstanceChainState()
+	state_temp_tx := state.NewTempChainState(state_base)
+	runerr := tx.ChangeChainState(state_temp_tx)
+	state_temp_tx.Destroy() // 销毁临时执行栈
+	if runerr != nil {
+		return fmt.Errorf(runerr.Error()) // 执行失败
 	}
-
 	// pass check !
 	return nil
 }
@@ -156,15 +175,18 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 		Tx:        tx,
 		next:      nil,
 	}
-	hashave := this.pickUpTx(hashnofee)
+	// pick up
+	hashave := this.pickUpTx(hashnofee, false)
 	if hashave != nil {
 		if txItem.FeePer <= hashave.FeePer { // 手续费不能比原有的低
 			return fmt.Errorf("Tx FeePurity value equal or less than the exist")
 		}
+		this.pickUpTx(hashnofee, true) // 删除旧的交易
 	}
-	// append
+	// size change
 	this.Size += uint64(txsize)
 	this.Length += 1
+	// append
 	if this.TxHead == nil {
 		this.TxHead = txItem
 		// 插入链表 广播添加事件
@@ -241,7 +263,7 @@ func (this *MemTxPool) RemoveTxs(txs []block.Transaction) {
 	defer this.Unlock()
 
 	for _, tx := range txs {
-		this.pickUpTx(tx.HashNoFee()) // 取出并丢弃
+		this.pickUpTx(tx.HashNoFee(), true) // 取出并丢弃
 	}
 
 }

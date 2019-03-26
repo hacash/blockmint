@@ -127,6 +127,11 @@ func dealOperate(response http.ResponseWriter, request *http.Request) {
 	bodybytes, e1 := ioutil.ReadAll(request.Body)
 	if e1 != nil {
 		response.Write([]byte("body error"))
+		return
+	}
+	if len(bodybytes) < 4 {
+		response.Write([]byte("body length less than 4"))
+		return
 	}
 	routeOperateRequest(response, binary.BigEndian.Uint32(bodybytes[0:4]), bodybytes[4:])
 }

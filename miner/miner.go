@@ -53,6 +53,9 @@ type HacashMiner struct {
 	discoveryNewBlockFeed      event.Feed
 	discoveryNewBlockFeedScope event.SubscriptionScope
 
+	// 当前正在计算的区块
+	CurrentPenddingBlock block.Block
+
 	Log log.Logger
 }
 
@@ -94,8 +97,8 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 	miner.State.FetchLoad()
 	miner.TxPool = txpool.GetGlobalInstanceMemTxPool()
 	miner.miningStatusCh = make(chan bool, 200)
-
 	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
+	miner.CurrentPenddingBlock = nil
 
 	return miner
 }
@@ -161,6 +164,7 @@ func (this *HacashMiner) doMining() error {
 	//return fmt.Errorf("not do")
 	// 创建区块
 	newBlock, _, coinbase, _, e := this.CreateNewBlock()
+	this.CurrentPenddingBlock = newBlock
 	if e != nil {
 		this.Log.Warning("create new block for mining error", e)
 		return e
@@ -216,6 +220,7 @@ func (this *HacashMiner) doMining() error {
 	}
 
 	// 挖矿成功！！！
+	this.CurrentPenddingBlock = nil
 
 	// 插入并等待结果
 	insert := this.InsertBlockWait(newBlock, nil)
@@ -327,56 +332,56 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}()
 
 	/*
-		// // // // // // // // // // // // // // // // // // // // // //
-	    // 部署新的区块， 修改区块难度值
+			// // // // // // // // // // // // // // // // // // // // // //
+		    // 部署新的区块， 修改区块难度值
 
-	    prevhead := this.State.prevBlockHead
-	    blockv1, _ := block.(*blocks.Block_v1)
-	    // 修改时间
-	    nexttime := prevhead.GetTimestamp()
-	    if block.GetHeight() > 8000 {
-			// nexttime += 10 + uint64(rand.Intn(200))
-			nexttime += 100 + uint64(rand.Intn(400))
-		}else{
-			nexttime += 100 + uint64(rand.Intn(400))
-		}
-		blockv1.Timestamp = fields.VarInt5(nexttime)
-	    // 修改上一个区块hash
-		blockv1.PrevHash = prevhead.Hash()
-	    // 修改难度
-		taegetbig, tardift111 := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
-		blockv1.Difficulty = fields.VarInt4(tardift111)
-		// 挖掘一段时间
-		oldDiff := difficulty.HashToBig( blockv1.HashFresh() )
-		totalstep := uint32(2000)
-		i := uint32(0)
-	RRRKKK:
-		targetNonce := uint32(0);
-		for ; i<totalstep; i++ {
-			blockv1.Nonce = fields.VarInt4(i)
-			hashfresh := blockv1.HashFresh()
-			//fmt.Println(hex.EncodeToString(hashfresh))
-			newdiff := difficulty.HashToBig(hashfresh)
-			//fmt.Println(targetDiff.String())
-			//fmt.Println(oldDiff.String())
-			//fmt.Println(newdiff.String())
-			//fmt.Println(newdiff.Cmp( oldDiff ), newdiff.Cmp( targetDiff ))
-			if newdiff.Cmp( oldDiff ) == -1 && newdiff.Cmp( taegetbig ) == -1 {
-				//fmt.Println("-------------------------", i)
-				targetNonce = i
-				oldDiff = newdiff
+		    prevhead := this.State.prevBlockHead
+		    blockv1, _ := block.(*blocks.Block_v1)
+		    // 修改时间
+		    nexttime := prevhead.GetTimestamp()
+		    if block.GetHeight() > 8000 {
+				// nexttime += 10 + uint64(rand.Intn(200))
+				nexttime += 100 + uint64(rand.Intn(400))
+			}else{
+				nexttime += 100 + uint64(rand.Intn(400))
 			}
-		}
-		if targetNonce == 0 {
-			i = totalstep
-			totalstep = totalstep*2
-			goto RRRKKK
-		}
-		blockv1.Nonce = fields.VarInt4(targetNonce)
-		str_time := time.Unix(int64(block.GetTimestamp()), 0).Format("01/02 15:04:05")
-		fmt.Println("------------", block.GetHeight(), "------", block.GetDifficulty(), "------", block.GetTransactionCount()-1, targetNonce, hex.EncodeToString(blockv1.HashFresh()), str_time)
+			blockv1.Timestamp = fields.VarInt5(nexttime)
+		    // 修改上一个区块hash
+			blockv1.PrevHash = prevhead.Hash()
+		    // 修改难度
+			taegetbig, tardift111 := this.State.TargetDifficultyCompact(block.GetHeight(), nil)
+			blockv1.Difficulty = fields.VarInt4(tardift111)
+			// 挖掘一段时间
+			oldDiff := difficulty.HashToBig( blockv1.HashFresh() )
+			totalstep := uint32(2000)
+			i := uint32(0)
+		RRRKKK:
+			targetNonce := uint32(0);
+			for ; i<totalstep; i++ {
+				blockv1.Nonce = fields.VarInt4(i)
+				hashfresh := blockv1.HashFresh()
+				//fmt.Println(hex.EncodeToString(hashfresh))
+				newdiff := difficulty.HashToBig(hashfresh)
+				//fmt.Println(targetDiff.String())
+				//fmt.Println(oldDiff.String())
+				//fmt.Println(newdiff.String())
+				//fmt.Println(newdiff.Cmp( oldDiff ), newdiff.Cmp( targetDiff ))
+				if newdiff.Cmp( oldDiff ) == -1 && newdiff.Cmp( taegetbig ) == -1 {
+					//fmt.Println("-------------------------", i)
+					targetNonce = i
+					oldDiff = newdiff
+				}
+			}
+			if targetNonce == 0 {
+				i = totalstep
+				totalstep = totalstep*2
+				goto RRRKKK
+			}
+			blockv1.Nonce = fields.VarInt4(targetNonce)
+			str_time := time.Unix(int64(block.GetTimestamp()), 0).Format("01/02 15:04:05")
+			fmt.Println("------------", block.GetHeight(), "------", block.GetDifficulty(), "------", block.GetTransactionCount()-1, targetNonce, hex.EncodeToString(blockv1.HashFresh()), str_time)
 
-		// // // // // // // // // // // // // // // // // // // // // //
+			// // // // // // // // // // // // // // // // // // // // // //
 	*/
 
 	//if block.GetHeight() > 16183 {

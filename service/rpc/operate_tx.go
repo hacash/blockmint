@@ -26,6 +26,6 @@ func addTxToPool(w http.ResponseWriter, value []byte) {
 	// ok
 	hashnofee := tx.HashNoFee()
 	hashnofeestr := hex.EncodeToString(hashnofee)
-	w.Write([]byte("Transaction " + hashnofeestr + " Add to MemTxPool success !"))
+	w.Write([]byte("{\"success\":\"Transaction <" + hashnofeestr + "> Add to MemTxPool success !\"}"))
 
 }

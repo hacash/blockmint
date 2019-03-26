@@ -236,6 +236,19 @@ func (this *BlocksDataStore) CheckTransactionExist(hashNoFee []byte) (bool, erro
 
 }
 
+// 通过Hash查询交易确认信息
+func (this *BlocksDataStore) ReadTransactionBelongBlockHead(hashNoFee []byte) (block.Block, error) {
+	res, e := this.ReadTransaction(hashNoFee, false, true)
+	if e != nil {
+		return nil, e
+	}
+	if res != nil && res.BlockHead != nil {
+		return res.BlockHead, nil
+	}
+	return nil, nil
+
+}
+
 func (this *BlocksDataStore) GetBlockHashByHeight(height uint64) ([]byte, error) {
 	finditem, e := this.heidxdb.Find(height)
 	if e != nil {

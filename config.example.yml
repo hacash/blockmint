@@ -15,7 +15,7 @@ miner:
   stepsleepnano: 500K # 挖矿单步执行休眠（纳秒），防止CPU跑满，影响机器上其它服务
 #  markword: hacash.org # 矿工在 coinbase交易里的标识，用于识别区块是谁挖出的，不超过15个字符
 #  supervene: 4 # 挖矿的多线程启用！ 利用多核CPU并行挖矿，数量建议设置为CPU逻辑核心数量相同
-  minfeeratio: 100Y # 最低交易手续费含量（单位：铢/Byte）少于此的不接受
+  minfeeratio: 100Y # 最低交易手续费含量（单位：烁/Byte）少于此的不接受
   rewards: # coinbase矿工奖励收取地址，每次随机取一个【改成你自己的地址】
   - 171886bjEvpDVcYmaFKQhpDatHTPXHnJRN
   - 188255WMwyMQrHEFEsFTxCUvtnCJuNGGay

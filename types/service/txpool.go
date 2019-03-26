@@ -10,6 +10,8 @@ type TxPool interface {
 	CheckTxExist(block.Transaction) bool
 	// 添加交易
 	AddTx(block.Transaction) error
+	// 从交易池里查询一笔交易
+	FindTxByHash([]byte) (block.Transaction, bool)
 	// 获取全部交易
 	GetTxs() []block.Transaction
 	// 过滤、清除交易

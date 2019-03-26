@@ -208,7 +208,7 @@ func (this *BlocksDataStore) ReadTransaction(hash []byte, getbody bool, getblock
 		restrs.Transaction = trs
 	}
 	if getblockhead {
-		head, e1 := this.indexdb.FindBlockHeadBytesByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
+		blkhash, head, e1 := this.indexdb.FindBlockHeadBytesByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
 		//fmt.Println(head)
 		if e1 != nil {
 			return nil, e1
@@ -217,6 +217,7 @@ func (this *BlocksDataStore) ReadTransaction(hash []byte, getbody bool, getblock
 		if e2 != nil {
 			return nil, e2
 		}
+		restrs.BlockHash = blkhash
 		restrs.BlockHead = blkhd
 	}
 	// ok
@@ -237,15 +238,15 @@ func (this *BlocksDataStore) CheckTransactionExist(hashNoFee []byte) (bool, erro
 }
 
 // 通过Hash查询交易确认信息
-func (this *BlocksDataStore) ReadTransactionBelongBlockHead(hashNoFee []byte) (block.Block, error) {
+func (this *BlocksDataStore) ReadTransactionBelongBlockHead(hashNoFee []byte) ([]byte, block.Block, error) {
 	res, e := this.ReadTransaction(hashNoFee, false, true)
 	if e != nil {
-		return nil, e
+		return nil, nil, e
 	}
 	if res != nil && res.BlockHead != nil {
-		return res.BlockHead, nil
+		return res.BlockHash, res.BlockHead, nil
 	}
-	return nil, nil
+	return nil, nil, nil
 
 }
 
@@ -276,7 +277,7 @@ func (this *BlocksDataStore) GetBlockBytesByHeight(height uint64, gethead bool, 
 	}
 	var blockbytes bytes.Buffer
 	if gethead {
-		head, e1 := this.indexdb.FindBlockHeadBytesByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
+		_, head, e1 := this.indexdb.FindBlockHeadBytesByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
 		//fmt.Println(e1)
 		if e1 != nil {
 			return nil, e1

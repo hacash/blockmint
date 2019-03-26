@@ -136,5 +136,5 @@ type TrsFindResult struct {
 	Location    *BlockLocation    // 交易起始在区块文件中的位置
 	BlockHead   block.Block       // 区块头
 	Transaction block.Transaction // 交易内容
-
+	BlockHash   []byte
 }

@@ -100,13 +100,13 @@ func (this *BlockIndexDB) FindBlockHashByPosition(keyprefix []byte, ptrnum uint3
 	return valuebytes, nil
 }
 
-func (this *BlockIndexDB) FindBlockHeadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]byte, error) {
+func (this *BlockIndexDB) FindBlockHeadBytesByPosition(keyprefix []byte, ptrnum uint32) ([]byte, []byte, error) {
 	valuebytes, e := this.treedb.ReadBytesByPosition(keyprefix, ptrnum)
 	if e != nil {
-		return nil, e
+		return nil, nil, e
 	}
 	start := this.treedb.HashSize + BlockLocationSize
-	return valuebytes[start : start+uint32(block1def.ByteSizeBlockHead)], nil
+	return valuebytes[0:this.treedb.HashSize], valuebytes[start : start+uint32(block1def.ByteSizeBlockHead)], nil
 }
 
 /////////////////////////////////////////

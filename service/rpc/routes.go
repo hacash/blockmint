@@ -15,16 +15,23 @@ func initRoutes() {
 	queryRoutes["passwd"] = newAccountByPassword // 通过密码创建账户
 	queryRoutes["createtx"] = transferSimple     // 创建普通转账交易
 	queryRoutes["txconfirm"] = txStatus          // 查询交易确认状态
+
+	queryRoutes["blocks"] = getBlockAbstractList  // 查询区块信息
+	queryRoutes["lastblock"] = getLastBlockHeight // 查询最新区块高度
 }
 
 func routeQueryRequest(action string, params map[string]string, w http.ResponseWriter, r *http.Request) {
 	if ctrl, ok := queryRoutes[action]; ok {
 		resobj := ctrl(params)
-		restxt, e1 := json.Marshal(resobj)
-		if e1 != nil {
-			w.Write([]byte("data not json"))
+		if jsondata, ok := resobj["jsondata"]; ok {
+			w.Write([]byte(jsondata)) // 自定义的 jsondata 数据
 		} else {
-			w.Write(restxt)
+			restxt, e1 := json.Marshal(resobj)
+			if e1 != nil {
+				w.Write([]byte("data not json"))
+			} else {
+				w.Write(restxt)
+			}
 		}
 	} else {
 		w.Write([]byte("not find action"))

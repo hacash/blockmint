@@ -618,7 +618,7 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 	db := store.GetGlobalInstanceBlocksDataStore()
 	state := state.GetGlobalInstanceChainState()
 	for {
-		blkbts, err := db.GetBlockBytesByHeight(current_height, true, true)
+		_, blkbts, err := db.GetBlockBytesByHeight(current_height, true, true, 0)
 		if err != nil {
 			return backblks, err
 		}
@@ -639,7 +639,7 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 		}
 	}
 	// 修改矿工状态
-	blkhdbts, e0 := db.GetBlockBytesByHeight(current_height, true, true)
+	_, blkhdbts, e0 := db.GetBlockBytesByHeight(current_height, true, true, 0)
 	if e0 != nil {
 		return backblks, e0
 	}
@@ -653,7 +653,7 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 		rootblk := coin.GetGenesisBlock()
 		this.State.prev288BlockTimestamp = rootblk.GetTimestamp() // 起始时间戳
 	} else {
-		blkhdbts_prev288, e1 := db.GetBlockBytesByHeight(prev288blkhei, true, false)
+		_, blkhdbts_prev288, e1 := db.GetBlockBytesByHeight(prev288blkhei, true, false, 0)
 		if e1 != nil {
 			return backblks, e1
 		}

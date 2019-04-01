@@ -167,7 +167,7 @@ func (this *BlocksDataStore) ReadBlockBytes(hash []byte) ([]byte, error) {
 	}
 	var resbuf bytes.Buffer
 	resbuf.Write(blkhead)
-	blkbodybytes, e1 := this.datadb.ReadBlockBody(blkloc)
+	blkbodybytes, e1 := this.datadb.ReadBlockBody(blkloc, 0)
 	if e1 != nil {
 		return nil, e1
 	}
@@ -196,7 +196,7 @@ func (this *BlocksDataStore) ReadTransaction(hash []byte, getbody bool, getblock
 	restrs.Location = finditem.location
 
 	if getbody {
-		body, e := this.datadb.ReadBlockBody(finditem.location)
+		body, e := this.datadb.ReadBlockBody(finditem.location, 0)
 		//fmt.Println(body)
 		if e != nil {
 			return nil, e
@@ -267,33 +267,35 @@ func (this *BlocksDataStore) GetBlockHashByHeight(height uint64) ([]byte, error)
 	return hash, nil
 }
 
-func (this *BlocksDataStore) GetBlockBytesByHeight(height uint64, gethead bool, getbody bool) ([]byte, error) {
+func (this *BlocksDataStore) GetBlockBytesByHeight(height uint64, gethead bool, getbody bool, readbodyllen uint32) ([]byte, []byte, error) {
 	finditem, e := this.heidxdb.Find(height)
 	if e != nil {
-		return nil, e
+		return nil, nil, e
 	}
 	if finditem == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	var blockbytes bytes.Buffer
+	var blkhash []byte = nil
 	if gethead {
-		_, head, e1 := this.indexdb.FindBlockHeadBytesByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
+		blkhs, head, e1 := this.indexdb.FindBlockHeadBytesByPosition(finditem.BlockHeadInfoFilePartition[:], finditem.BlockHeadInfoPtrNumber)
 		//fmt.Println(e1)
 		if e1 != nil {
-			return nil, e1
+			return nil, nil, e1
 		}
+		blkhash = blkhs
 		blockbytes.Write(head)
 	}
 	if getbody {
-		body, e := this.datadb.ReadBlockBody(finditem.location)
+		body, e := this.datadb.ReadBlockBody(finditem.location, readbodyllen)
 		//fmt.Println(body)
 		if e != nil {
-			return nil, e
+			return nil, nil, e
 		}
 		blockbytes.Write(body)
 	}
 	// ok
-	return blockbytes.Bytes(), nil
+	return blkhash, blockbytes.Bytes(), nil
 }
 
 // 强制非安全删除区块、交易等数据

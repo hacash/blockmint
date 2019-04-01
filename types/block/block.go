@@ -21,6 +21,8 @@ type Block interface {
 	SerializeTransactions(SerializeTransactionsIterator) ([]byte, error)
 	ParseTransactions([]byte, uint32) (uint32, error)
 
+	ParseExcludeTransactions([]byte, uint32) (uint32, error)
+
 	// 修改 / 恢复 状态数据库
 	ChangeChainState(ChainStateOperation) error
 	RecoverChainState(ChainStateOperation) error
@@ -35,6 +37,7 @@ type Block interface {
 
 	GetHeight() uint64
 	GetDifficulty() uint32
+	GetNonce() uint32
 	GetPrevHash() []byte
 	GetTimestamp() uint64
 	GetTransactionCount() uint32

@@ -26,6 +26,11 @@ func CheckReadableAddress(readable string) (*Address, error) {
 	return &addr, nil
 }
 
+// 转换成可读格式
+func (this *Address) ToReadable() string {
+	return base58check.Encode([]byte(*this))
+}
+
 // 有效的地址
 func (this *Address) IsValid() bool {
 	if this == nil {

@@ -26,7 +26,7 @@ func Test_block_save_by_hight(t *testing.T) {
 	fmt.Println(rootblk.Hash())
 	fmt.Println(hex.EncodeToString(rtbytes))
 
-	blkbytes, e := db.GetBlockBytesByHeight(rootblk.GetHeight(), true, true)
+	_, blkbytes, e := db.GetBlockBytesByHeight(rootblk.GetHeight(), true, true, 0)
 	if e != nil {
 		panic(e)
 	}
@@ -55,7 +55,7 @@ func Test_block_save_by_height(t *testing.T) {
 		//fmt.Println(rootblk.Hash())
 		//fmt.Println(hex.EncodeToString( rtbytes ))
 
-		blkbytes, e := db.GetBlockBytesByHeight(rootblk.GetHeight(), true, true)
+		_, blkbytes, e := db.GetBlockBytesByHeight(rootblk.GetHeight(), true, true, 0)
 		if e != nil {
 			panic(e)
 		}
@@ -77,7 +77,6 @@ func Test_block_save_by_height(t *testing.T) {
 
 }
 
-
 func Test_mkrl_hash(t *testing.T) {
 
 	hashs := make([][]byte, 5)
@@ -88,17 +87,16 @@ func Test_mkrl_hash(t *testing.T) {
 	hashs[4] = make([]byte, 32)
 
 	random := make([]byte, 32)
-	rand.Read(random);
+	rand.Read(random)
 	copy(hashs[0], random)
-	rand.Read(random);
+	rand.Read(random)
 	copy(hashs[1], random)
-	rand.Read(random);
+	rand.Read(random)
 	copy(hashs[2], random)
-	rand.Read(random);
+	rand.Read(random)
 	copy(hashs[3], random)
-	rand.Read(random);
+	rand.Read(random)
 	copy(hashs[4], random)
-
 
 	var root []byte
 	for {
@@ -114,8 +112,6 @@ func Test_mkrl_hash(t *testing.T) {
 	fmt.Println(hex.EncodeToString(root))
 
 }
-
-
 
 func hashMerge(hashs [][]byte) [][]byte {
 	fmt.Println("---------------")
@@ -133,11 +129,9 @@ func hashMerge(hashs [][]byte) [][]byte {
 			h2 = hashs[m+1]
 		}
 		b1.Write(h2)
-		fmt.Println( hex.EncodeToString(hashs[m]), "\n"+hex.EncodeToString(h2) + "\n")
+		fmt.Println(hex.EncodeToString(hashs[m]), "\n"+hex.EncodeToString(h2)+"\n")
 		digest := sha3.Sum256(b1.Bytes())
 		mergehashs[m/2] = digest[:]
 	}
 	return mergehashs
 }
-
-

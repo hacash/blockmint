@@ -36,6 +36,7 @@ func trimStringParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (u
 	var addrbytes = make([]byte, len(nnnold))
 	copy(addrbytes, nnnold)
 	addrbytes = bytes.Trim(addrbytes, " ")
+	addrbytes = bytes.Trim(addrbytes, string([]byte{0}))
 	var sd = string(addrbytes)
 	switch a := elm.(type) {
 	case *TrimString16:

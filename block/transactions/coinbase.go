@@ -69,11 +69,15 @@ func (trs *Transaction_0_Coinbase) Serialize() ([]byte, error) {
 
 func (trs *Transaction_0_Coinbase) Parse(buf []byte, seek uint32) (uint32, error) {
 	var e error
-	seek, e = trs.Address.Parse(buf, seek)
-	seek, e = trs.Reward.Parse(buf, seek)
-	seek, e = trs.Message.Parse(buf, seek)
+	seek, e = trs.ParseHead(buf, seek)
+	if e != nil {
+		return 0, e
+	}
 	// 见证人
-	seek, _ = trs.WitnessCount.Parse(buf, seek)
+	seek, e = trs.WitnessCount.Parse(buf, seek)
+	if e != nil {
+		return 0, e
+	}
 	if trs.WitnessCount > 0 {
 		len := int(trs.WitnessCount)
 		trs.WitnessSigs = make([]uint8, len)
@@ -90,6 +94,23 @@ func (trs *Transaction_0_Coinbase) Parse(buf []byte, seek uint32) (uint32, error
 			}
 			trs.Witnesses[i] = sign
 		}
+	}
+	return seek, nil
+}
+
+func (trs *Transaction_0_Coinbase) ParseHead(buf []byte, seek uint32) (uint32, error) {
+	var e error
+	seek, e = trs.Address.Parse(buf, seek)
+	if e != nil {
+		return 0, e
+	}
+	seek, e = trs.Reward.Parse(buf, seek)
+	if e != nil {
+		return 0, e
+	}
+	seek, e = trs.Message.Parse(buf, seek)
+	if e != nil {
+		return 0, e
 	}
 	return seek, nil
 }

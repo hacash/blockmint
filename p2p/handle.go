@@ -627,7 +627,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			var blocksize = 0
 			//fmt.Println("for height:=data.StartHeight; height <= minerdb.State.CurrentHeight(); height++ { ", data.StartHeight, pm.miner.State.CurrentHeight())
 			for height := data.StartHeight; height <= pm.miner.State.CurrentHeight(); height++ {
-				blkbytes, e := bkdb.GetBlockBytesByHeight(height, true, true)
+				_, blkbytes, e := bkdb.GetBlockBytesByHeight(height, true, true, 0)
 				size := len(blkbytes)
 				if e != nil || size == 0 {
 					fmt.Printf(" not give block by height: %d, len: %d, error: %s\n", height, size, e)

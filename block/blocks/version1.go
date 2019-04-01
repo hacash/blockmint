@@ -147,16 +147,16 @@ func (block *Block_v1) ParseHead(buf []byte, seek uint32) (uint32, error) {
 	return iseek, nil
 }
 
-func (block *Block_v1) ParseBody(buf []byte, seek uint32) (uint32, error) {
-	seek, _ = block.ParseMeta(buf, seek)
-	seek, _ = block.ParseTransactions(buf, seek)
-	return seek, nil
-}
-
 func (block *Block_v1) ParseMeta(buf []byte, seek uint32) (uint32, error) {
 	seek, _ = block.Nonce.Parse(buf, seek) // miner nonce
 	seek, _ = block.Difficulty.Parse(buf, seek)
 	seek, _ = block.WitnessStage.Parse(buf, seek)
+	return seek, nil
+}
+
+func (block *Block_v1) ParseExcludeTransactions(buf []byte, seek uint32) (uint32, error) {
+	seek, _ = block.ParseHead(buf, seek)
+	seek, _ = block.ParseMeta(buf, seek)
 	return seek, nil
 }
 
@@ -173,6 +173,12 @@ func (block *Block_v1) ParseTransactions(buf []byte, seek uint32) (uint32, error
 	}
 	return seek, nil
 
+}
+
+func (block *Block_v1) ParseBody(buf []byte, seek uint32) (uint32, error) {
+	seek, _ = block.ParseMeta(buf, seek)
+	seek, _ = block.ParseTransactions(buf, seek)
+	return seek, nil
 }
 
 func (block *Block_v1) Parse(buf []byte, seek uint32) (uint32, error) {
@@ -223,6 +229,9 @@ func (block *Block_v1) GetPrevHash() []byte {
 }
 func (block *Block_v1) GetDifficulty() uint32 {
 	return uint32(block.Difficulty)
+}
+func (block *Block_v1) GetNonce() uint32 {
+	return uint32(block.Nonce)
 }
 func (block *Block_v1) GetTransactionCount() uint32 {
 	return uint32(block.TransactionCount)

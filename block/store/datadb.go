@@ -92,18 +92,22 @@ func (db *BlockDataDB) SaveByBodyBytes(blockbody []byte) (*BlockLocation, error)
 
 }
 
-func (db *BlockDataDB) ReadBlockBody(loc *BlockLocation) ([]byte, error) {
+func (db *BlockDataDB) ReadBlockBody(loc *BlockLocation, readbodyllen uint32) ([]byte, error) {
 
 	// read body
 	tarFileName := db.getPartFileName(loc.BlockFileNum)
 	tarFile, _ := os.OpenFile(tarFileName, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
 
-	var bodyBytes = make([]byte, loc.DataLen)
+	if readbodyllen == 0 {
+		readbodyllen = loc.DataLen
+	}
+
+	var bodyBytes = make([]byte, readbodyllen)
 	rdlen, e := tarFile.ReadAt(bodyBytes, int64(loc.FileOffset))
 	if e != nil {
 		return nil, e
 	}
-	if uint32(rdlen) != loc.DataLen {
+	if uint32(rdlen) != readbodyllen {
 		return nil, err.New("error file size")
 	}
 

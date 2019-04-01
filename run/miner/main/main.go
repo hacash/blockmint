@@ -19,11 +19,9 @@ import (
 	"time"
 )
 
-
 /**
  * go build -o miner_node_hacash run/miner/main/main.go && ./miner_node_hacash
  */
-
 
 func main() {
 
@@ -83,12 +81,11 @@ func StartHacash() {
 
 }
 
-
 //
 // 测试打印区块奖励地址
 func Test_coinbaseAddress(height uint64) {
 
-	blkbts, _ := store.GetGlobalInstanceBlocksDataStore().GetBlockBytesByHeight(height, true, true)
+	_, blkbts, _ := store.GetGlobalInstanceBlocksDataStore().GetBlockBytesByHeight(height, true, true, 0)
 	blk, _, _ := blocks.ParseBlock(blkbts, 0)
 
 	trs := blk.GetTransactions()
@@ -99,11 +96,7 @@ func Test_coinbaseAddress(height uint64) {
 
 	}
 
-
-
 }
-
-
 
 // 测试打印区块奖励地址
 func Test_database_store(height uint64) {
@@ -112,9 +105,9 @@ func Test_database_store(height uint64) {
 	blk, _, _ := blocks.ParseBlock(blkbts, 0)
 	// 保存
 	sss := state2.GetGlobalInstanceChainState()
-	ssstemp := state2.NewTempChainState( sss )
-	blk.ChangeChainState( ssstemp )
-	sss.TraversalCopy( ssstemp )
+	ssstemp := state2.NewTempChainState(sss)
+	blk.ChangeChainState(ssstemp)
+	sss.TraversalCopy(ssstemp)
 
 	trs := blk.GetTransactions()
 	if coinbase, ok := trs[0].(*transactions.Transaction_0_Coinbase); ok {
@@ -128,9 +121,6 @@ func Test_database_store(height uint64) {
 		amtread2 := ssstemp.Balance(coinbase.Address)
 		fmt.Println(amtread2.ToFinString())
 
-
-
-
 		blcdb := db.GetGlobalInstanceBalanceDB()
 		finditem, e1 := blcdb.Read(coinbase.Address)
 		if e1 != nil {
@@ -140,18 +130,9 @@ func Test_database_store(height uint64) {
 			fmt.Println("amount", finditem.Amount.ToFinString())
 		}
 
-
-
-
 	}
 
-
-
-
-
 }
-
-
 
 // 测试打印余额
 func Test_coinbaseAmt() {
@@ -161,7 +142,7 @@ func Test_coinbaseAmt() {
 	curheight := miner.GetGlobalInstanceHacashMiner().State.CurrentHeight()
 	rewards := make(map[string]int)
 	for i := uint64(1); i <= curheight; i++ {
-		blkbts, _ := db.GetBlockBytesByHeight(i, true, true)
+		_, blkbts, _ := db.GetBlockBytesByHeight(i, true, true, 0)
 		block, _, _ := blocks.ParseBlock(blkbts, 0)
 		coinbase, _ := block.GetTransactions()[0].(*transactions.Transaction_0_Coinbase)
 		addr := base58check.Encode(coinbase.Address)

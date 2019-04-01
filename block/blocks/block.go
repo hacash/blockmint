@@ -35,14 +35,18 @@ func ParseBlockHead(buf []byte, seek uint32) (typesblock.Block, uint32, error) {
 	version := uint8(buf[seek])
 	var blk, ee = NewBlockByVersion(version)
 	if ee != nil {
-		//fmt.Println(seek)
-		//fmt.Println(version)
-		//fmt.Println(len(buf))
-		//fmt.Println(buf[seek: seek+50])
-		//fmt.Println(ee)
 		fmt.Println("Block not Find. Version:", version)
 	}
 	var mv, err = blk.ParseHead(buf, seek+1)
+	return blk, mv, err
+}
+func ParseExcludeTransactions(buf []byte, seek uint32) (typesblock.Block, uint32, error) {
+	version := uint8(buf[seek])
+	var blk, ee = NewBlockByVersion(version)
+	if ee != nil {
+		fmt.Println("Block not Find. Version:", version)
+	}
+	var mv, err = blk.ParseExcludeTransactions(buf, seek+1)
 	return blk, mv, err
 }
 
@@ -50,7 +54,7 @@ func ParseBlockHead(buf []byte, seek uint32) (typesblock.Block, uint32, error) {
 
 func CalculateBlockHash(block typesblock.Block) []byte {
 	stuff := CalculateBlockHashBaseStuff(block)
-	hashbase := sha3.Sum256( stuff )
+	hashbase := sha3.Sum256(stuff)
 	//fmt.Println( hex.EncodeToString( hashbase[:] ) )
 	return x16rs.HashX16RS(hashbase[:])
 }

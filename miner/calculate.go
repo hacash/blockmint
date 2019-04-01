@@ -13,8 +13,7 @@ import (
 	"github.com/hacash/x16rs"
 )
 
-
-func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *transactions.Transaction_0_Coinbase) (block.Block) {
+func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *transactions.Transaction_0_Coinbase) block.Block {
 
 	// 读取多线程挖矿数量
 	supercpu := config.Config.Miner.Supervene
@@ -41,17 +40,19 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 	var successMsgi = uint8(0)
 	var stopsign *byte = new(byte)
 	*stopsign = 0
-	for i:=uint8(0); i<uint8(supercpu); i++ {
+	for i := uint8(0); i < uint8(supercpu); i++ {
 		minermsg[15] = i
 		coinbase.Message = fields.TrimString16(minermsg)
+		//fmt.Println([]byte(coinbase.Message))
 		// update mrkl root
 		newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions()))
 		basestuff := blocks.CalculateBlockHashBaseStuff(newBlock)
 		this.Log.Info("start supercpu", i, hex.EncodeToString(basestuff))
 		//fmt.Println("start supercpu", i, hex.EncodeToString(basestuff))
 		go func(i uint8) {
+			//fmt.Println([]byte{i})
 			// 开始挖矿
-			nonce_bytes := x16r.MinerNonceHashX16RS( stopsign, targethashdiff, basestuff )
+			nonce_bytes := x16r.MinerNonceHashX16RS(stopsign, targethashdiff, basestuff)
 			nonce := binary.BigEndian.Uint32(nonce_bytes)
 			this.Log.Info("end supercpu", i, nonce)
 			//fmt.Println("end supercpu", i, nonce)
@@ -95,11 +96,9 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 	return newBlock
 }
 
-
 func (this *HacashMiner) calculateTargetHash(newBlock block.Block) ([]byte, block.Block) {
 	return nil, nil
 }
-
 
 func (this *HacashMiner) calculateTargetHashOneBlock(newBlockOne block.Block, stop chan bool) {
 

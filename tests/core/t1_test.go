@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/blockmint/core/coin"
 	"testing"
 	"time"
@@ -34,5 +35,12 @@ func Test_t2(t *testing.T) {
 		}
 
 	}
+
+}
+
+func Test_t3(t *testing.T) {
+
+	bts, _ := base58check.Decode("1271438866CSDpJUqrnchoJAiGGBFSQhjd")
+	fmt.Println(hex.EncodeToString(bts))
 
 }

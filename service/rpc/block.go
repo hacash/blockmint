@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
@@ -45,7 +46,7 @@ func getBlockAbstractList(params map[string]string) map[string]string {
 	}
 	// 查询区块信息
 	db := store.GetGlobalInstanceBlocksDataStore()
-	coinbase_head_len := uint32(21 + 3 + 16)
+	coinbase_head_len := uint32(1 + 21 + 3 + 15) // 16 drop tail
 	var jsondata = make([]string, 0, end_hei-start_hei+1)
 	for i := end_hei; i >= start_hei; i-- {
 		blkhash, blkbytes, e := db.GetBlockBytesByHeight(i, true, true, 10+coinbase_head_len)
@@ -72,8 +73,9 @@ func getBlockAbstractList(params map[string]string) map[string]string {
 			blkhead.GetDifficulty(),
 			coinbase.Reward.ToFinString(),
 			coinbase.Address.ToReadable(),
-			strings.Replace(string(coinbase.Message), `"`, ``, -1),
+			strings.Replace(string(bytes.Trim([]byte(coinbase.Message), string([]byte{0}))), `"`, ``, -1),
 		))
+		//addrbytes = bytes.Trim(addrbytes, string([]byte{0}))
 		//fmt.Println([]byte(coinbase.Message))
 	}
 	// 返回

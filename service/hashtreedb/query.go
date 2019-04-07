@@ -268,9 +268,13 @@ func (this *QueryInstance) FindItem(getvalue bool) (*IndexItem, error) {
 		} else if it == 2 {
 			if getvalue {
 				body := make([]byte, segmentsize)
-				_, e := this.targetFile.ReadAt(body, int64(item.ValuePtrNum)*int64(segmentsize))
+				rdlen, e := this.targetFile.ReadAt(body, int64(item.ValuePtrNum)*int64(segmentsize))
 				if e != nil {
+					if e.Error() == "EOF" && rdlen == 0 {
+						return nil, nil
+					}
 					//fmt.Println(e.Error())
+					//fmt.Println("-----------====================++++++++++++++++++++++++", e, e.Error(), body)
 					return nil, e
 				}
 				item.ItemHash = body[0:this.db.HashSize]

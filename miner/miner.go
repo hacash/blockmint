@@ -409,10 +409,15 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	// 判断时间
 	prevblocktime := this.State.GetBlockHead().GetTimestamp()
 	blktime := block.GetTimestamp()
-	if blktime <= prevblocktime || blktime > uint64(time.Now().Unix()) {
+	if blktime <= prevblocktime {
 		str_time := time.Unix(int64(blktime), 0).Format("01/02 15:04:05")
 		str_time_prev := time.Unix(int64(prevblocktime), 0).Format("01/02 15:04:05")
 		return fmt.Errorf("block %d timestamp %s cannot be accept, prev blocktime is %s", block.GetHeight(), str_time, str_time_prev)
+	}
+	if blktime > uint64(time.Now().Unix()) {
+		str_time := time.Unix(int64(blktime), 0).Format("01/02 15:04:05")
+		str_time_system := time.Now().Format("01/02 15:04:05")
+		return fmt.Errorf("block %d timestamp %s cannot be accept, cannot more than current system time %s", block.GetHeight(), str_time, str_time_system)
 	}
 	// 检查难度值
 	blkhash := block.HashFresh()

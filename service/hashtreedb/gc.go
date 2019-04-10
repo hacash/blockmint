@@ -15,9 +15,13 @@ type GarbageCollectionDB struct {
 	content []uint32
 }
 
+func openGcFile(filepath string) (*os.File, error) {
+	return os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
+}
+
 func NewGarbageCollectionDB(filepath string) (*GarbageCollectionDB, error) {
 	file.CreatePath(path.Dir(filepath))
-	curfile, fe := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0777) // |os.O_TRUNC =清空
+	curfile, fe := openGcFile(filepath)
 	if fe != nil {
 		return nil, fe
 	}
@@ -25,6 +29,10 @@ func NewGarbageCollectionDB(filepath string) (*GarbageCollectionDB, error) {
 		filepath: filepath,
 		file:     curfile,
 	}
+	defer func() {
+		that.file.Close()
+		that.file = nil
+	}()
 	// 读取文件
 	seek := int64(0)
 	fstat, _ := curfile.Stat()
@@ -33,7 +41,7 @@ func NewGarbageCollectionDB(filepath string) (*GarbageCollectionDB, error) {
 		return that, nil
 	}
 	that.content = make([]uint32, 0)
-	for true {
+	for {
 		sglen := int64(4 * 1024)
 		if fizs < seek+sglen {
 			sglen = fizs - seek
@@ -69,9 +77,18 @@ func (this *GarbageCollectionDB) Collect(ptrnum uint32) error {
 	curlen := len(this.content)
 	valueadd := make([]byte, 4)
 	binary.BigEndian.PutUint32(valueadd, ptrnum)
-	_, e := this.file.WriteAt(valueadd, int64(curlen)*4)
+	var e error
+	this.file, e = openGcFile(this.filepath)
 	if e != nil {
 		return e
+	}
+	defer func() {
+		this.file.Close()
+		this.file = nil
+	}()
+	_, e2 := this.file.WriteAt(valueadd, int64(curlen)*4)
+	if e2 != nil {
+		return e2
 	}
 	this.content = append(this.content, ptrnum)
 	return nil
@@ -86,7 +103,16 @@ func (this *GarbageCollectionDB) Release() (uint32, bool, error) {
 		return 0, false, err.New("no space")
 	}
 	rt := this.content[curlen-1]
-	e := this.file.Truncate(int64(curlen-1) * 4) // 截断文件
+	var e error
+	this.file, e = openGcFile(this.filepath)
+	if e != nil {
+		return 0, false, e
+	}
+	defer func() {
+		this.file.Close()
+		this.file = nil
+	}()
+	e = this.file.Truncate(int64(curlen-1) * 4) // 截断文件
 	if e != nil {
 		return 0, false, e
 	}

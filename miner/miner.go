@@ -408,7 +408,7 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 
 	// 判断区块重复，已经收到这个区块，则立即返回正确
 	if bytes.Compare(this.State.CurrentBlockHash(), block.Hash()) == 0 {
-		fmt.Println("bytes.Compare(this.State.CurrentBlockHash(), block.Hash()) == 0,  successInsert = true,  alreadyInsert = true")
+		// fmt.Println("bytes.Compare(this.State.CurrentBlockHash(), block.Hash()) == 0,  successInsert = true,  alreadyInsert = true")
 		successInsert = true
 		alreadyInsert = true // 已经存在
 		if blk.Bodys == nil || len(blk.Bodys) == 0 {

@@ -387,7 +387,7 @@ func (pm *ProtocolManager) syncBlocksFormPeer(p *peer, startHeight uint64, peer_
 		go func() { // 写入区块
 			for i := 0; i < len(segblocks); i++ {
 				//fmt.Println("minerdb.InsertBlock", segblocks[i].GetHeight())
-				pm.miner.InsertBlock(segblocks[i], segbodys[i])
+				pm.miner.InsertBlock(segblocks[i], segbodys[i], nil)
 			}
 		}()
 		for {
@@ -517,11 +517,11 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		return err
 	}
 	defer func() {
-		pm.Log.Info("peer", p.Name(), "be removed by handle msg end")
+		pm.Log.Error("peer", p.Name(), "be removed by handle msg end")
 		pm.removePeer(p.id)
 	}()
 
-	pm.Log.News("p2p peer connected", "name:", p.Name())
+	pm.Log.Note("p2p peer connected", "name:", p.Name())
 
 	//fmt.Println("syncTransactions", "name", p.Name())
 
@@ -813,13 +813,16 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 			// 插入并等待
 			insert := pm.miner.InsertBlockWait(blk, blkbts)
+			// fmt.Println("pm.miner.InsertBlockWait(blk, blkbts)  insert.Already == ", insert.Already)
 			if insert.Success { // insert ok
-				str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
-				pm.Log.Note("ht:", data.Height, "tx:", len(insert.Block.GetTransactions())-1, "hash:", hex.EncodeToString(insert.Block.Hash()), "prev:", hex.EncodeToString(insert.Block.GetPrevHash()[0:10])+"...", "discovery new block insert success.", "time:", str_time)
-				// 广播区块=
-				data.block = insert.Block
+				if insert.Already == false { // 必须是首次成功插入区块，才打印和广播区块
+					str_time := time.Unix(int64(insert.Block.GetTimestamp()), 0).Format("01/02 15:04:05")
+					pm.Log.Note("ht:", data.Height, "tx:", len(insert.Block.GetTransactions())-1, "hash:", hex.EncodeToString(insert.Block.Hash()), "prev:", hex.EncodeToString(insert.Block.GetPrevHash()[0:10])+"...", "discovery new block insert success.", "time:", str_time)
+					// 广播区块=
+					data.block = insert.Block
+					go pm.BroadcastBlock(&data) // 广播区块
+				}
 				p.MarkBlock(insert.Block) // 标记区块
-				go pm.BroadcastBlock(&data)
 			}
 			// 状态恢复
 			pm.miner.StartMining() // 可以开始挖矿

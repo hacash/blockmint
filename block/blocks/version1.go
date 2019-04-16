@@ -12,7 +12,8 @@ import (
 )
 
 type Block_v1 struct {
-	// Version   fields.VarInt1
+	// head
+	/* Version   fields.VarInt1 */
 	Height           fields.VarInt5
 	Timestamp        fields.VarInt5
 	PrevHash         fields.Bytes32
@@ -22,7 +23,6 @@ type Block_v1 struct {
 	Nonce        fields.VarInt4 // 挖矿随机值
 	Difficulty   fields.VarInt4 // 目标难度值
 	WitnessStage fields.VarInt2 // 见证数量级别
-
 	// body
 	Transactions []typesblock.Transaction
 

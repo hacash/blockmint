@@ -60,9 +60,11 @@ type HacashMiner struct {
 }
 
 type DiscoveryNewBlockEvent struct {
-	Success bool // 成功写入
-	Block   block.Block
-	Bodys   []byte
+	Success  bool // 成功写入
+	Already  bool // 已经存在
+	Block    block.Block
+	Bodys    []byte
+	insertCh chan DiscoveryNewBlockEvent
 }
 
 var (
@@ -262,11 +264,13 @@ func (this *HacashMiner) reputAllTxsFromBlock(newBlock block.Block) int {
 }
 
 // 插入区块
-func (this *HacashMiner) InsertBlock(blk block.Block, bodys []byte) {
+func (this *HacashMiner) InsertBlock(blk block.Block, bodys []byte, insertCh chan DiscoveryNewBlockEvent) {
 	this.insertBlocksCh <- &DiscoveryNewBlockEvent{
+		false,
 		false,
 		blk,
 		bodys,
+		insertCh,
 	}
 }
 
@@ -277,7 +281,9 @@ func (this *HacashMiner) InsertBlocks(blks []block.Block) {
 		for _, blk := range blks {
 			this.insertBlocksCh <- &DiscoveryNewBlockEvent{
 				false,
+				false,
 				blk,
+				nil,
 				nil,
 			}
 		}
@@ -321,14 +327,24 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}
 	block := blk.Block
 	successInsert := false
+	alreadyInsert := false
 	var blockBytes []byte = nil
 	defer func() {
+		// fmt.Println("go this.insertBlockFeed.Send(DiscoveryNewBlockEvent{  successInsert == ", successInsert, " alreadyInsert == ", alreadyInsert)
 		// 插入处理事件通知
-		go this.insertBlockFeed.Send(DiscoveryNewBlockEvent{
+		event := DiscoveryNewBlockEvent{
 			successInsert,
+			alreadyInsert,
 			block,
 			blockBytes,
-		})
+			nil,
+		}
+		// 写入回调
+		if blk.insertCh != nil {
+			blk.insertCh <- event
+		}
+		// 发送消息
+		go this.insertBlockFeed.Send(event)
 	}()
 
 	/*
@@ -388,15 +404,26 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	//	return fmt.Errorf("")
 	//}
 
+	// 判断重复
+
+	// 判断区块重复，已经收到这个区块，则立即返回正确
+	if bytes.Compare(this.State.CurrentBlockHash(), block.Hash()) == 0 {
+		fmt.Println("bytes.Compare(this.State.CurrentBlockHash(), block.Hash()) == 0,  successInsert = true,  alreadyInsert = true")
+		successInsert = true
+		alreadyInsert = true // 已经存在
+		if blk.Bodys == nil || len(blk.Bodys) == 0 {
+			blockBytes, _ = block.Serialize()
+		} else {
+			blockBytes = blk.Bodys
+		}
+		return nil
+	}
+
 	// 判断高度
 	var fail_height = this.State.CurrentHeight()+1 != block.GetHeight()
 	var fail_prevhash = bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0
 	if fail_height || fail_prevhash {
-		// 判断区块重复，已经收到这个区块，则立即返回
-		if bytes.Compare(this.State.CurrentBlockHash(), block.Hash()) == 0 {
-			return fmt.Errorf("block %d is already", block.GetHeight())
-		}
-
+		// 错误
 		var typestr = "prev hash"
 		if fail_height {
 			typestr += "height"
@@ -515,20 +542,11 @@ func (this *HacashMiner) SubscribeDiscoveryNewBlock(discoveryCh chan<- Discovery
 
 // 插入区块，等待插入状态返回
 func (this *HacashMiner) InsertBlockWait(blk block.Block, bodys []byte) DiscoveryNewBlockEvent {
-	insertCh := make(chan DiscoveryNewBlockEvent, 1)
-	subhandle := this.SubscribeInsertBlock(insertCh)
 	// 写入区块
+	insertCh := make(chan DiscoveryNewBlockEvent, 1)
 	this.Log.Debug("insert block to chain state with wait", "height", blk.GetHeight())
-	this.InsertBlock(blk, bodys)
-	// 等待返回
-	for {
-		res := <-insertCh
-		if bytes.Compare(res.Block.Hash(), blk.Hash()) == 0 {
-			this.Log.Debug("insert block return", "height", blk.GetHeight())
-			subhandle.Unsubscribe() // 取消注册
-			return res
-		}
-	}
+	this.InsertBlock(blk, bodys, insertCh)
+	return <-insertCh
 }
 
 // 创建区块

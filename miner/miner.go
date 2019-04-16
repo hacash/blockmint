@@ -321,7 +321,7 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}
 	block := blk.Block
 	successInsert := false
-	blockBytes := []byte{}
+	var blockBytes []byte = nil
 	defer func() {
 		// 插入处理事件通知
 		go this.insertBlockFeed.Send(DiscoveryNewBlockEvent{
@@ -392,6 +392,11 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	var fail_height = this.State.CurrentHeight()+1 != block.GetHeight()
 	var fail_prevhash = bytes.Compare(this.State.CurrentBlockHash(), block.GetPrevHash()) != 0
 	if fail_height || fail_prevhash {
+		// 判断区块重复，已经收到这个区块，则立即返回
+		if bytes.Compare(this.State.CurrentBlockHash(), block.Hash()) == 0 {
+			return fmt.Errorf("block %d is already", block.GetHeight())
+		}
+
 		var typestr = "prev hash"
 		if fail_height {
 			typestr += "height"

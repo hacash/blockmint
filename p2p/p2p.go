@@ -50,6 +50,11 @@ func NewP2PService(log log.Logger) *P2PServer {
 	newser := &P2PServer{
 		Log: log,
 	}
+	maxpeernum := int(config.Config.P2p.Maxpeernum)
+	if maxpeernum == 0 {
+		maxpeernum = 16
+	}
+	// fmt.Println(maxpeernum)
 	key := NodeKey()
 	newser.config = p2p.Config{
 		BootstrapNodes: bootnodes,
@@ -58,8 +63,8 @@ func NewP2PService(log log.Logger) *P2PServer {
 		/////////////////////////////////////
 		Name:            config.Config.P2p.Myname,
 		PrivateKey:      key,
-		MaxPeers:        16,
-		MaxPendingPeers: 8,
+		MaxPeers:        maxpeernum,
+		MaxPendingPeers: 100,
 		NodeDatabase:    config.GetCnfPathNodes(),
 		ListenAddr:      ":" + config.Config.P2p.Port.Node,
 		Protocols:       protocolManager.SubProtocols,

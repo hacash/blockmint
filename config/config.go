@@ -44,8 +44,9 @@ var Config = struct {
 			Node string `default:"3337"`
 			Rpc  string `default:"3338"`
 		}
-		Myname    string   `default:""`
-		Bootnodes []string // 起始节点
+		Myname     string   `default:""`
+		Maxpeernum uint64   // 连接节点数量上线
+		Bootnodes  []string // 起始节点
 	}
 
 	DiamondMiner struct {

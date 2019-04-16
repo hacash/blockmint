@@ -497,7 +497,7 @@ func (pm *ProtocolManager) minersyncLoop() {
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
 
-	pm.Log.Noise("p2p handle msg from peer", p.Name())
+	pm.Log.Noise("p2p peer handle msg from peer", p.Name())
 
 	// Ignore maxPeers if this is a trusted peer
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
@@ -508,7 +508,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 	// Execute the Hacash handshake
 	if err := p.Handshake(); err != nil {
-		pm.Log.Attention("p2p handshake failed", "err", err)
+		pm.Log.Attention("p2p peer handshake failed", "err", err)
 		return err
 	}
 	// Register the peer locally
@@ -517,7 +517,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		return err
 	}
 	defer func() {
-		pm.Log.Error("peer", p.Name(), "be removed by handle msg end")
+		pm.Log.Error("p2p peer", p.Name(), "be removed by handle msg end")
 		pm.removePeer(p.id)
 	}()
 
@@ -537,7 +537,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			pm.Log.Warning("peer", p.Name(), "handle msg error:", err)
+			pm.Log.Warning("p2p peer", p.Name(), "handle msg error:", err)
 			return err
 		}
 	}

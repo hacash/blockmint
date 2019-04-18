@@ -18,6 +18,9 @@ go get -x github.com/hacash/x16rs
 # bitcoin
 go get -x github.com/hacash/bitcoin
 
+# gpu miner
+go get -x github.com/samuel/go-opencl
+
 # utils
 go get -x github.com/deckarep/golang-set
 

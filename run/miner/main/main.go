@@ -14,6 +14,8 @@ import (
 	"github.com/hacash/blockmint/miner"
 	p2p2 "github.com/hacash/blockmint/p2p"
 	"github.com/hacash/blockmint/service/rpc"
+	"github.com/samuel/go-opencl/cl"
+	"math/rand"
 	"os"
 	"os/signal"
 	"time"
@@ -30,6 +32,7 @@ func main() {
 
 	//Test_coinbaseAmt()
 	//Test_coinbaseAddress(16231)
+	//Test_opencl()
 
 	StartHacash()
 
@@ -78,6 +81,144 @@ func StartHacash() {
 
 	s := <-c
 	fmt.Println("Got signal:", s)
+
+}
+
+var kernelSource = `
+__kernel void square(
+   __global float* input,
+   __global float* output,
+   const unsigned int count)
+{
+   int i = get_global_id(0);
+   if(i < count)
+       output[i] = input[i] * input[i];
+}
+`
+
+//
+// 测试opencl编程
+func Test_opencl() {
+
+	var data [1024]float32
+	for i := 0; i < len(data); i++ {
+		data[i] = rand.Float32()
+	}
+
+	platforms, err := cl.GetPlatforms()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if len(platforms) == 0 {
+		fmt.Println("platforms.length = 0")
+		return
+	}
+	for _, plat := range platforms {
+		fmt.Println(plat.Name())
+	}
+	platform := platforms[0]
+	devices, err := platform.GetDevices(cl.DeviceTypeAll)
+	for i, d := range devices {
+		fmt.Println("Device %d (%s): %s", i, d.Type(), d.Name())
+	}
+	device := devices[0]
+	context, err1 := cl.CreateContext([]*cl.Device{device})
+	if err1 != nil {
+		fmt.Println("CreateContext failed: %+v", err1)
+		return
+	}
+	queue, err2 := context.CreateCommandQueue(device, 0)
+	if err2 != nil {
+		fmt.Println("CreateCommandQueue failed: %+v", err2)
+		return
+	}
+	program, err3 := context.CreateProgramWithSource([]string{kernelSource})
+	if err3 != nil {
+		fmt.Println("CreateProgramWithSource failed: %+v", err3)
+		return
+	}
+	if err4 := program.BuildProgram(nil, ""); err4 != nil {
+		fmt.Println("BuildProgram failed: %+v", err4)
+		return
+	}
+	kernel, err5 := program.CreateKernel("square")
+	if err5 != nil {
+		fmt.Println("CreateKernel failed: %+v", err5)
+		return
+	}
+	for i := 0; i < 3; i++ {
+		name, err := kernel.ArgName(i)
+		if err == cl.ErrUnsupported {
+			break
+		} else if err != nil {
+			fmt.Println("GetKernelArgInfo for name failed: %+v", err)
+			break
+		} else {
+			fmt.Println("Kernel arg %d: %s", i, name)
+		}
+	}
+	input, err6 := context.CreateEmptyBuffer(cl.MemReadOnly, 4*len(data))
+	if err6 != nil {
+		fmt.Println("CreateBuffer failed for input: %+v", err6)
+		return
+	}
+	output, err7 := context.CreateEmptyBuffer(cl.MemReadOnly, 4*len(data))
+	if err7 != nil {
+		fmt.Println("CreateBuffer failed for output: %+v", err7)
+		return
+	}
+	if _, err8 := queue.EnqueueWriteBufferFloat32(input, true, 0, data[:], nil); err8 != nil {
+		fmt.Println("EnqueueWriteBufferFloat32 failed: %+v", err8)
+		return
+	}
+	if err9 := kernel.SetArgs(input, output, uint32(len(data))); err9 != nil {
+		fmt.Println("SetKernelArgs failed: %+v", err9)
+		return
+	}
+
+	local, err10 := kernel.WorkGroupSize(device)
+	if err10 != nil {
+		fmt.Println("WorkGroupSize failed: %+v", err10)
+		return
+	}
+	fmt.Println("Work group size: %d", local)
+	size, _ := kernel.PreferredWorkGroupSizeMultiple(nil)
+	fmt.Println("Preferred Work Group Size Multiple: %d", size)
+
+	global := len(data)
+	d := len(data) % local
+	if d != 0 {
+		global += local - d
+	}
+	if _, err := queue.EnqueueNDRangeKernel(kernel, nil, []int{global}, []int{local}, nil); err != nil {
+		fmt.Println("EnqueueNDRangeKernel failed: %+v", err)
+		return
+	}
+
+	if err := queue.Finish(); err != nil {
+		fmt.Println("Finish failed: %+v", err)
+		return
+	}
+
+	results := make([]float32, len(data))
+	if _, err := queue.EnqueueReadBufferFloat32(output, true, 0, results, nil); err != nil {
+		fmt.Println("EnqueueReadBufferFloat32 failed: %+v", err)
+		return
+	}
+
+	correct := 0
+	for i, v := range data {
+		if results[i] == v*v {
+			correct++
+		}
+	}
+
+	if correct != len(data) {
+		fmt.Println("%d/%d correct values", correct, len(data))
+	}
+
+	fmt.Println("==========================")
 
 }
 

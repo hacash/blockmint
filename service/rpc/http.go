@@ -36,7 +36,8 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	curheight := miner.State.CurrentHeight()
 	minerblkhead := miner.State.GetBlockHead()
 	prev288_7height := uint64(curheight) - (288 * 7)
-	prev288height := uint64(curheight) - (288)
+	prev288height := uint64(curheight) / 288 * 288
+	num288 := uint64(curheight) - prev288height
 	if prev288_7height <= 0 {
 		prev288_7height = 1
 	}
@@ -53,12 +54,15 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	))
 	// 出块统计
 	cost288_7miao := getMiao(minerblkhead, prev288_7height, 288*7)
-	cost288miao := getMiao(minerblkhead, prev288height, 288)
+	cost288miao := getMiao(minerblkhead, prev288height, num288)
+	// fmt.Println(prev288height, num288, cost288miao)
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
-		"block average time, last week: %s ( %ds/300s = %f), last day: %s ( %ds/300s = %f)",
+		"block average time, last week: %s ( %ds/300s = %f), last from %d+%d: %s ( %ds/300s = %f)",
 		time.Unix(int64(cost288_7miao), 0).Format("04:05"),
 		cost288_7miao,
 		(float32(cost288_7miao)/300),
+		prev288height,
+		num288,
 		time.Unix(int64(cost288miao), 0).Format("04:05"),
 		cost288miao,
 		(float32(cost288miao)/300),
@@ -76,17 +80,17 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	p2pserver := p2p.GetGlobalInstanceP2PServer()
 	nodeinfo := p2pserver.GetServer().NodeInfo()
 	p2pobj := p2p.GetGlobalInstanceProtocolManager()
-	peers := p2pobj.GetPeers()
+	peers := p2pobj.GetPeers().PeersWithoutTx([]byte{0})
 	bestpeername := ""
-	if peers.Len() > 0 {
-		bestpeername = peers.BestPeer().Name()
+	for _, pr := range peers {
+		bestpeername += pr.Name() + ", "
 	}
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
-		"p2p peer name: %s, enode: %s, connected: %d, best connect: %s",
+		"p2p peer name: %s, enode: %s, connected: %d, connect peers: %s",
 		nodeinfo.Name,
 		nodeinfo.Enode,
-		peers.Len(),
-		bestpeername,
+		len(peers),
+		strings.TrimRight(bestpeername, ", "),
 	))
 
 	// Write

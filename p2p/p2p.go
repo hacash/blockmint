@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/ethereum/go-ethereum/p2p/discv5"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/nat"
 	"github.com/hacash/blockmint/config"
@@ -37,12 +38,15 @@ func NewP2PService(log log.Logger) *P2PServer {
 	// 读取 main boot 节点
 	urls := config.MainnetBootnodes
 	var bootnodes = make([]*enode.Node, 0, len(urls))
+	var bootnodesV5 = make([]*discv5.Node, 0, len(urls))
 	for _, url := range urls {
-		node, err := enode.ParseV4(url)
-		if err != nil {
-			log.Error("bootstrap node url invalid", "enode", url, "err", err)
+		node, err1 := enode.ParseV4(url)
+		nodeV5, err2 := discv5.ParseNode(url)
+		if err1 != nil || err2 != nil {
+			log.Error("bootstrap node url invalid", "enode", url, "err1", err1, "err2", err2)
 		}
 		bootnodes = append(bootnodes, node)
+		bootnodesV5 = append(bootnodesV5, nodeV5)
 	}
 	//
 	protocolManager := GetGlobalInstanceProtocolManager()
@@ -60,6 +64,9 @@ func NewP2PService(log log.Logger) *P2PServer {
 		BootstrapNodes: bootnodes,
 		StaticNodes:    bootnodes,
 		TrustedNodes:   bootnodes,
+		// NoDiscovery:      true,
+		DiscoveryV5:      true,
+		BootstrapNodesV5: bootnodesV5,
 		/////////////////////////////////////
 		Name:            config.Config.P2p.Myname,
 		PrivateKey:      key,

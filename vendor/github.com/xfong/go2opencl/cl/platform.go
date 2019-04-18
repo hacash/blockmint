@@ -1,27 +1,21 @@
 package cl
 
 /*
-#cgo CFLAGS: -I CL
-#cgo !darwin LDFLAGS: -lOpenCL
-#cgo darwin LDFLAGS: -framework OpenCL
-
-#ifdef __APPLE__
-#include "OpenCL/opencl.h"
-#else
-#include "CL/opencl.h"
-#endif
+#include "./opencl.h"
 */
 import "C"
 
-import (
-	"unsafe"
-)
+import "unsafe"
 
+//////////////// Constants ////////////////
 const maxPlatforms = 32
 
+//////////////// Abstract Types ////////////////
 type Platform struct {
 	id C.cl_platform_id
 }
+
+//////////////// Basic Functions ////////////////
 
 // Obtain the list of platforms available.
 func GetPlatforms() ([]*Platform, error) {
@@ -37,6 +31,7 @@ func GetPlatforms() ([]*Platform, error) {
 	return platforms, nil
 }
 
+//////////////// Abstract Functions ////////////////
 func (p *Platform) GetDevices(deviceType DeviceType) ([]*Device, error) {
 	return GetDevices(p, deviceType)
 }
@@ -47,7 +42,7 @@ func (p *Platform) getInfoString(param C.cl_platform_info) (string, error) {
 	if err := C.clGetPlatformInfo(p.id, param, 2048, unsafe.Pointer(&strC[0]), &strN); err != C.CL_SUCCESS {
 		return "", toError(err)
 	}
-	return string(strC[:strN]), nil
+	return string(strC[:(strN - 1)]), nil
 }
 
 func (p *Platform) Name() string {

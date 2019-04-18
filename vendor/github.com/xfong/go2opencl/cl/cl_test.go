@@ -2,6 +2,8 @@ package cl
 
 import (
 	"math/rand"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +18,64 @@ __kernel void square(
        output[i] = input[i] * input[i];
 }
 `
+
+func getObjectStrings(object interface{}) map[string]string {
+	v := reflect.ValueOf(object)
+	t := reflect.TypeOf(object)
+
+	strs := make(map[string]string)
+
+	numMethods := t.NumMethod()
+	for i := 0; i < numMethods; i++ {
+		method := t.Method(i)
+		if method.Type.NumIn() == 1 && method.Type.NumOut() == 1 && method.Type.Out(0).Kind() == reflect.String {
+			// this is a string-returning method with (presumably) only a pointer receiver parameter
+			// call it
+			outs := v.Method(i).Call([]reflect.Value{})
+			// put the result in our map
+			strs[method.Name] = (outs[0].Interface()).(string)
+		}
+	}
+
+	return strs
+}
+
+func TestPlatformStringsContainNoNULs(t *testing.T) {
+	platforms, err := GetPlatforms()
+	if err != nil {
+		t.Fatalf("Failed to get platforms: %+v", err)
+	}
+
+	for _, p := range platforms {
+		for key, value := range getObjectStrings(p) {
+			if strings.Contains(value, "\x00") {
+				t.Fatalf("platform string %q =  %+q contains NUL", key, value)
+			}
+		}
+	}
+}
+
+func TestDeviceStringsContainNoNULs(t *testing.T) {
+	platforms, err := GetPlatforms()
+	if err != nil {
+		t.Fatalf("Failed to get platforms: %+v", err)
+	}
+
+	for _, p := range platforms {
+		devs, err := p.GetDevices(DeviceTypeAll)
+		if err != nil {
+			t.Fatalf("Failed to get devices for platform %q: %+v", p.Name(), err)
+		}
+
+		for _, d := range devs {
+			for key, value := range getObjectStrings(d) {
+				if strings.Contains(value, "\x00") {
+					t.Fatalf("device string %q =  %+q contains NUL", key, value)
+				}
+			}
+		}
+	}
+}
 
 func TestHello(t *testing.T) {
 	var data [1024]float32
@@ -63,7 +123,6 @@ func TestHello(t *testing.T) {
 		t.Logf("  Global Memory Cacheline Size: %d KB", d.GlobalMemCachelineSize()/1024)
 		t.Logf("  Global Memory Size: %d MB", d.GlobalMemSize()/(1024*1024))
 		t.Logf("  Half FP Config: %s", d.HalfFPConfig())
-		t.Logf("  Host Unified Memory: %+v", d.HostUnifiedMemory())
 		t.Logf("  Image Support: %+v", d.ImageSupport())
 		t.Logf("  Image2D Max Dimensions: %d x %d", d.Image2DMaxWidth(), d.Image2DMaxHeight())
 		t.Logf("  Image3D Max Dimenionns: %d x %d x %d", d.Image3DMaxWidth(), d.Image3DMaxHeight(), d.Image3DMaxDepth())
@@ -86,38 +145,29 @@ func TestHello(t *testing.T) {
 		t.Logf("  Max Work Item Sizes: %d", d.MaxWorkItemSizes())
 		t.Logf("  Max Write-Image Args: %d", d.MaxWriteImageArgs())
 		t.Logf("  Memory Base Address Alignment: %d", d.MemBaseAddrAlign())
-		t.Logf("  Native Vector Width Char: %d", d.NativeVectorWidthChar())
-		t.Logf("  Native Vector Width Short: %d", d.NativeVectorWidthShort())
-		t.Logf("  Native Vector Width Int: %d", d.NativeVectorWidthInt())
-		t.Logf("  Native Vector Width Long: %d", d.NativeVectorWidthLong())
-		t.Logf("  Native Vector Width Float: %d", d.NativeVectorWidthFloat())
-		t.Logf("  Native Vector Width Double: %d", d.NativeVectorWidthDouble())
-		t.Logf("  Native Vector Width Half: %d", d.NativeVectorWidthHalf())
-		t.Logf("  OpenCL C Version: %s", d.OpenCLCVersion())
 		// t.Logf("  Parent Device: %+v", d.ParentDevice())
 		t.Logf("  Profile: %s", d.Profile())
 		t.Logf("  Profiling Timer Resolution: %d", d.ProfilingTimerResolution())
 		t.Logf("  Vendor: %s", d.Vendor())
 		t.Logf("  Version: %s", d.Version())
 	}
+
 	if deviceIndex < 0 {
 		deviceIndex = 0
 	}
 	device := devices[deviceIndex]
 	t.Logf("Using device %d", deviceIndex)
+
 	context, err := CreateContext([]*Device{device})
 	if err != nil {
 		t.Fatalf("CreateContext failed: %+v", err)
 	}
-	// imageFormats, err := context.GetSupportedImageFormats(0, MemObjectTypeImage2D)
-	// if err != nil {
-	// 	t.Fatalf("GetSupportedImageFormats failed: %+v", err)
-	// }
-	// t.Logf("Supported image formats: %+v", imageFormats)
+
 	queue, err := context.CreateCommandQueue(device, 0)
 	if err != nil {
 		t.Fatalf("CreateCommandQueue failed: %+v", err)
 	}
+
 	program, err := context.CreateProgramWithSource([]string{kernelSource})
 	if err != nil {
 		t.Fatalf("CreateProgramWithSource failed: %+v", err)
@@ -125,32 +175,33 @@ func TestHello(t *testing.T) {
 	if err := program.BuildProgram(nil, ""); err != nil {
 		t.Fatalf("BuildProgram failed: %+v", err)
 	}
+
 	kernel, err := program.CreateKernel("square")
 	if err != nil {
 		t.Fatalf("CreateKernel failed: %+v", err)
 	}
-	for i := 0; i < 3; i++ {
-		name, err := kernel.ArgName(i)
-		if err == ErrUnsupported {
-			break
-		} else if err != nil {
-			t.Errorf("GetKernelArgInfo for name failed: %+v", err)
-			break
-		} else {
-			t.Logf("Kernel arg %d: %s", i, name)
-		}
+
+	totalArgs, err := kernel.NumArgs()
+	if err != nil {
+		t.Errorf("Failed to get number of arguments of kernel: $+v", err)
+	} else {
+		t.Logf("Number of arguments in kernel : %d", totalArgs)
 	}
+
 	input, err := context.CreateEmptyBuffer(MemReadOnly, 4*len(data))
 	if err != nil {
 		t.Fatalf("CreateBuffer failed for input: %+v", err)
 	}
+
 	output, err := context.CreateEmptyBuffer(MemReadOnly, 4*len(data))
 	if err != nil {
 		t.Fatalf("CreateBuffer failed for output: %+v", err)
 	}
+
 	if _, err := queue.EnqueueWriteBufferFloat32(input, true, 0, data[:], nil); err != nil {
 		t.Fatalf("EnqueueWriteBufferFloat32 failed: %+v", err)
 	}
+
 	if err := kernel.SetArgs(input, output, uint32(len(data))); err != nil {
 		t.Fatalf("SetKernelArgs failed: %+v", err)
 	}
@@ -160,14 +211,13 @@ func TestHello(t *testing.T) {
 		t.Fatalf("WorkGroupSize failed: %+v", err)
 	}
 	t.Logf("Work group size: %d", local)
-	size, _ := kernel.PreferredWorkGroupSizeMultiple(nil)
-	t.Logf("Preferred Work Group Size Multiple: %d", size)
 
 	global := len(data)
 	d := len(data) % local
 	if d != 0 {
 		global += local - d
 	}
+	t.Logf("Global work group size: %d ", global)
 	if _, err := queue.EnqueueNDRangeKernel(kernel, nil, []int{global}, []int{local}, nil); err != nil {
 		t.Fatalf("EnqueueNDRangeKernel failed: %+v", err)
 	}
@@ -189,6 +239,8 @@ func TestHello(t *testing.T) {
 	}
 
 	if correct != len(data) {
-		t.Fatalf("%d/%d correct values", correct, len(data))
+		t.Error("%d/%d correct values", correct, len(results))
 	}
+
+	t.Logf("Finished tests")
 }

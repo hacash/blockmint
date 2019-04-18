@@ -14,7 +14,7 @@ import (
 	"github.com/hacash/blockmint/miner"
 	p2p2 "github.com/hacash/blockmint/p2p"
 	"github.com/hacash/blockmint/service/rpc"
-	"github.com/samuel/go-opencl/cl"
+	"github.com/xfong/go2opencl/cl"
 	"math/rand"
 	"os"
 	"os/signal"

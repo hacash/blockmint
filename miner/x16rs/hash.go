@@ -10,3 +10,10 @@ func HashX16RS(stuff []byte) []byte {
 	//fmt.Println( "<= " + hex.EncodeToString(res) + " =>" )
 	return res
 }
+
+func HashX16RS_Optimize(stuff []byte) []byte {
+	//fmt.Println( "=> " + hex.EncodeToString(stuff) )
+	res := x16r.HashX16RS_Optimize(stuff)
+	//fmt.Println( "<= " + hex.EncodeToString(res) + " =>" )
+	return res
+}

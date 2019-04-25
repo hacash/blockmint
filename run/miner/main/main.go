@@ -11,6 +11,7 @@ import (
 	"github.com/hacash/blockmint/chain/state"
 	"github.com/hacash/blockmint/chain/state/db"
 	"github.com/hacash/blockmint/config"
+	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner"
 	p2p2 "github.com/hacash/blockmint/p2p"
 	"github.com/hacash/blockmint/service/rpc"
@@ -24,6 +25,8 @@ import (
  */
 
 func main() {
+
+	fmt.Println("net genesis block is ", hex.EncodeToString(coin.GetGenesisBlock().HashFresh()))
 
 	// config
 	config.LoadConfigFile()

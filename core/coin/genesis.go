@@ -54,5 +54,9 @@ func GetGenesisBlock() block.Block {
 		panic("Genesis Block Hash Error: need " + check_hash + ", but give " + hex.EncodeToString(hash))
 	}
 	genesisBlock = genesis
+	//bbb, _ := genesisBlock.Serialize()
+	//fmt.Println( hex.EncodeToString(bbb) )
+
+
 	return genesis
 }

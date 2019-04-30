@@ -247,6 +247,16 @@ func Test_database_store(height uint64) {
 
 	blkbts, _ := hex.DecodeString("010000003f37005c90a5b80000000d0d0af1c87d65c581310bd7ae803b23c69754be16df02a7b156c03c87aadd0ada0615668c7bf3658efeab80ef2a6be1e884a2844d52afdb88fa82f5c6000000010070db79e48fffa400000000ff89de02003bea1b64e8d5659d314c078ad37551f801012020202020202020202020202020202000")
 	blk, _, _ := blocks.ParseBlock(blkbts, 0)
+	/*
+	nnn := make([]byte, 4)
+	binary.BigEndian.PutUint32(nnn, blk.GetNonce())
+	fmt.Println(nnn )
+	fmt.Println(blk.HashFresh())
+	fmt.Println( hex.EncodeToString(blk.HashFresh()) )
+	// nonce: [0 112 219 121]
+	// hash: [0 0 0 10 198 94 211 152 131 143 206 7 61 245 177 81 50 218 67 111 126 41 147 53 63 211 102 43 248 178 207 145]
+	// hash: 0000000ac65ed398838fce073df5b15132da436f7e2993353fd3662bf8b2cf91
+	*/
 	// 保存
 	sss := state.GetGlobalInstanceChainState()
 	ssstemp := state.NewTempChainState(sss)

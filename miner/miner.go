@@ -2,6 +2,7 @@ package miner
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/event"
@@ -18,8 +19,11 @@ import (
 	"github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -161,6 +165,39 @@ func (this *HacashMiner) miningLoop() {
 	}
 }
 
+
+func gpuMinerHttpGet(url string, statusCh chan bool) string {
+	
+	var bodyretCh = make(chan string, 0)
+	
+	go func() {
+		resp, err := http.Get(url)
+		if err != nil {
+			bodyretCh <- ""
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			bodyretCh <- ""
+		}
+		bodyretCh <- string(body)
+	}()
+
+	select {
+	case stat := <- statusCh:
+		if stat == false {
+			return ""
+		}
+	case body := <- bodyretCh:
+		return body
+	}
+	return ""
+	//return string(body), nil
+}
+
+
+
+
 // 执行挖矿
 func (this *HacashMiner) doMining() error {
 	//return fmt.Errorf("not do")
@@ -171,6 +208,12 @@ func (this *HacashMiner) doMining() error {
 		this.Log.Warning("create new block for mining error", e)
 		return e
 	}
+
+
+	var gpumineraddr = config.Config.GpuMiner.Address
+	var usegpuminer = strings.Compare(gpumineraddr, "") != 0
+
+
 	var rewardAddrReadble string
 	var targetFinishHash []byte
 	// 是否为多线程挖矿
@@ -184,42 +227,86 @@ func (this *HacashMiner) doMining() error {
 		targetFinishHash = newBlock.Hash()
 
 	} else {
-		// 普通挖矿 挖掘计算
-		targetDifficulty := new(big.Int).SetBytes(difficulty.Uint32ToHash256(newBlock.GetDifficulty()))
+
+		// 普通挖矿 或者 GPU 挖掘计算
+		targetHash := difficulty.Uint32ToHash256(newBlock.GetDifficulty())
+		targetDifficulty := new(big.Int).SetBytes(targetHash)
 
 	RESTART_TO_MINING:
 		rewardAddrReadble = this.setMinerForCoinbase(coinbase)                     // coinbase
 		newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 		this.Log.News("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
-		for i := uint32(0); i < 4294967295; i++ {
-			// this.Log.Noise(i)
-			select {
-			case stat := <-this.miningStatusCh:
-				if stat == false {
-					this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
-					// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
-					return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
-				}
-			default:
 
+		if usegpuminer {
+			// 是否为GPU挖矿
+			this.Log.News("config.Config.GpuMiner.Address: " + gpumineraddr)
+			// http 访问请求
+			stuff := blocks.CalculateBlockHashBaseStuff(newBlock)
+			url := fmt.Sprintf("http://%s/dominer?height=%d&targethash=%s&blockstuff=%s",
+				gpumineraddr,
+				newBlock.GetHeight(),
+				hex.EncodeToString(targetHash),
+				hex.EncodeToString(stuff))
+			this.Log.Info(url)
+			retstr := gpuMinerHttpGet(url, this.miningStatusCh)
+			this.Log.Info(retstr)
+			if strings.Compare(retstr, "") ==0 {
+				this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+				return fmt.Errorf("gpu mining break") // 停止挖矿
 			}
-			if miningSleepNanosecond > 0 {
-				time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
+			retstrs := strings.Split(retstr, ".")
+			if len(retstrs) >= 2 {
+				if strings.Compare(retstrs[1], "success") == 0 {
+					// 挖矿成功
+					nonce, _ := hex.DecodeString(retstrs[2])
+					noncenum := binary.BigEndian.Uint32(nonce)
+					newBlock.SetNonce(noncenum)
+					targetFinishHash = newBlock.HashFresh()
+					// OK !!!!!!!!!!!!!!!
+					goto MINING_SUCCESS
+				}else{
+					// 挖矿退出
+					this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+					return fmt.Errorf("gpu mining break by set sign stoping chan") // 停止挖矿
+				}
+			}else{
+				this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+				return fmt.Errorf("gpu mining error return: %s", retstr)
 			}
-			newBlock.SetNonce(i)
-			targetFinishHash = newBlock.HashFresh()
-			// curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
-			curdiff := difficulty.HashToBig(targetFinishHash)
-			//fmt.Println(curdiff, targetDifficulty)
-			if curdiff.Cmp(targetDifficulty) == -1 {
-				this.Log.Info("find a valid nonce for block", "height", newBlock.GetHeight())
-				// OK !!!!!!!!!!!!!!!
-				goto MINING_SUCCESS
+
+		}else{
+			// 普通单核CPU挖矿
+			for i := uint32(0); i < 4294967295; i++ {
+				// this.Log.Noise(i)
+				select {
+				case stat := <-this.miningStatusCh:
+					if stat == false {
+						this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+						// this.Log.Debug("mining break and stop mining -…………………………………………………………………………")
+						return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
+					}
+				default:
+
+				}
+				if miningSleepNanosecond > 0 {
+					time.Sleep(time.Duration(miningSleepNanosecond) * time.Nanosecond)
+				}
+				newBlock.SetNonce(i)
+				targetFinishHash = newBlock.HashFresh()
+				// curdiff := difficulty.BigToCompact(difficulty.HashToBig(&targetHash))
+				curdiff := difficulty.HashToBig(targetFinishHash)
+				//fmt.Println(curdiff, targetDifficulty)
+				if curdiff.Cmp(targetDifficulty) == -1 {
+					this.Log.Info("find a valid nonce for block", "height", newBlock.GetHeight())
+					// OK !!!!!!!!!!!!!!!
+					goto MINING_SUCCESS
+				}
 			}
+			goto RESTART_TO_MINING // 下一轮次
 		}
-		goto RESTART_TO_MINING // 下一轮次
-	MINING_SUCCESS:
 	}
+
+MINING_SUCCESS:
 
 	// 挖矿成功！！！
 	this.CurrentPenddingBlock = nil
@@ -696,6 +783,12 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 	// ok
 	return backblks, nil
 }
+
+
+
+
+
+
 
 /////////////////////////////////////////////////////////////////////////////////
 

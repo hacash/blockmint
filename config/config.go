@@ -54,6 +54,12 @@ var Config = struct {
 		Rewards       []string //
 		Supervene     uint64   // 启动多线程挖矿，指定线程数量（数量必须小于200）
 	}
+
+
+	GpuMiner struct {
+		Address string   `default:""` // 矿工地址
+	}
+
 }{}
 
 func LoadConfigFile() {

@@ -215,7 +215,7 @@ func (trs *Transaction_1_Simple) RequestSignAddrs() ([][]byte, error) {
 	if !trs.Address.IsValid() {
 		return nil, err.New("Master Address is InValid ")
 	}
-	requests := make([][]byte, 0)
+	requests := make([][]byte, 0, 32)
 	for i := 0; i < int(trs.ActionCount); i++ {
 		actreqs := trs.Actions[i].RequestSignAddrs()
 		requests = append(requests, actreqs...)

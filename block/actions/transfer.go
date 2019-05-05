@@ -12,6 +12,8 @@ import (
 type Action_1_SimpleTransfer struct {
 	Address fields.Address
 	Amount  fields.Amount
+
+	// 数据指针
 	// 所属交易
 	trs block.Transaction
 }
@@ -83,6 +85,8 @@ func (act *Action_1_SimpleTransfer) RecoverChainState(state state.ChainStateOper
 func (act *Action_1_SimpleTransfer) SetBelongTrs(trs block.Transaction) {
 	act.trs = trs
 }
+
+//////////////////////////////////////////////////////////
 
 func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 fields.Address, addr2 fields.Address, amt fields.Amount) error {
 

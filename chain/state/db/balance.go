@@ -15,7 +15,7 @@ var (
 )
 
 //
-type StoreItemData struct {
+type BalanceStoreItemData struct {
 	LockHeight fields.VarInt5 // 锁定区块高度
 	BlankEmpty fields.Bytes32
 	Amount     fields.Amount // 可用余额
@@ -23,22 +23,22 @@ type StoreItemData struct {
 	Locitem *hashtreedb.IndexItem
 }
 
-func NewEmptyStoreItemData() *StoreItemData {
-	return &StoreItemData{
+func NewEmptyBalanceStoreItemData() *BalanceStoreItemData {
+	return &BalanceStoreItemData{
 		LockHeight: 0,
 		BlankEmpty: fields.EmptyZeroBytes32,
 		Amount:     *fields.NewEmptyAmount(),
 	}
 }
 
-func (this *StoreItemData) Parse(buf []byte, seek uint32) (uint32, error) {
+func (this *BalanceStoreItemData) Parse(buf []byte, seek uint32) (uint32, error) {
 	seek, _ = this.LockHeight.Parse(buf, seek)
 	seek, _ = this.BlankEmpty.Parse(buf, seek)
 	seek, _ = this.Amount.Parse(buf, seek)
 	return seek, nil
 }
 
-func (this *StoreItemData) Serialize() ([]byte, error) {
+func (this *BalanceStoreItemData) Serialize() ([]byte, error) {
 	var buffer = new(bytes.Buffer)
 	b1, _ := this.LockHeight.Serialize()
 	buffer.Write(b1)
@@ -96,7 +96,7 @@ func (this *BalanceDB) Init(dir string) {
 // 清空 重新创建
 func (this *BalanceDB) SaveAmountByClearCreate(address fields.Address, value fields.Amount) error {
 	storevalue := value.EllipsisDecimalFor23SizeStore() // ellipsis decimal
-	var store = NewEmptyStoreItemData()
+	var store = NewEmptyBalanceStoreItemData()
 	store.Amount = *storevalue
 	// save
 	return this.Save(address, store)
@@ -117,7 +117,7 @@ func (this *BalanceDB) Remove(address fields.Address) error {
 	// ok
 	return nil
 }
-func (this *BalanceDB) Delete(address fields.Address, store *StoreItemData) error {
+func (this *BalanceDB) Delete(address fields.Address, store *BalanceStoreItemData) error {
 
 	query, e1 := this.Treedb.CreateQuery(address[1:]) // drop addr type
 	if e1 != nil {
@@ -134,7 +134,7 @@ func (this *BalanceDB) Delete(address fields.Address, store *StoreItemData) erro
 }
 
 // 储存
-func (this *BalanceDB) Save(address fields.Address, store *StoreItemData) error {
+func (this *BalanceDB) Save(address fields.Address, store *BalanceStoreItemData) error {
 
 	//fmt.Println( address[:] )
 	query, e1 := this.Treedb.CreateQuery(address[1:]) // drop addr type
@@ -161,7 +161,7 @@ func (this *BalanceDB) Save(address fields.Address, store *StoreItemData) error 
 }
 
 // 读取
-func (this *BalanceDB) Read(address fields.Address) (*StoreItemData, error) {
+func (this *BalanceDB) Read(address fields.Address) (*BalanceStoreItemData, error) {
 
 	query, e1 := this.Treedb.CreateQuery(address[1:]) // drop addr type
 	if e1 != nil {
@@ -179,7 +179,7 @@ func (this *BalanceDB) Read(address fields.Address) (*StoreItemData, error) {
 	if uint32(len(result)) < BalanceDBItemMaxSize {
 		return nil, err.New("file size error")
 	}
-	var store StoreItemData
+	var store BalanceStoreItemData
 	_, e3 := store.Parse(result, 0)
 	if e3 != nil {
 		return nil, e3

@@ -8,9 +8,9 @@ type Action interface {
 	Kind() uint16
 
 	// 序列化 与 反序列化
+	Size() uint32
 	Serialize() ([]byte, error)
 	Parse([]byte, uint32) (uint32, error)
-	Size() uint32
 
 	// 请求签名地址
 	RequestSignAddrs() [][]byte

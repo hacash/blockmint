@@ -21,6 +21,7 @@ import (
 	"github.com/hacash/blockmint/types/service"
 	"io/ioutil"
 	"math/big"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -165,38 +166,36 @@ func (this *HacashMiner) miningLoop() {
 	}
 }
 
-
 func gpuMinerHttpGet(url string, statusCh chan bool) string {
-	
+
 	var bodyretCh = make(chan string, 0)
-	
+
 	go func() {
 		resp, err := http.Get(url)
 		if err != nil {
 			bodyretCh <- ""
+			return
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			bodyretCh <- ""
+			return
 		}
 		bodyretCh <- string(body)
 	}()
 
 	select {
-	case stat := <- statusCh:
+	case stat := <-statusCh:
 		if stat == false {
 			return ""
 		}
-	case body := <- bodyretCh:
+	case body := <-bodyretCh:
 		return body
 	}
 	return ""
 	//return string(body), nil
 }
-
-
-
 
 // 执行挖矿
 func (this *HacashMiner) doMining() error {
@@ -209,17 +208,16 @@ func (this *HacashMiner) doMining() error {
 		return e
 	}
 
-
 	var gpumineraddr = config.Config.GpuMiner.Address
 	var usegpuminer = strings.Compare(gpumineraddr, "") != 0
 
-
+	var rewardAddr *fields.Address
 	var rewardAddrReadble string
 	var targetFinishHash []byte
 	// 是否为多线程挖矿
 	if config.Config.Miner.Supervene > 0 {
 		// 多线程并发挖矿
-		rewardAddrReadble = this.setMinerForCoinbase(coinbase)
+		_, rewardAddrReadble = this.setMinerForCoinbase(coinbase, false)
 		newBlock = this.calculateNextBlock(newBlock, coinbase)
 		if newBlock == nil {
 			return fmt.Errorf("mining break by set sign stoping chan on supervene") // 停止挖矿
@@ -233,7 +231,8 @@ func (this *HacashMiner) doMining() error {
 		targetDifficulty := new(big.Int).SetBytes(targetHash)
 
 	RESTART_TO_MINING:
-		rewardAddrReadble = this.setMinerForCoinbase(coinbase)                     // coinbase
+
+		rewardAddr, rewardAddrReadble = this.setMinerForCoinbase(coinbase, true) // coinbase
 		newBlock.SetMrklRoot(blocks.CalculateMrklRoot(newBlock.GetTransactions())) // update mrkl root
 		this.Log.News("set new coinbase address", rewardAddrReadble, "height", newBlock.GetHeight(), "do mining...")
 
@@ -242,21 +241,27 @@ func (this *HacashMiner) doMining() error {
 			this.Log.News("config.Config.GpuMiner.Address: " + gpumineraddr)
 			// http 访问请求
 			stuff := blocks.CalculateBlockHashBaseStuff(newBlock)
-			url := fmt.Sprintf("http://%s/dominer?height=%d&targethash=%s&blockstuff=%s",
+			url := fmt.Sprintf("http://%s/dominer?height=%d&targethash=%s&blockstuff=%s&coinaddr=%s&coinmsg=%s",
 				gpumineraddr,
 				newBlock.GetHeight(),
 				hex.EncodeToString(targetHash),
-				hex.EncodeToString(stuff))
+				hex.EncodeToString(stuff),
+				hex.EncodeToString(*rewardAddr),
+				hex.EncodeToString([]byte(coinbase.Message)),
+			)
 			this.Log.Info(url)
 			retstr := gpuMinerHttpGet(url, this.miningStatusCh)
 			this.Log.Info(retstr)
-			if strings.Compare(retstr, "") ==0 {
-				this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+			if strings.Compare(retstr, "") == 0 {
+				this.reputAllTxsFromBlock(newBlock)   // 重新放入所有交易到交易池
 				return fmt.Errorf("gpu mining break") // 停止挖矿
 			}
 			retstrs := strings.Split(retstr, ".")
 			if len(retstrs) >= 2 {
-				if strings.Compare(retstrs[1], "success") == 0 {
+				if strings.Compare(retstrs[1], "retry") == 0 {
+					// 重试
+					goto RESTART_TO_MINING
+				} else if strings.Compare(retstrs[1], "success") == 0 {
 					// 挖矿成功
 					nonce, _ := hex.DecodeString(retstrs[2])
 					noncenum := binary.BigEndian.Uint32(nonce)
@@ -264,17 +269,17 @@ func (this *HacashMiner) doMining() error {
 					targetFinishHash = newBlock.HashFresh()
 					// OK !!!!!!!!!!!!!!!
 					goto MINING_SUCCESS
-				}else{
+				} else {
 					// 挖矿退出
-					this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
+					this.reputAllTxsFromBlock(newBlock)                            // 重新放入所有交易到交易池
 					return fmt.Errorf("gpu mining break by set sign stoping chan") // 停止挖矿
 				}
-			}else{
+			} else {
 				this.reputAllTxsFromBlock(newBlock) // 重新放入所有交易到交易池
 				return fmt.Errorf("gpu mining error return: %s", retstr)
 			}
 
-		}else{
+		} else {
 			// 普通单核CPU挖矿
 			for i := uint32(0); i < 4294967295; i++ {
 				// this.Log.Noise(i)
@@ -703,19 +708,32 @@ func (this *HacashMiner) createCoinbaseTx(block block.Block) *transactions.Trans
 	// coinbase
 	coinbase := transactions.NewTransaction_0_Coinbase()
 	coinbase.Reward = *(coin.BlockCoinBaseReward(uint64(block.GetHeight())))
-	this.setMinerForCoinbase(coinbase)
+	this.setMinerForCoinbase(coinbase, false)
 	return coinbase
 }
 
 // 设置coinbase交易
-func (this *HacashMiner) setMinerForCoinbase(coinbase *transactions.Transaction_0_Coinbase) string {
+func (this *HacashMiner) setMinerForCoinbase(coinbase *transactions.Transaction_0_Coinbase, randmsgtail bool) (*fields.Address, string) {
 	addrreadble := config.GetRandomMinerRewardAddress()
 	addr, e := fields.CheckReadableAddress(addrreadble)
 	if e != nil {
 		panic("Miner Reward Address `" + addrreadble + "` Error !")
 	}
 	coinbase.Address = *addr
-	return addrreadble
+
+	// 末尾随机数
+	if randmsgtail {
+		markwork := []byte(config.Config.Miner.Markword)
+		if len(markwork) > 11 {
+			panic("config.Config.Miner.Markword length too long over 11")
+		}
+		minermsg := make([]byte, 16)
+		binary.BigEndian.PutUint32(minermsg[12:], rand.Uint32())
+		copy(minermsg, markwork)
+		coinbase.Message = fields.TrimString16(minermsg)
+	}
+
+	return addr, addrreadble
 }
 
 // 倒退区块
@@ -783,12 +801,6 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 	// ok
 	return backblks, nil
 }
-
-
-
-
-
-
 
 /////////////////////////////////////////////////////////////////////////////////
 

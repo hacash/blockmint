@@ -11,6 +11,7 @@ var EmptyZeroBytes32 = bytes.Repeat([]byte{0}, 32)
 var EmptyZeroBytes512 = bytes.Repeat([]byte{0}, 512)
 
 type Bytes6 []byte
+type Bytes8 []byte
 type Bytes16 []byte
 type Bytes21 []byte
 type Bytes32 []byte
@@ -19,7 +20,8 @@ type Bytes64 []byte
 
 ////////////////////////////////////////////////////////
 
-func (elm *Bytes6) Serialize() ([]byte, error)  { return bytesSerialize(string(*elm), 66) }
+func (elm *Bytes6) Serialize() ([]byte, error)  { return bytesSerialize(string(*elm), 6) }
+func (elm *Bytes8) Serialize() ([]byte, error)  { return bytesSerialize(string(*elm), 8) }
 func (elm *Bytes16) Serialize() ([]byte, error) { return bytesSerialize(string(*elm), 16) }
 func (elm *Bytes21) Serialize() ([]byte, error) { return bytesSerialize(string(*elm), 21) }
 func (elm *Bytes32) Serialize() ([]byte, error) { return bytesSerialize(string(*elm), 32) }
@@ -28,6 +30,9 @@ func (elm *Bytes64) Serialize() ([]byte, error) { return bytesSerialize(string(*
 
 func (elm *Bytes6) Parse(buf []byte, seek uint32) (uint32, error) {
 	return bytesParse(elm, buf, seek, 6)
+}
+func (elm *Bytes8) Parse(buf []byte, seek uint32) (uint32, error) {
+	return bytesParse(elm, buf, seek, 8)
 }
 func (elm *Bytes16) Parse(buf []byte, seek uint32) (uint32, error) {
 	return bytesParse(elm, buf, seek, 16)
@@ -46,6 +51,7 @@ func (elm *Bytes64) Parse(buf []byte, seek uint32) (uint32, error) {
 }
 
 func (elm *Bytes6) Size() uint32  { return 6 }
+func (elm *Bytes8) Size() uint32  { return 8 }
 func (elm *Bytes16) Size() uint32 { return 16 }
 func (elm *Bytes21) Size() uint32 { return 21 }
 func (elm *Bytes32) Size() uint32 { return 32 }
@@ -66,6 +72,8 @@ func bytesParse(elm interface{}, buf []byte, seek uint32, maxlen uint32) (uint32
 	switch a := elm.(type) {
 	case *Bytes6:
 		*a = (Bytes6(addrbytes))
+	case *Bytes8:
+		*a = (Bytes8(addrbytes))
 	case *Bytes16:
 		*a = (Bytes16(addrbytes))
 	case *Bytes21:

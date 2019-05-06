@@ -28,6 +28,9 @@ type Block_v1 struct {
 
 	// cache data
 	hash []byte
+
+	// mark data
+	HasHaveDiamond bool // 区块内是否已经包含钻石
 }
 
 func NewEmptyBlock_v1(prevBlockHead typesblock.Block) *Block_v1 {
@@ -41,6 +44,7 @@ func NewEmptyBlock_v1(prevBlockHead typesblock.Block) *Block_v1 {
 		Nonce:            0,
 		Difficulty:       0,
 		WitnessStage:     0,
+		HasHaveDiamond:   false,
 	}
 	if prevBlockHead != nil {
 		empty.PrevHash = prevBlockHead.Hash()

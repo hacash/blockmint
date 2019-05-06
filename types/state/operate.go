@@ -1,16 +1,31 @@
 package state
 
-import "github.com/hacash/blockmint/block/fields"
+import (
+	"github.com/hacash/blockmint/block/fields"
+	"github.com/hacash/blockmint/types/miner"
+)
 
 // chain state 操作
 
 type ChainStateOperation interface {
 
+	// status
+
+	Block() interface{}   // block.Block
+	SetBlock(interface{}) // block.Block
+	Miner() miner.Miner
+	SetMiner(miner.Miner)
+
+	// state
+
+	GetPrevDiamondHash() []byte // 获取当前基于的钻石区块hash
+	SetPrevDiamondHash([]byte)  // 设置钻石区块hash
+
 	// query
 
 	Balance(fields.Address) fields.Amount // 查询账户余额
-	Diamond(fields.Bytes6) fields.Address // 查询钻石所属
 	Channel(fields.Bytes16)               // 查询交易通道
+	Diamond(fields.Bytes6) fields.Address // 查询钻石所属
 
 	// operate
 
@@ -20,7 +35,7 @@ type ChainStateOperation interface {
 	ChannelCreate(fields.Bytes16, fields.Address, fields.Address, fields.Amount) // 开启通道
 	ChannelDelete(fields.Bytes16)                                                // 删除通道
 
-	DiamondCreate(fields.Bytes6, fields.Address)   // 创建钻石
-	DiamondTransfer(fields.Bytes6, fields.Address) // 转移钻石
+	DiamondSet(fields.Bytes6, fields.Address) // 设置钻石
+	DiamondDel(fields.Bytes6)                 // 移除钻石
 
 }

@@ -2,7 +2,6 @@ package transactions
 
 import (
 	"bytes"
-	"encoding/binary"
 	"github.com/hacash/bitcoin/address/address"
 	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/bitcoin/address/btcec"
@@ -385,23 +384,4 @@ func (trs *Transaction_1_Simple) GetAddress() []byte {
 func (trs *Transaction_1_Simple) GetFee() []byte {
 	feebts, _ := trs.Fee.Serialize()
 	return feebts
-}
-
-/* *********************************************************** */
-
-func NewActionByKind(kind uint16) (typesblock.Action, error) {
-	switch kind {
-	////////////////////   ACTIONS   ////////////////////
-	case 1:
-		return new(actions.Action_1_SimpleTransfer), nil
-		////////////////////    END      ////////////////////
-	}
-	return nil, err.New("Cannot find Action kind of " + string(kind))
-}
-
-func ParseAction(buf []byte, seek uint32) (typesblock.Action, uint32, error) {
-	var kind = binary.BigEndian.Uint16(buf[seek : seek+2])
-	var act, _ = NewActionByKind(kind)
-	var mv, err = act.Parse(buf, seek+2)
-	return act, mv, err
 }

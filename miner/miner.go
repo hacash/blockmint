@@ -110,6 +110,20 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 	return miner
 }
 
+/////////////  start interface  /////////////
+
+// 获取当前基于的钻石区块hash
+func (this *HacashMiner) GetPrevDiamondHash() []byte {
+	return this.State.GetPrevDiamondBlockHash()
+}
+
+// 设置钻石区块hash
+func (this *HacashMiner) SetPrevDiamondHash(blkhash []byte) {
+	this.State.SetPrevDiamondBlockHash(blkhash)
+}
+
+////////////  end interface  //////////////
+
 // 开始挖矿
 func (this *HacashMiner) Start() {
 	go this.miningLoop()
@@ -599,6 +613,8 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}
 	// 验证交易
 	newBlockChainState := state.NewTempChainState(nil)
+	newBlockChainState.SetBlock(block) // 设置当前处理的区块
+	newBlockChainState.SetMiner(this)  // 矿工状态
 	blksterr := block.ChangeChainState(newBlockChainState)
 	if blksterr != nil {
 		return blksterr
@@ -616,6 +632,11 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	this.TxPool.RemoveTxs(block.GetTransactions())
 	// 更新矿工状态
 	this.State.SetNewBlock(block)
+	diamondHash := newBlockChainState.GetPrevDiamondHash()
+	if diamondHash != nil {
+		this.SetPrevDiamondHash(diamondHash)
+	}
+
 	// 成功状态
 	successInsert = true
 
@@ -664,6 +685,8 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 	nextblock.Transactions = append(nextblock.Transactions, coinbase)
 	// 获取交易并验证
 	tempBlockState := state.NewTempChainState(nil)
+	tempBlockState.SetBlock(nextblock) // 设置当前处理的区块
+	tempBlockState.SetMiner(this)
 	// 添加交易
 	stoblk := store.GetGlobalInstanceBlocksDataStore()
 	blockSize := uint32(block1def.ByteSizeBlockBeforeTransaction)
@@ -686,6 +709,10 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 		hxstate := state.NewTempChainState(tempBlockState)
 		errun := trs.ChangeChainState(hxstate)
 		if errun != nil {
+			if strings.HasPrefix(errun.Error(), "{BACKTOPOOL}") {
+				// put back to pool
+				this.TxPool.AddTx(trs)
+			}
 			hxstate.Destroy()
 			continue // error , give up tx
 		}
@@ -750,6 +777,7 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 
 	db := store.GetGlobalInstanceBlocksDataStore()
 	state := state.GetGlobalInstanceChainState()
+	state.SetMiner(this)
 	for {
 		_, blkbts, err := db.GetBlockBytesByHeight(current_height, true, true, 0)
 		if err != nil {
@@ -797,7 +825,13 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 		this.State.prev288BlockTimestamp = blkhead_prev288.GetTimestamp() // 时间戳
 		//fmt.Println("修改矿工状态 height", blkhead.GetHeight(), "hash", hex.EncodeToString(blkhead.Hash()))
 	}
+	// 修改矿工状态
 	this.State.SetNewBlock(blkhead)
+	diamondHash := state.GetPrevDiamondHash()
+	if diamondHash != nil {
+		this.SetPrevDiamondHash(diamondHash)
+		state.SetPrevDiamondHash(nil) // 状态复位
+	}
 	// ok
 	return backblks, nil
 }

@@ -26,7 +26,8 @@ func GenTxSimpleTransfer(ctx ctx.Context, params []string) {
 	if ctx.NotLoadedYetAccountAddress(from) {
 		return
 	}
-	if ctx.IsInvalidAccountAddress(to) {
+	toAddr := ctx.IsInvalidAccountAddress(to)
+	if toAddr == nil {
 		return
 	}
 	amt, e1 := fields.NewAmountFromFinString(finamt)
@@ -44,19 +45,14 @@ func GenTxSimpleTransfer(ctx ctx.Context, params []string) {
 		fmt.Println("from address format error")
 		return
 	}
-	toAddr, e4 := base58check.Decode(to)
-	if e4 != nil {
-		fmt.Println("from address format error")
-		return
-	}
-	newTrs, e5 := transactions.NewEmptyTransaction_1_Simple(fields.Address(masterAddr))
+	newTrs, e5 := transactions.NewEmptyTransaction_2_Simple(fields.Address(masterAddr))
 	newTrs.Timestamp = fields.VarInt5(ctx.UseTimestamp()) // 使用 hold 的时间戳
 	if e5 != nil {
 		fmt.Println("create transaction error, " + e5.Error())
 		return
 	}
 	newTrs.Fee = *fee // set fee
-	tranact := actions.NewAction_1_SimpleTransfer(toAddr, *amt)
+	tranact := actions.NewAction_1_SimpleTransfer(*toAddr, *amt)
 	newTrs.AppendAction(tranact)
 	// sign
 	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes())

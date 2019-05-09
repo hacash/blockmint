@@ -64,7 +64,7 @@ func transferSimple(params map[string]string) map[string]string {
 		return result
 	}
 	// 创建普通转账交易
-	newTrs, e5 := transactions.NewEmptyTransaction_1_Simple(acc.Address)
+	newTrs, e5 := transactions.NewEmptyTransaction_2_Simple(acc.Address)
 	if e5 != nil {
 		result["err"] = e5.Error()
 		return result

@@ -17,6 +17,7 @@ type ChainState struct {
 
 	balanceDB *db.BalanceDB
 	diamondDB *db.DiamondDB
+	channelDB *db.ChannelDB
 
 	// 正在处理的区块
 	block block.Block
@@ -42,6 +43,7 @@ func GetGlobalInstanceChainState() *ChainState {
 			tempdir:   "",
 			balanceDB: db.GetGlobalInstanceBalanceDB(),
 			diamondDB: db.GetGlobalInstanceDiamondDB(),
+			channelDB: db.GetGlobalInstanceChannelDB(),
 		}
 	}
 	return globalInstanceChainState
@@ -61,11 +63,16 @@ func NewTempChainState(base *ChainState) *ChainState {
 	newDiamondDB.Treedb.DeleteMark = true
 	newDiamondDB.Treedb.FilePartitionLevel = 0 // 单文件
 
+	newChannelDB := db.NewChannelDB(path.Join(tmpdir, "channel"))
+	newChannelDB.Treedb.DeleteMark = true
+	newChannelDB.Treedb.FilePartitionLevel = 0 // 单文件
+
 	// ok
 	return &ChainState{
 		base:      base,
 		balanceDB: newBalanceDB,
 		diamondDB: newDiamondDB,
+		channelDB: newChannelDB,
 		tempdir:   tmpdir,
 		// 状态
 		block:           nil,
@@ -116,6 +123,7 @@ func (this *ChainState) SetPrevDiamondHash(hash []byte) {
 func (this *ChainState) TraversalCopy(get *ChainState) {
 	this.balanceDB.Treedb.TraversalCopy(get.balanceDB.Treedb)
 	this.diamondDB.Treedb.TraversalCopy(get.diamondDB.Treedb)
+	this.channelDB.Treedb.TraversalCopy(get.channelDB.Treedb)
 }
 
 // 销毁临时状态

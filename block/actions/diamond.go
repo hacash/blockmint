@@ -17,7 +17,7 @@ import (
  */
 
 // 挖出钻石
-type Action_3_DiamondCreate struct {
+type Action_4_DiamondCreate struct {
 	Diamond  fields.Bytes6  // 钻石字面量 WTYUIAHXVMEKBSZN
 	PrevHash fields.Bytes32 // 上一个包含钻石的区块hash
 	Nonce    fields.Bytes8  // 随机数
@@ -28,19 +28,19 @@ type Action_3_DiamondCreate struct {
 	// trs block.Transaction
 }
 
-func (elm *Action_3_DiamondCreate) Kind() uint16 {
-	return 3
+func (elm *Action_4_DiamondCreate) Kind() uint16 {
+	return 4
 }
 
-func (elm *Action_3_DiamondCreate) SetBelongTrs(t block.Transaction) {
+func (elm *Action_4_DiamondCreate) SetBelongTrs(t block.Transaction) {
 
 }
 
-func (elm *Action_3_DiamondCreate) Size() uint32 {
+func (elm *Action_4_DiamondCreate) Size() uint32 {
 	return elm.Diamond.Size() + elm.Address.Size() + elm.Nonce.Size()
 }
 
-func (elm *Action_3_DiamondCreate) Serialize() ([]byte, error) {
+func (elm *Action_4_DiamondCreate) Serialize() ([]byte, error) {
 	var kindByte = make([]byte, 2)
 	binary.BigEndian.PutUint16(kindByte, elm.Kind())
 	var diamondBytes, _ = elm.Diamond.Serialize()
@@ -56,7 +56,7 @@ func (elm *Action_3_DiamondCreate) Serialize() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (elm *Action_3_DiamondCreate) Parse(buf []byte, seek uint32) (uint32, error) {
+func (elm *Action_4_DiamondCreate) Parse(buf []byte, seek uint32) (uint32, error) {
 	var moveseek1, _ = elm.Diamond.Parse(buf, seek)
 	var moveseek2, _ = elm.PrevHash.Parse(buf, moveseek1)
 	var moveseek3, _ = elm.Nonce.Parse(buf, moveseek2)
@@ -64,11 +64,11 @@ func (elm *Action_3_DiamondCreate) Parse(buf []byte, seek uint32) (uint32, error
 	return moveseek4, nil
 }
 
-func (elm *Action_3_DiamondCreate) RequestSignAddrs() [][]byte {
+func (elm *Action_4_DiamondCreate) RequestSignAddrs() [][]byte {
 	return make([][]byte, 0) // 无需签名
 }
 
-func (act *Action_3_DiamondCreate) ChangeChainState(state state.ChainStateOperation) error {
+func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperation) error {
 	blk := state.Block().(block.Block) // 强制类型转换
 	if blk == nil {
 		panic("Action get state.Block() cannot be nil !")
@@ -114,7 +114,7 @@ func (act *Action_3_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	return nil
 }
 
-func (act *Action_3_DiamondCreate) RecoverChainState(state state.ChainStateOperation) error {
+func (act *Action_4_DiamondCreate) RecoverChainState(state state.ChainStateOperation) error {
 	miner := state.Miner()
 	if miner == nil {
 		panic("Action get state.Miner() cannot be nil !")
@@ -130,7 +130,7 @@ func (act *Action_3_DiamondCreate) RecoverChainState(state state.ChainStateOpera
 ///////////////////////////////////////////////////////////////
 
 // 转移钻石
-type Action_4_DiamondTransfer struct {
+type Action_5_DiamondTransfer struct {
 	Diamond fields.Bytes6  // 钻石字面量 WTYUIAHXVMEKBSZN
 	Address fields.Address // 收钻方账户
 
@@ -139,19 +139,19 @@ type Action_4_DiamondTransfer struct {
 	trs block.Transaction
 }
 
-func (elm *Action_4_DiamondTransfer) Kind() uint16 {
-	return 3
+func (elm *Action_5_DiamondTransfer) Kind() uint16 {
+	return 5
 }
 
-func (elm *Action_4_DiamondTransfer) SetBelongTrs(t block.Transaction) {
+func (elm *Action_5_DiamondTransfer) SetBelongTrs(t block.Transaction) {
 	elm.trs = t
 }
 
-func (elm *Action_4_DiamondTransfer) Size() uint32 {
+func (elm *Action_5_DiamondTransfer) Size() uint32 {
 	return elm.Diamond.Size() + elm.Address.Size()
 }
 
-func (elm *Action_4_DiamondTransfer) Serialize() ([]byte, error) {
+func (elm *Action_5_DiamondTransfer) Serialize() ([]byte, error) {
 	var kindByte = make([]byte, 2)
 	binary.BigEndian.PutUint16(kindByte, elm.Kind())
 	var diamondBytes, _ = elm.Diamond.Serialize()
@@ -163,17 +163,17 @@ func (elm *Action_4_DiamondTransfer) Serialize() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (elm *Action_4_DiamondTransfer) Parse(buf []byte, seek uint32) (uint32, error) {
+func (elm *Action_5_DiamondTransfer) Parse(buf []byte, seek uint32) (uint32, error) {
 	var moveseek1, _ = elm.Diamond.Parse(buf, seek)
 	var moveseek2, _ = elm.Address.Parse(buf, moveseek1)
 	return moveseek2, nil
 }
 
-func (elm *Action_4_DiamondTransfer) RequestSignAddrs() [][]byte {
+func (elm *Action_5_DiamondTransfer) RequestSignAddrs() [][]byte {
 	return make([][]byte, 0) // 无需签名
 }
 
-func (act *Action_4_DiamondTransfer) ChangeChainState(state state.ChainStateOperation) error {
+func (act *Action_5_DiamondTransfer) ChangeChainState(state state.ChainStateOperation) error {
 	if act.trs == nil {
 		panic("Action belong to transaction not be nil !")
 	}
@@ -191,7 +191,7 @@ func (act *Action_4_DiamondTransfer) ChangeChainState(state state.ChainStateOper
 	return nil
 }
 
-func (act *Action_4_DiamondTransfer) RecoverChainState(state state.ChainStateOperation) error {
+func (act *Action_5_DiamondTransfer) RecoverChainState(state state.ChainStateOperation) error {
 	if act.trs == nil {
 		panic("Action belong to transaction not be nil !")
 	}

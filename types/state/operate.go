@@ -24,7 +24,7 @@ type ChainStateOperation interface {
 	// query
 
 	Balance(fields.Address) fields.Amount // 查询账户余额
-	Channel(fields.Bytes16)               // 查询交易通道
+	Channel(fields.Bytes16) interface{}   // 查询交易通道
 	Diamond(fields.Bytes6) fields.Address // 查询钻石所属
 
 	// operate
@@ -32,8 +32,8 @@ type ChainStateOperation interface {
 	BalanceSet(fields.Address, fields.Amount) // 余额设定
 	BalanceDel(fields.Address)                // 余额删除
 
-	ChannelCreate(fields.Bytes16, fields.Address, fields.Address, fields.Amount) // 开启通道
-	ChannelDelete(fields.Bytes16)                                                // 删除通道
+	ChannelCreate(fields.Bytes16, interface{}) // 开启通道
+	ChannelDelete(fields.Bytes16)              // 删除通道
 
 	DiamondSet(fields.Bytes6, fields.Address) // 设置钻石
 	DiamondDel(fields.Bytes6)                 // 移除钻石

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/hex"
 	"fmt"
-	"github.com/hacash/bitcoin/address/base58check"
+	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/core/account"
 	"github.com/hacash/blockmint/types/block"
 	"os"
@@ -34,11 +34,22 @@ func (ctxToolShell) NotLoadedYetAccountAddress(addr string) bool {
 	return false
 }
 
-func (ctxToolShell) IsInvalidAccountAddress(addr string) bool {
-	if _, err := base58check.Decode(addr); err != nil {
-		return true
+func (ctxToolShell) IsInvalidAccountAddress(addr string) *fields.Address {
+	address, err := fields.CheckReadableAddress(addr)
+	if err != nil {
+		fmt.Println(err)
+		return nil
 	}
-	return false
+	return address
+}
+
+func (ctxToolShell) IsInvalidAmountString(amtstr string) *fields.Amount {
+	amt, e1 := fields.NewAmountFromFinString(amtstr)
+	if e1 != nil {
+		fmt.Printf("amount \"%s\" format error or over range, the right example is 'HCX1:248' for one coin\n", amtstr)
+		return nil
+	}
+	return amt
 }
 
 func (ctxToolShell) GetAllPrivateKeyBytes() map[string][]byte {
@@ -86,9 +97,11 @@ func RunToolShell() {
 	inputReader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Print(">>")
+		fmt.Print(">")
 		input, err := inputReader.ReadString('\n')
 		if err != nil {
+			fmt.Println(err)
+			time.Sleep(time.Second)
 			continue
 		}
 		//fmt.Scanln(&currentInputContent)
@@ -127,6 +140,12 @@ func RunToolShell() {
 			setPrivateKey(parabody)
 		case "newkey":
 			createNewPrivateKey(parabody)
+		case "puttx":
+			putTx(ctxToolShell{}, parabody)
+		case "gettx":
+			getTx(ctxToolShell{}, parabody)
+		case "signtx":
+			signTx(ctxToolShell{}, parabody)
 		case "gentx":
 			genTx(ctxToolShell{}, parabody)
 		case "sendtx":

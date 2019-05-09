@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/hacash/bitcoin/address/address"
 	"github.com/hacash/bitcoin/address/base58check"
 	"github.com/hacash/bitcoin/address/btcec"
@@ -16,7 +17,7 @@ import (
 	"time"
 )
 
-type Transaction_1_Simple struct {
+type Transaction_2_Simple struct {
 	Timestamp fields.VarInt5
 	Address   fields.Address
 	Fee       fields.Amount
@@ -35,12 +36,12 @@ type Transaction_1_Simple struct {
 	hashnofee []byte
 }
 
-func NewEmptyTransaction_1_Simple(master fields.Address) (*Transaction_1_Simple, error) {
+func NewEmptyTransaction_2_Simple(master fields.Address) (*Transaction_2_Simple, error) {
 	if !master.IsValid() {
 		return nil, err.New("Master Address is InValid ")
 	}
 	timeUnix := time.Now().Unix()
-	return &Transaction_1_Simple{
+	return &Transaction_2_Simple{
 		Timestamp:      fields.VarInt5(uint64(timeUnix)),
 		Address:        master,
 		Fee:            *fields.NewEmptyAmount(),
@@ -50,11 +51,11 @@ func NewEmptyTransaction_1_Simple(master fields.Address) (*Transaction_1_Simple,
 	}, nil
 }
 
-func (trs *Transaction_1_Simple) Type() uint8 {
-	return 1
+func (trs *Transaction_2_Simple) Type() uint8 {
+	return 2
 }
 
-func (trs *Transaction_1_Simple) Serialize() ([]byte, error) {
+func (trs *Transaction_2_Simple) Serialize() ([]byte, error) {
 	body, e0 := trs.SerializeNoSign()
 	if e0 != nil {
 		return nil, e0
@@ -91,11 +92,11 @@ func (trs *Transaction_1_Simple) Serialize() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (trs *Transaction_1_Simple) SerializeNoSign() ([]byte, error) {
+func (trs *Transaction_2_Simple) SerializeNoSign() ([]byte, error) {
 	return trs.SerializeNoSignEx(false)
 }
 
-func (trs *Transaction_1_Simple) SerializeNoSignEx(nofee bool) ([]byte, error) {
+func (trs *Transaction_2_Simple) SerializeNoSignEx(nofee bool) ([]byte, error) {
 	var buffer = new(bytes.Buffer)
 	b1, _ := trs.Timestamp.Serialize()
 	b2, _ := trs.Address.Serialize()
@@ -121,7 +122,7 @@ func (trs *Transaction_1_Simple) SerializeNoSignEx(nofee bool) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (trs *Transaction_1_Simple) Parse(buf []byte, seek uint32) (uint32, error) {
+func (trs *Transaction_2_Simple) Parse(buf []byte, seek uint32) (uint32, error) {
 	m1, _ := trs.Timestamp.Parse(buf, seek)
 	m2, _ := trs.Address.Parse(buf, m1)
 	m3, _ := trs.Fee.Parse(buf, m2)
@@ -163,7 +164,7 @@ func (trs *Transaction_1_Simple) Parse(buf []byte, seek uint32) (uint32, error) 
 	return iseek, nil
 }
 
-func (trs *Transaction_1_Simple) Size() uint32 {
+func (trs *Transaction_2_Simple) Size() uint32 {
 	totalsize := 1 + trs.Timestamp.Size() + trs.Address.Size() + trs.Fee.Size() + trs.ActionCount.Size()
 	for i := 0; i < int(trs.ActionCount); i++ {
 		totalsize += trs.Actions[i].Size()
@@ -172,27 +173,27 @@ func (trs *Transaction_1_Simple) Size() uint32 {
 }
 
 // 交易唯一哈希值
-func (trs *Transaction_1_Simple) Hash() []byte {
+func (trs *Transaction_2_Simple) Hash() []byte {
 	if trs.hash == nil {
 		return trs.HashFresh()
 	}
 	return trs.hash
 }
 
-func (trs *Transaction_1_Simple) HashFresh() []byte {
+func (trs *Transaction_2_Simple) HashFresh() []byte {
 	stuff, _ := trs.SerializeNoSign()
 	digest := sha3.Sum256(stuff)
 	trs.hash = digest[:]
 	return trs.hash
 }
 
-func (trs *Transaction_1_Simple) HashNoFee() []byte {
+func (trs *Transaction_2_Simple) HashNoFee() []byte {
 	if trs.hashnofee == nil {
 		return trs.HashNoFeeFresh()
 	}
 	return trs.hashnofee
 }
-func (trs *Transaction_1_Simple) HashNoFeeFresh() []byte {
+func (trs *Transaction_2_Simple) HashNoFeeFresh() []byte {
 	notFee := true
 	stuff, _ := trs.SerializeNoSignEx(notFee)
 	digest := sha3.Sum256(stuff)
@@ -200,7 +201,7 @@ func (trs *Transaction_1_Simple) HashNoFeeFresh() []byte {
 	return trs.hashnofee
 }
 
-func (trs *Transaction_1_Simple) AppendAction(action typesblock.Action) error {
+func (trs *Transaction_2_Simple) AppendAction(action typesblock.Action) error {
 	if trs.ActionCount >= 65535 {
 		return err.New("Action too much")
 	}
@@ -210,7 +211,7 @@ func (trs *Transaction_1_Simple) AppendAction(action typesblock.Action) error {
 }
 
 // 从 actions 拿出需要签名的地址
-func (trs *Transaction_1_Simple) RequestSignAddrs() ([][]byte, error) {
+func (trs *Transaction_2_Simple) RequestSignAddrs() ([][]byte, error) {
 	if !trs.Address.IsValid() {
 		return nil, err.New("Master Address is InValid ")
 	}
@@ -234,21 +235,21 @@ func (trs *Transaction_1_Simple) RequestSignAddrs() ([][]byte, error) {
 }
 
 // 填充签名
-func (trs *Transaction_1_Simple) FillNeedSigns(addrPrivates map[string][]byte) error {
+func (trs *Transaction_2_Simple) FillNeedSigns(addrPrivates map[string][]byte) error {
 	hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
 	requests, e0 := trs.RequestSignAddrs()
 	if e0 != nil {
 		return e0
 	}
-	// 主签名
-	e1 := trs.addOneSign(hashNoFee, addrPrivates, trs.Address)
+	// 主签名（包括手续费）
+	e1 := trs.addOneSign(hash, addrPrivates, trs.Address)
 	if e1 != nil {
 		return e1
 	}
-	// 其他签名
+	// 其他签名（不包括手续费字段）
 	for i := 0; i < len(requests); i++ {
-		e1 := trs.addOneSign(hash, addrPrivates, requests[i])
+		e1 := trs.addOneSign(hashNoFee, addrPrivates, requests[i])
 		if e1 != nil {
 			return e1
 		}
@@ -257,7 +258,7 @@ func (trs *Transaction_1_Simple) FillNeedSigns(addrPrivates map[string][]byte) e
 	return nil
 }
 
-func (trs *Transaction_1_Simple) addOneSign(hash []byte, addrPrivates map[string][]byte, address []byte) error {
+func (trs *Transaction_2_Simple) addOneSign(hash []byte, addrPrivates map[string][]byte, address []byte) error {
 	privitebytes, has := addrPrivates[string(address)]
 	if !has {
 		return err.New("Private Key '" + base58check.Encode(address) + "' necessary")
@@ -280,7 +281,7 @@ func (trs *Transaction_1_Simple) addOneSign(hash []byte, addrPrivates map[string
 }
 
 // 验证需要的签名
-func (trs *Transaction_1_Simple) VerifyNeedSigns() (bool, error) {
+func (trs *Transaction_2_Simple) VerifyNeedSigns() (bool, error) {
 	hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
 	requests, e0 := trs.RequestSignAddrs()
@@ -293,14 +294,14 @@ func (trs *Transaction_1_Simple) VerifyNeedSigns() (bool, error) {
 		addr := address.NewAddressFromPublicKey([]byte{0}, sig.PublicKey)
 		allSigns[string(addr)] = sig
 	}
-	// 验证主签名
-	ok, e := verifyOneSignature(allSigns, trs.Address, hashNoFee)
+	// 验证主签名（包括手续费）
+	ok, e := verifyOneSignature(allSigns, trs.Address, hash)
 	if e != nil || !ok {
 		return ok, e
 	}
-	// 验证其他所有签名
+	// 验证其他所有签名（不包含手续费字段）
 	for i := 0; i < len(requests); i++ {
-		ok, e := verifyOneSignature(allSigns, trs.Address, hash)
+		ok, e := verifyOneSignature(allSigns, requests[i], hashNoFee)
 		if e != nil || !ok {
 			return ok, e
 		}
@@ -313,7 +314,7 @@ func verifyOneSignature(allSigns map[string]fields.Sign, address fields.Address,
 
 	main, ok := allSigns[string(address)]
 	if !ok {
-		return false, nil
+		return false, fmt.Errorf("address %s signature not find!", address.ToReadable())
 	}
 	sigobj, e3 := btcec.ParseSignatureByte64(main.Signature)
 	if e3 != nil {
@@ -325,19 +326,19 @@ func verifyOneSignature(allSigns map[string]fields.Sign, address fields.Address,
 	}
 	verok := sigobj.Verify(hash, pubKey)
 	if !verok {
-		return false, nil
+		return false, fmt.Errorf("verify address %s signature fail.", address.ToReadable())
 	}
 	// ok
 	return true, nil
 }
 
 // 需要的余额检查
-func (trs *Transaction_1_Simple) RequestAddressBalance() ([][]byte, []big.Int, error) {
+func (trs *Transaction_2_Simple) RequestAddressBalance() ([][]byte, []big.Int, error) {
 	return nil, nil, nil
 }
 
 // 修改 / 恢复 状态数据库
-func (trs *Transaction_1_Simple) ChangeChainState(state state.ChainStateOperation) error {
+func (trs *Transaction_2_Simple) ChangeChainState(state state.ChainStateOperation) error {
 	// actions
 	for i := 0; i < len(trs.Actions); i++ {
 		trs.Actions[i].SetBelongTrs(trs)
@@ -350,7 +351,7 @@ func (trs *Transaction_1_Simple) ChangeChainState(state state.ChainStateOperatio
 	return actions.DoSubBalanceFromChainState(state, trs.Address, trs.Fee)
 }
 
-func (trs *Transaction_1_Simple) RecoverChainState(state state.ChainStateOperation) error {
+func (trs *Transaction_2_Simple) RecoverChainState(state state.ChainStateOperation) error {
 	// actions
 	for i := len(trs.Actions) - 1; i >= 0; i-- {
 		trs.Actions[i].SetBelongTrs(trs)
@@ -364,7 +365,7 @@ func (trs *Transaction_1_Simple) RecoverChainState(state state.ChainStateOperati
 }
 
 // 手续费含量 每byte的含有多少烁代币
-func (trs *Transaction_1_Simple) FeePurity() uint64 {
+func (trs *Transaction_2_Simple) FeePurity() uint64 {
 
 	bigfee := trs.Fee.GetValue()
 	bigfee = bigfee.Div(bigfee, fields.NewAmountNumOneByUnit(232).GetValue())
@@ -377,11 +378,11 @@ func (trs *Transaction_1_Simple) FeePurity() uint64 {
 }
 
 // 查询
-func (trs *Transaction_1_Simple) GetAddress() []byte {
+func (trs *Transaction_2_Simple) GetAddress() []byte {
 	return trs.Address
 }
 
-func (trs *Transaction_1_Simple) GetFee() []byte {
+func (trs *Transaction_2_Simple) GetFee() []byte {
 	feebts, _ := trs.Fee.Serialize()
 	return feebts
 }

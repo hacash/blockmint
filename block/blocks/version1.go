@@ -343,7 +343,9 @@ func NewTransactionByType(ty uint8) (typesblock.Transaction, error) {
 	case 0:
 		return new(transactions.Transaction_0_Coinbase), nil
 	case 1:
-		return new(transactions.Transaction_1_Simple), nil
+		return new(transactions.Transaction_1_DO_NOT_USE_WITH_BUG), nil // 【有签名BUG，已废弃！！！】
+	case 2:
+		return new(transactions.Transaction_2_Simple), nil
 		////////////////////     END      ////////////////////
 	}
 	return nil, err.New("Cannot find Transaction type of " + string(ty))

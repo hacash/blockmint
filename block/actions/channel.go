@@ -25,7 +25,7 @@ type Action_2_OpenPaymentChannel struct {
 
 	// 数据指针
 	// 所属交易
-	// trs block.Transaction
+	//trs block.Transaction
 }
 
 func (elm *Action_2_OpenPaymentChannel) Kind() uint16 {
@@ -79,7 +79,11 @@ func (act *Action_2_OpenPaymentChannel) ChangeChainState(state state.ChainStateO
 	labt, _ := act.LeftAmount.Serialize()
 	rabt, _ := act.RightAmount.Serialize()
 	if len(labt) > 6 || len(rabt) > 6 {
-		return fmt.Errorf("Payment Channel create error: left or right Amount bytes too long")
+		return fmt.Errorf("Payment Channel create error: left or right Amount bytes too long.")
+	}
+	// 不能小于等于零
+	if !act.LeftAmount.IsPositive() || !act.RightAmount.IsPositive() {
+		return fmt.Errorf("Payment Channel create error: left or right Amount is not positive.")
 	}
 	// 检查余额是否充足
 	amt1 := state.Balance(act.LeftAddress)
@@ -95,15 +99,22 @@ func (act *Action_2_OpenPaymentChannel) ChangeChainState(state state.ChainStateO
 	if sto != nil {
 		return fmt.Errorf("Payment Channel Id <%s> already exist.", hex.EncodeToString(act.ChannelId))
 	}
-	curblk := state.Block().(block.Block)
+	curheight := uint64(1)
+	curblkptr := state.Block()
+	if curblkptr != nil {
+		curblk := curblkptr.(block.Block)
+		curheight = curblk.GetHeight()
+	}
+
 	// 创建 channel
 	var storeItem db.ChannelStoreItemData
-	storeItem.BelongHeight = fields.VarInt5(curblk.GetHeight())
+	storeItem.BelongHeight = fields.VarInt5(curheight)
 	storeItem.LockBlock = fields.VarInt2(uint16(5000))
 	storeItem.LeftAddress = act.LeftAddress
 	storeItem.LeftAmount = act.LeftAmount
 	storeItem.RightAddress = act.RightAddress
 	storeItem.RightAmount = act.RightAmount
+	storeItem.IsClosed = 0 // 打开状态
 	// 扣除余额
 	DoSubBalanceFromChainState(state, act.LeftAddress, act.LeftAmount)
 	DoSubBalanceFromChainState(state, act.RightAddress, act.RightAmount)
@@ -123,3 +134,91 @@ func (act *Action_2_OpenPaymentChannel) RecoverChainState(state state.ChainState
 }
 
 /////////////////////////////////////////////////////////////////
+
+// 关闭、结算 支付通道（资金分配不变的情况）
+type Action_3_ClosePaymentChannel struct {
+	ChannelId     fields.Bytes16 // 通道id
+	TotalInterest fields.Amount  // 总利息数量
+
+	// 数据指针
+	// 所属交易
+	//trs block.Transaction
+}
+
+func (elm *Action_3_ClosePaymentChannel) Kind() uint16 {
+	return 3
+}
+
+func (elm *Action_3_ClosePaymentChannel) SetBelongTrs(t block.Transaction) {
+
+}
+
+func (elm *Action_3_ClosePaymentChannel) Size() uint32 {
+	return elm.ChannelId.Size() + elm.TotalInterest.Size()
+}
+
+func (elm *Action_3_ClosePaymentChannel) Serialize() ([]byte, error) {
+	var kindByte = make([]byte, 2)
+	binary.BigEndian.PutUint16(kindByte, elm.Kind())
+	var idBytes, _ = elm.ChannelId.Serialize()
+	var amtBytes, _ = elm.TotalInterest.Serialize()
+	var buffer bytes.Buffer
+	buffer.Write(kindByte)
+	buffer.Write(idBytes)
+	buffer.Write(amtBytes)
+	return buffer.Bytes(), nil
+}
+
+func (elm *Action_3_ClosePaymentChannel) Parse(buf []byte, seek uint32) (uint32, error) {
+	seek, _ = elm.ChannelId.Parse(buf, seek)
+	seek, _ = elm.TotalInterest.Parse(buf, seek)
+	return seek, nil
+}
+
+func (elm *Action_3_ClosePaymentChannel) RequestSignAddrs() [][]byte {
+	return [][]byte{}
+}
+
+func (act *Action_3_ClosePaymentChannel) ChangeChainState(state state.ChainStateOperation) error {
+	// 查询通道
+	paychanptr := state.Channel(act.ChannelId)
+	if paychanptr == nil {
+		return fmt.Errorf("Payment Channel Id <%s> not find.", hex.EncodeToString(act.ChannelId))
+	}
+	paychan := paychanptr.(*db.ChannelStoreItemData)
+	// 通过时间计算利息
+	leftAmount := paychan.LeftAmount
+	rightAmount := paychan.RightAmount
+	totalAmount, _ := leftAmount.Add(&rightAmount)
+	// 计算获得当前的区块高度
+	//var curheight uint64 = 1
+	blkptr := state.Block()
+	if blkptr != nil {
+		ttamt := totalAmount.GetValue()
+		curheight := blkptr.(block.Block).GetHeight()
+		// 增加利息计算，复利次数
+		insnum := curheight / 2500
+		if insnum > 0 {
+			ttamt.String()
+		}
+
+	}
+
+	// 检查金额储存的位数
+	// 扣除余额
+	//DoSubBalanceFromChainState(state, act.LeftAddress, act.LeftAmount)
+	//DoSubBalanceFromChainState(state, act.RightAddress, act.RightAmount)
+	//// 储存通道
+	//state.ChannelCreate(act.ChannelId, &storeItem)
+	//
+	return nil
+}
+
+func (act *Action_3_ClosePaymentChannel) RecoverChainState(state state.ChainStateOperation) error {
+	// 删除通道
+	//state.ChannelCreate(act.ChannelId)
+	// 恢复余额
+	//DoAddBalanceFromChainState(state, act.LeftAddress, act.LeftAmount)
+	//DoAddBalanceFromChainState(state, act.RightAddress, act.RightAmount)
+	return nil
+}

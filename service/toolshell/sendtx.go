@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/service/toolshell/ctx"
 	"io/ioutil"
 	"net/http"
@@ -36,7 +37,15 @@ func sendTxToMiner(ctx ctx.Context, params []string) {
 	// post 发送
 	body := new(bytes.Buffer)
 	body.Write([]byte{0, 0, 0, 1}) // opcode
-	txbytes, _ := tx.Serialize()
+	txbytes, e9 := tx.Serialize()
+	if e9 != nil {
+		fmt.Println("tx serialize error:")
+		fmt.Println(e9)
+		return
+	}
+	// 生成交易
+	blocks.ParseTransaction(txbytes, 0)
+
 	body.Write(txbytes)
 	req, e3 := http.NewRequest("POST", "http://"+minerAddress+"/operate", body)
 	if e3 != nil {

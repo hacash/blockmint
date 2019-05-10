@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	//"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"

@@ -25,7 +25,8 @@ type ChannelStoreItemData struct {
 	LeftAmount   fields.Amount // 抵押数额1
 	RightAddress fields.Address
 	RightAmount  fields.Amount  // 抵押数额2
-	ConfigMark   fields.Bytes3  // 标志位
+	IsClosed     fields.VarInt1 // 已经关闭并结算
+	ConfigMark   fields.VarInt2 // 标志位
 	Others       fields.Bytes16 // 扩展位
 
 	// cache data
@@ -39,6 +40,7 @@ func (this *ChannelStoreItemData) Parse(buf []byte, seek uint32) (uint32, error)
 	seek, _ = this.LeftAmount.Parse(buf, seek)
 	seek, _ = this.RightAddress.Parse(buf, seek)
 	seek, _ = this.RightAmount.Parse(buf, seek)
+	seek, _ = this.IsClosed.Parse(buf, seek)
 	seek, _ = this.ConfigMark.Parse(buf, seek)
 	seek, _ = this.Others.Parse(buf, seek)
 	return seek, nil
@@ -52,8 +54,9 @@ func (this *ChannelStoreItemData) Serialize() ([]byte, error) {
 	b4, _ := this.LeftAmount.Serialize()
 	b5, _ := this.RightAddress.Serialize()
 	b6, _ := this.RightAmount.Serialize()
-	b7, _ := this.ConfigMark.Serialize()
-	b8, _ := this.Others.Serialize()
+	b7, _ := this.IsClosed.Serialize()
+	b8, _ := this.ConfigMark.Serialize()
+	b9, _ := this.Others.Serialize()
 	buffer.Write(b1)
 	buffer.Write(b2)
 	buffer.Write(b3)
@@ -62,6 +65,7 @@ func (this *ChannelStoreItemData) Serialize() ([]byte, error) {
 	buffer.Write(b6)
 	buffer.Write(b7)
 	buffer.Write(b8)
+	buffer.Write(b9)
 	return buffer.Bytes(), nil
 }
 

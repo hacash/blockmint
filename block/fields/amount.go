@@ -160,6 +160,18 @@ func (bill *Amount) IsEmpty() bool {
 	return bill.Dist == int8(0) || len(bill.Numeral) == 0
 }
 
+// 判断必须为正数，且不能为零
+func (bill *Amount) IsPositive() bool {
+	if bill.Unit == 0 {
+		return false
+	}
+	if bill.Dist <= 0 {
+		return false
+	}
+	// 满足要求
+	return true
+}
+
 func AmountToZeroFinString() string {
 	return "ㄜ0:0"
 }

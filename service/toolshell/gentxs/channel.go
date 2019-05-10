@@ -18,7 +18,8 @@ import (
 
 passwd 123456
 passwd 12345678
-gentx paychan 1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9 HCX1:248 1EDUeK8NAjrgYhgDFv9NJecn8dNyJJsu3y HCX1:248 HCX1:240
+gentx paychan 1EDUeK8NAjrgYhgDFv9NJecn8dNyJJsu3y HCX1:248 1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9 HCX1:248 HCX4:244
+
 
 */
 func GenTxCreatePaymentChannel(ctx ctx.Context, params []string) {

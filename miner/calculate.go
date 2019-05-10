@@ -9,7 +9,6 @@ import (
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/miner/difficulty"
 	"github.com/hacash/blockmint/types/block"
-
 	"github.com/hacash/x16rs"
 )
 
@@ -28,6 +27,11 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 	}
 	_, bigintdiff, _, _ := this.State.NextHeightTargetDifficultyCompact()
 	targethashdiff := difficulty.BigToHash256(bigintdiff)
+	blockheight := newBlock.GetHeight()
+	minerloopnum := int(blockheight/50000 + 1)
+	if minerloopnum > 16 {
+		minerloopnum = 16
+	}
 
 	//ttt, _ := hex.DecodeString("0000f00f27700000000000000000000000000000000000000000000000000000")
 	//targethashdiff = ttt
@@ -52,7 +56,7 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 		go func(i uint8) {
 			//fmt.Println([]byte{i})
 			// 开始挖矿
-			nonce_bytes := x16r.MinerNonceHashX16RS(stopsign, targethashdiff, basestuff)
+			nonce_bytes := x16rs.MinerNonceHashX16RS(minerloopnum, stopsign, targethashdiff, basestuff)
 			nonce := binary.BigEndian.Uint32(nonce_bytes)
 			this.Log.Info("end supercpu", i, nonce)
 			//fmt.Println("end supercpu", i, nonce)

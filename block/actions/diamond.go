@@ -19,6 +19,7 @@ import (
 // 挖出钻石
 type Action_4_DiamondCreate struct {
 	Diamond  fields.Bytes6  // 钻石字面量 WTYUIAHXVMEKBSZN
+	Number   fields.VarInt3 // 钻石序号，用于难度检查
 	PrevHash fields.Bytes32 // 上一个包含钻石的区块hash
 	Nonce    fields.Bytes8  // 随机数
 	Address  fields.Address // 所属账户
@@ -79,8 +80,8 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	}
 	blkhei := blk.GetHeight()
 	// 检查钻石挖矿计算
-	diamond_str := x16r.Diamond(act.PrevHash, act.Nonce, act.Address)
-	diamondstrval, isdia := x16r.IsDiamondHashResultString(diamond_str)
+	diamond_str := x16rs.Diamond(act.PrevHash, act.Nonce, act.Address)
+	diamondstrval, isdia := x16rs.IsDiamondHashResultString(diamond_str)
 	if !isdia {
 		return fmt.Errorf("String <%s> is not diamond.", diamond_str)
 	}

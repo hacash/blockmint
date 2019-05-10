@@ -56,7 +56,11 @@ func CalculateBlockHash(block typesblock.Block) []byte {
 	stuff := CalculateBlockHashBaseStuff(block)
 	hashbase := sha3.Sum256(stuff)
 	//fmt.Println( hex.EncodeToString( hashbase[:] ) )
-	return x16rs.HashX16RS_Optimize(hashbase[:])
+	minerloopnum := int(block.GetHeight()/50000 + 1)
+	if minerloopnum > 16 {
+		minerloopnum = 16
+	}
+	return x16rs.HashX16RS_Optimize(minerloopnum, hashbase[:])
 }
 
 func CalculateBlockHashBaseStuff(block typesblock.Block) []byte {

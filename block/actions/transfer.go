@@ -3,6 +3,7 @@ package actions
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/state"
@@ -68,6 +69,10 @@ func (act *Action_1_SimpleTransfer) ChangeChainState(state state.ChainStateOpera
 	//copy(addr2, act.Address)
 	//fmt.Println("addr2 - - - - - - - "+hex.EncodeToString( addr2 ))
 
+	// 不能小于等于零
+	if !act.Amount.IsPositive() {
+		return fmt.Errorf("Amount is not positive.")
+	}
 	// 转移
 	return DoSimpleTransferFromChainState(state, act.trs.GetAddress(), act.Address, act.Amount)
 }

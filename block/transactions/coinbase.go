@@ -149,7 +149,7 @@ func (trs *Transaction_0_Coinbase) FillNeedSigns(map[string][]byte) error {
 }
 
 // 验证需要的签名
-func (trs *Transaction_0_Coinbase) VerifyNeedSigns() (bool, error) {
+func (trs *Transaction_0_Coinbase) VerifyNeedSigns([][]byte) (bool, error) {
 	return true, nil
 }
 

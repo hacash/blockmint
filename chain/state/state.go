@@ -24,7 +24,8 @@ type ChainState struct {
 	miner miner.Miner
 
 	// 临时状态
-	prevDiamondHash []byte
+	prevDiamondHash   []byte
+	prevDiamondNumber uint32
 
 	// 上层 DB
 	base *ChainState
@@ -108,12 +109,13 @@ func (this *ChainState) SetMiner(mir miner.Miner) {
 }
 
 // 获取当前基于的钻石区块hash
-func (this *ChainState) GetPrevDiamondHash() []byte {
-	return this.prevDiamondHash
+func (this *ChainState) GetPrevDiamondHash() (uint32, []byte) {
+	return this.prevDiamondNumber, this.prevDiamondHash
 }
 
 // 设置钻石区块hash
-func (this *ChainState) SetPrevDiamondHash(hash []byte) {
+func (this *ChainState) SetPrevDiamondHash(number uint32, hash []byte) {
+	this.prevDiamondNumber = number
 	this.prevDiamondHash = hash
 }
 

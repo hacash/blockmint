@@ -18,6 +18,10 @@ func genTx(ctx ctx.Context, params []string) {
 		gentxs.GenTxSimpleTransfer(ctx, bodys)
 	case "paychan": // 创建支付通道
 		gentxs.GenTxCreatePaymentChannel(ctx, bodys)
+	case "diamond": // 创建钻石
+		gentxs.GenTxCreateDiamond(ctx, bodys)
+	case "diamond_transfer": // 转移钻石
+		gentxs.GenTxDiamondTransfer(ctx, bodys)
 	default:
 		fmt.Println("Sorry, undefined gentx type: " + typename)
 	}

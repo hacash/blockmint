@@ -305,13 +305,17 @@ func (trs *Transaction_2_Simple) addOneSign(hash []byte, addrPrivates map[string
 }
 
 // 验证需要的签名
-func (trs *Transaction_2_Simple) VerifyNeedSigns() (bool, error) {
+func (trs *Transaction_2_Simple) VerifyNeedSigns(requests [][]byte) (bool, error) {
 	hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
-	requests, e0 := trs.RequestSignAddrs()
-	if e0 != nil {
-		return false, e0
+	if requests == nil {
+		reqs, e0 := trs.RequestSignAddrs()
+		if e0 != nil {
+			return false, e0
+		}
+		requests = reqs
 	}
+	// 开始判断
 	allSigns := make(map[string]fields.Sign)
 	for i := 0; i < len(trs.Signs); i++ {
 		sig := trs.Signs[i]

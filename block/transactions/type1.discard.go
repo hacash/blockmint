@@ -285,12 +285,15 @@ func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) addOneSign(hash []byte, addrPrivat
 }
 
 // 验证需要的签名
-func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) VerifyNeedSigns() (bool, error) {
+func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) VerifyNeedSigns(requests [][]byte) (bool, error) {
 	//hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
-	requests, e0 := trs.RequestSignAddrs()
-	if e0 != nil {
-		return false, e0
+	if requests == nil {
+		reqs, e0 := trs.RequestSignAddrs()
+		if e0 != nil {
+			return false, e0
+		}
+		requests = reqs
 	}
 	allSigns := make(map[string]fields.Sign)
 	for i := 0; i < len(trs.Signs); i++ {

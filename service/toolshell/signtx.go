@@ -36,7 +36,7 @@ func signTx(ctx ctx.Context, params []string) {
 	}
 
 	// 判断是否完成签名
-	sigok, sigerr := newTrs.VerifyNeedSigns()
+	sigok, sigerr := newTrs.VerifyNeedSigns(nil)
 	nosigntip := ""
 	if !sigok || sigerr != nil {
 		nosigntip = " [NOT SIGN]"

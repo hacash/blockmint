@@ -118,7 +118,7 @@ func (this *MemTxPool) checkTx(tx block.Transaction) error {
 		return fmt.Errorf("Mem Tx Pool Over Max Limit %d", MemTxPoolMaxLimit)
 	}
 	// 检查签名
-	ok, e1 := tx.VerifyNeedSigns()
+	ok, e1 := tx.VerifyNeedSigns(nil)
 	if !ok || e1 != nil {
 		return fmt.Errorf("Transaction Verify Signature error")
 	}

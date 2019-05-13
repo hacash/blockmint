@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/types/state"
+	"math"
+	"math/big"
 )
 
 //////////////////////////////////////////////////////////
@@ -84,3 +86,46 @@ func DoSubBalanceFromChainState(state state.ChainStateOperation, addr fields.Add
 }
 
 /*************************************************************************/
+
+// 2500个区块万分之一的复利计算
+func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fields.Amount, insnum uint64) (*fields.Amount, *fields.Amount) {
+	if insnum == 0 {
+		panic("insnum cannot be 0.")
+	}
+	if len(amt1.Numeral) > 4 || len(amt2.Numeral) > 4 {
+		panic("amount numeral bytes too long.")
+	}
+
+	amts := []*fields.Amount{amt1, amt2}
+	coinnums := make([]*fields.Amount, 2)
+
+	for i := 0; i < 2; i++ {
+		//fmt.Println("----------")
+		// amt
+		coinnum := new(big.Int).SetBytes(amts[i].Numeral).Uint64()
+		//fmt.Println(coinnum)
+		mulnum := math.Pow(1.0001, float64(insnum)) * float64(coinnum) * float64(100000000)
+		//fmt.Println(mulnum)
+		mulnumint := int64(mulnum)
+		//fmt.Println(mulnumint)
+		subzore := uint8(0)
+		for {
+			if mulnumint%10 == 0 {
+				mulnumint /= 10
+				subzore++
+			} else {
+				break
+			}
+		}
+		newNumeral := big.NewInt(int64(mulnumint)).Bytes()
+		//fmt.Println(newNumeral)
+		newamt := fields.NewAmount(amts[i].Unit-8+subzore, newNumeral)
+		coinnums[i] = newamt
+	}
+
+	fmt.Println(amts[0].ToFinString(), " => ", coinnums[0].ToFinString())
+	fmt.Println(amts[1].ToFinString(), " => ", coinnums[1].ToFinString())
+
+	return coinnums[0], coinnums[1]
+
+}

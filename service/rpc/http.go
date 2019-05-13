@@ -102,6 +102,9 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 func getMiao(minerblkhead block.Block, prev288height uint64, blknum uint64) uint64 {
 	storedb := store.GetGlobalInstanceBlocksDataStore()
 	_, prevblockbytes, _ := storedb.GetBlockBytesByHeight(uint64(prev288height), true, false, 0)
+	if len(prevblockbytes) == 0 {
+		return 0
+	}
 	prevblock, _, _ := blocks.ParseBlockHead(prevblockbytes, 0)
 	costtotalmiao := minerblkhead.GetTimestamp() - prevblock.GetTimestamp()
 	costmiao := costtotalmiao / blknum

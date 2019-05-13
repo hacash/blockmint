@@ -28,7 +28,7 @@ func sendTxToMiner(ctx ctx.Context, params []string) {
 	if tx == nil {
 		return
 	}
-	sigok, e2 := tx.VerifyNeedSigns()
+	sigok, e2 := tx.VerifyNeedSigns(nil)
 	if e2 != nil || !sigok {
 		fmt.Println("Tx sign error")
 		fmt.Println(e2)

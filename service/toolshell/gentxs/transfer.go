@@ -73,7 +73,7 @@ func GenTxSimpleTransfer(ctx ctx.Context, params []string) {
 		return
 	}
 
-	sigok, sigerr := trxnew.VerifyNeedSigns()
+	sigok, sigerr := trxnew.VerifyNeedSigns(nil)
 	if sigerr != nil {
 		fmt.Println("transaction VerifyNeedSigns error")
 		return

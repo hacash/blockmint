@@ -21,12 +21,14 @@ var ( // 4294967295
 	LowestDifficultyCompact = uint32(4294967294) // 首次调整难度前的预设难度值
 
 	// 保存文件尺寸
-	distFileSize = block1def.ByteSizeBlockBeforeTransaction + 8 + 32
+	baseConfigSize = block1def.ByteSizeBlockBeforeTransaction + 8
+	distFileSize   = block1def.ByteSizeBlockBeforeTransaction + 8 + 32 + 4
 )
 
 type MinerState struct {
 	prevBlockHead         block.Block
 	prev288BlockTimestamp uint64 // 上一个288倍数区块的创建时间
+	prevDiamondNumber     uint32 // 上一个钻石的序号
 	prevDiamondBlockHash  []byte // 上一个包含钻石的区块哈希
 
 	//
@@ -40,11 +42,12 @@ func NewMinerState(log log.Logger) *MinerState {
 }
 
 // 获取
-func (this *MinerState) GetPrevDiamondBlockHash() []byte {
-	return this.prevDiamondBlockHash
+func (this *MinerState) GetPrevDiamondBlockHash() (uint32, []byte) {
+	return this.prevDiamondNumber, this.prevDiamondBlockHash
 }
 
-func (this *MinerState) SetPrevDiamondBlockHash(hash []byte) {
+func (this *MinerState) SetPrevDiamondBlockHash(diamond_number uint32, hash []byte) {
+	this.prevDiamondNumber = diamond_number
 	this.prevDiamondBlockHash = hash
 	this.FlushSave()
 }
@@ -121,11 +124,14 @@ func (this *MinerState) FlushSave() {
 	b3 := make([]byte, 8)
 	binary.BigEndian.PutUint64(b3, this.prev288BlockTimestamp)
 	b4 := make([]byte, 32)
-	copy(b3, this.prevDiamondBlockHash)
+	copy(b4, this.prevDiamondBlockHash)
+	b5 := make([]byte, 4)
+	binary.BigEndian.PutUint32(b5, this.prevDiamondNumber)
 	head.Write(b1)
 	head.Write(b2)
 	head.Write(b3)
 	head.Write(b4)
+	head.Write(b5)
 	//
 	file := this.getDistFile()
 
@@ -140,25 +146,35 @@ func (this *MinerState) FetchLoad() {
 	defer file.Close()
 	valuebytes := make([]byte, distFileSize)
 	rdlen, e := file.Read(valuebytes)
-	if e != nil || rdlen < distFileSize-32 {
+
+	if e != nil || rdlen < baseConfigSize {
 		this.Log.Note("no find miner state file, set state with genesis block")
 		this.prevBlockHead = genesis                        // 创世
 		this.prev288BlockTimestamp = genesis.GetTimestamp() // uint64(time.Now().Unix())
 		this.prevDiamondBlockHash = genesis.HashFresh()     // 创世区块hash
 		return                                              // 不存在文件
 	}
+	basesize := baseConfigSize
 	// 读取基础信息
-	baseFileSize1 := distFileSize - 32
-	if rdlen >= baseFileSize1 {
+	if rdlen >= basesize {
 		this.prevBlockHead = blocks.NewEmptyBlock_v1(nil)
 		seek, _ := this.prevBlockHead.ParseHead(valuebytes, 1)
 		seek, _ = this.prevBlockHead.ParseMeta(valuebytes, seek)
 		this.prev288BlockTimestamp = binary.BigEndian.Uint64(valuebytes[seek : seek+8])
-		this.prevDiamondBlockHash = genesis.HashFresh() // 创世区块hash
 	}
 	// 读取上一个钻石区块hash
-	if rdlen >= distFileSize {
-		this.prevDiamondBlockHash = valuebytes[baseFileSize1 : baseFileSize1+32]
+	basesize += 32
+	if rdlen >= basesize {
+		this.prevDiamondBlockHash = valuebytes[basesize-32 : basesize]
+	} else {
+		this.prevDiamondBlockHash = genesis.HashFresh() // 默认值：创世区块hash
+	}
+	// 读取上一个钻石的序号
+	basesize += 4
+	if rdlen >= basesize {
+		this.prevDiamondNumber = binary.BigEndian.Uint32(valuebytes[basesize-4 : basesize])
+	} else {
+		this.prevDiamondNumber = 0 // 默认值
 	}
 	head := this.prevBlockHead
 	this.Log.Note("miner state load from file", "height", head.GetHeight(), "hash", hex.EncodeToString(head.Hash()), "difficulty", head.GetDifficulty(), "prevDiamondBlockHash", hex.EncodeToString(this.prevDiamondBlockHash))

@@ -20,8 +20,8 @@ type Transaction interface {
 	RequestSignAddrs() ([][]byte, error)
 	// 填充签名
 	FillNeedSigns(map[string][]byte) error
-	// 验证需要的签名
-	VerifyNeedSigns() (bool, error)
+	// 验证需要的签名，包含参数时则检查指定地址的签名
+	VerifyNeedSigns([][]byte) (bool, error)
 
 	// 修改 / 恢复 状态数据库
 	ChangeChainState(ChainStateOperation) error

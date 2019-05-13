@@ -66,14 +66,15 @@ func (this *DiamondDB) Read(diamond fields.Bytes6) (fields.Address, error) {
 	defer query.Close()
 	// read
 	result, _, e2 := query.Read()
+
 	if e2 != nil {
 		return nil, e2
 	}
 	if result == nil {
 		return nil, nil // not find
 	}
-	// 返回所属地址
-	return result, nil
+	// 返回所属地址，前21位
+	return result[0:21], nil
 }
 
 // 储存

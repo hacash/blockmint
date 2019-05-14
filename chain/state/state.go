@@ -57,15 +57,15 @@ func NewTempChainState(base *ChainState) *ChainState {
 	tmpdir := path.Join(os.TempDir(), "/hacash_state_temp_"+strconv.Itoa(rand.Int()))
 
 	newBalanceDB := db.NewBalanceDB(path.Join(tmpdir, "balance"))
-	newBalanceDB.Treedb.DeleteMark = true
+	newBalanceDB.Treedb.DeleteMark = true      // 用于标记删除以更改base数据库，必须
 	newBalanceDB.Treedb.FilePartitionLevel = 0 // 单文件
 
 	newDiamondDB := db.NewDiamondDB(path.Join(tmpdir, "diamond"))
-	newDiamondDB.Treedb.DeleteMark = true
+	newDiamondDB.Treedb.DeleteMark = true      // 用于标记删除以更改base数据库，必须
 	newDiamondDB.Treedb.FilePartitionLevel = 0 // 单文件
 
 	newChannelDB := db.NewChannelDB(path.Join(tmpdir, "channel"))
-	newChannelDB.Treedb.DeleteMark = true
+	newChannelDB.Treedb.DeleteMark = true      // 用于标记删除以更改base数据库，必须
 	newChannelDB.Treedb.FilePartitionLevel = 0 // 单文件
 
 	// ok

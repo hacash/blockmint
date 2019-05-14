@@ -211,11 +211,18 @@ func (trs *Transaction_2_Simple) AppendAction(action typesblock.Action) error {
 }
 
 // 从 actions 拿出需要签名的地址
-func (trs *Transaction_2_Simple) RequestSignAddrs() ([][]byte, error) {
+func (trs *Transaction_2_Simple) RequestSignAddrs(reqs [][]byte) ([][]byte, error) {
 	if !trs.Address.IsValid() {
 		return nil, err.New("Master Address is InValid ")
 	}
 	requests := make([][]byte, 0, 32)
+	// 另外新加的需要验证的
+	if reqs != nil {
+		for _, r := range reqs {
+			requests = append(requests, r)
+		}
+	}
+	// 拿出 actions 的需要签名
 	for i := 0; i < int(trs.ActionCount); i++ {
 		actreqs := trs.Actions[i].RequestSignAddrs()
 		requests = append(requests, actreqs...)
@@ -236,10 +243,10 @@ func (trs *Transaction_2_Simple) RequestSignAddrs() ([][]byte, error) {
 }
 
 // 填充签名
-func (trs *Transaction_2_Simple) FillNeedSigns(addrPrivates map[string][]byte) error {
+func (trs *Transaction_2_Simple) FillNeedSigns(addrPrivates map[string][]byte, appendReqs [][]byte) error {
 	hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
-	requests, e0 := trs.RequestSignAddrs()
+	requests, e0 := trs.RequestSignAddrs(appendReqs)
 	if e0 != nil {
 		return e0
 	}
@@ -305,15 +312,12 @@ func (trs *Transaction_2_Simple) addOneSign(hash []byte, addrPrivates map[string
 }
 
 // 验证需要的签名
-func (trs *Transaction_2_Simple) VerifyNeedSigns(requests [][]byte) (bool, error) {
+func (trs *Transaction_2_Simple) VerifyNeedSigns(reqs [][]byte) (bool, error) {
 	hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
-	if requests == nil {
-		reqs, e0 := trs.RequestSignAddrs()
-		if e0 != nil {
-			return false, e0
-		}
-		requests = reqs
+	requests, e0 := trs.RequestSignAddrs(reqs)
+	if e0 != nil {
+		return false, e0
 	}
 	// 开始判断
 	allSigns := make(map[string]fields.Sign)

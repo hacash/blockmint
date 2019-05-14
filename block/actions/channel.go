@@ -75,6 +75,11 @@ func (elm *Action_2_OpenPaymentChannel) RequestSignAddrs() [][]byte {
 }
 
 func (act *Action_2_OpenPaymentChannel) ChangeChainState(state state.ChainStateOperation) error {
+	// 查询通道是否存在
+	sto := state.Channel(act.ChannelId)
+	if sto != nil {
+		return fmt.Errorf("Payment Channel Id <%s> already exist.", hex.EncodeToString(act.ChannelId))
+	}
 	// 检查金额储存的位数
 	labt, _ := act.LeftAmount.Serialize()
 	rabt, _ := act.RightAmount.Serialize()
@@ -94,18 +99,12 @@ func (act *Action_2_OpenPaymentChannel) ChangeChainState(state state.ChainStateO
 	if amt2.LessThan(&act.RightAmount) {
 		return fmt.Errorf("Address %s Balance is not enough.", act.RightAddress.ToReadable())
 	}
-	// 查询通道是否存在
-	sto := state.Channel(act.ChannelId)
-	if sto != nil {
-		return fmt.Errorf("Payment Channel Id <%s> already exist.", hex.EncodeToString(act.ChannelId))
-	}
 	curheight := uint64(1)
 	curblkptr := state.Block()
 	if curblkptr != nil {
 		curblk := curblkptr.(block.Block)
 		curheight = curblk.GetHeight()
 	}
-
 	// 创建 channel
 	var storeItem db.ChannelStoreItemData
 	storeItem.BelongHeight = fields.VarInt5(curheight)
@@ -205,7 +204,7 @@ func (act *Action_3_ClosePaymentChannel) ChangeChainState(state state.ChainState
 	blkptr := state.Block()
 	if blkptr != nil {
 		curheight := blkptr.(block.Block).GetHeight()
-		// 增加利息计算，复利次数
+		// 增加利息计算，复利次数：约 8.68 天增加一次万分之一的复利，少于8天忽略不计
 		insnum := (curheight - uint64(paychan.BelongHeight)) / 2500
 		if insnum > 0 {
 			a1, a2 := DoAppendCompoundInterest1Of10000By2500Height(&leftAmount, &rightAmount, insnum)
@@ -240,7 +239,7 @@ func (act *Action_3_ClosePaymentChannel) RecoverChainState(state state.ChainStat
 	blkptr := state.Block()
 	if blkptr != nil {
 		curheight := blkptr.(block.Block).GetHeight()
-		// 增加利息计算，复利次数
+		// 增加利息计算，复利次数：约 8.68 天增加一次万分之一的复利，少于8天忽略不计
 		insnum := (curheight - uint64(paychan.BelongHeight)) / 2500
 		if insnum > 0 {
 			a1, a2 := DoAppendCompoundInterest1Of10000By2500Height(&leftAmount, &rightAmount, insnum)

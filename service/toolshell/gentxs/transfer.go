@@ -55,7 +55,7 @@ func GenTxSimpleTransfer(ctx ctx.Context, params []string) {
 	tranact := actions.NewAction_1_SimpleTransfer(*toAddr, *amt)
 	newTrs.AppendAction(tranact)
 	// sign
-	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes())
+	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), nil)
 	if e6 != nil {
 		fmt.Println("sign transaction error, " + e6.Error())
 		return

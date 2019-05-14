@@ -12,24 +12,31 @@ func signTx(ctx ctx.Context, params []string) {
 		fmt.Println("params not enough")
 		return
 	}
+	var adln = len(params) - 1
+	var addresslist = make([][]byte, 0, adln)
+	for i := 1; i < len(params); i++ {
+		address := ctx.IsInvalidAccountAddress(params[i])
+		if address == nil {
+			return
+		}
+		addresslist = append(addresslist, *address)
+	}
 	txhashnofee, err := hex.DecodeString(params[0])
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	newTrs := ctx.GetTxFromRecord(txhashnofee)
 	if newTrs == nil {
 		fmt.Printf(" tx <%s> not find!", params[0])
 		return
 	}
-
 	// ok
 	fmt.Println("hash: <" + hex.EncodeToString(newTrs.HashNoFee()) + ">, hash_with_fee: <" + hex.EncodeToString(newTrs.Hash()) + ">")
 
 	// 执行签名
-	// sign
-	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes())
+	// sign  // 并且加入新增的需要签名的数据
+	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), addresslist)
 	if e6 != nil {
 		fmt.Println("sign transaction error: " + e6.Error())
 		return
@@ -39,7 +46,7 @@ func signTx(ctx ctx.Context, params []string) {
 	sigok, sigerr := newTrs.VerifyNeedSigns(nil)
 	nosigntip := ""
 	if !sigok || sigerr != nil {
-		nosigntip = " [NOT SIGN]"
+		nosigntip = " [NOT SIGN COMPLETELY]"
 		fmt.Println("Attention: transaction verify need signs fail!", sigerr)
 		return
 	}

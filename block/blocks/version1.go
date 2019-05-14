@@ -8,6 +8,7 @@ import (
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/state"
+	"strings"
 	"time"
 )
 
@@ -30,7 +31,7 @@ type Block_v1 struct {
 	hash []byte
 
 	// mark data
-	HasHaveDiamond bool // 区块内是否已经包含钻石
+	HasHaveDiamond string // 区块内是否已经包含钻石
 }
 
 func NewEmptyBlock_v1(prevBlockHead typesblock.Block) *Block_v1 {
@@ -44,7 +45,7 @@ func NewEmptyBlock_v1(prevBlockHead typesblock.Block) *Block_v1 {
 		Nonce:            0,
 		Difficulty:       0,
 		WitnessStage:     0,
-		HasHaveDiamond:   false,
+		HasHaveDiamond:   "",
 	}
 	if prevBlockHead != nil {
 		empty.PrevHash = prevBlockHead.Hash()
@@ -52,6 +53,22 @@ func NewEmptyBlock_v1(prevBlockHead typesblock.Block) *Block_v1 {
 		empty.Difficulty = fields.VarInt4(prevBlockHead.GetDifficulty())
 	}
 	return empty
+}
+
+// 检查和设置钻石
+func (block *Block_v1) CheckHasHaveDiamond(diamond string) bool {
+	if len(block.HasHaveDiamond) == 0 {
+		return false // 不存在
+	}
+	if strings.Compare(block.HasHaveDiamond, diamond) == 0 {
+		return false // 如果相同，则不存在
+	}
+	// 表示已经存在
+	return true
+}
+
+func (block *Block_v1) DoMarkHaveDiamond(diamond string) {
+	block.HasHaveDiamond = diamond
 }
 
 func (block *Block_v1) Version() uint8 {

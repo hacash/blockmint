@@ -215,7 +215,7 @@ func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) AppendAction(action typesblock.Act
 }
 
 // 从 actions 拿出需要签名的地址
-func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) RequestSignAddrs() ([][]byte, error) {
+func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) RequestSignAddrs([][]byte) ([][]byte, error) {
 	if !trs.Address.IsValid() {
 		return nil, err.New("Master Address is InValid ")
 	}
@@ -239,10 +239,10 @@ func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) RequestSignAddrs() ([][]byte, erro
 }
 
 // 填充签名
-func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) FillNeedSigns(addrPrivates map[string][]byte) error {
+func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) FillNeedSigns(addrPrivates map[string][]byte, reqs [][]byte) error {
 	// hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
-	requests, e0 := trs.RequestSignAddrs()
+	requests, e0 := trs.RequestSignAddrs(nil)
 	if e0 != nil {
 		return e0
 	}
@@ -289,7 +289,7 @@ func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) VerifyNeedSigns(requests [][]byte)
 	//hash := trs.HashFresh()
 	hashNoFee := trs.HashNoFee()
 	if requests == nil {
-		reqs, e0 := trs.RequestSignAddrs()
+		reqs, e0 := trs.RequestSignAddrs(nil)
 		if e0 != nil {
 			return false, e0
 		}

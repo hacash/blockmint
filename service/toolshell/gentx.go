@@ -18,6 +18,8 @@ func genTx(ctx ctx.Context, params []string) {
 		gentxs.GenTxSimpleTransfer(ctx, bodys)
 	case "paychan": // 创建支付通道
 		gentxs.GenTxCreatePaymentChannel(ctx, bodys)
+	case "paychan_close": // 关闭结算支付通道
+		gentxs.GenTxClosePaymentChannel(ctx, bodys)
 	case "diamond": // 创建钻石
 		gentxs.GenTxCreateDiamond(ctx, bodys)
 	case "diamond_transfer": // 转移钻石

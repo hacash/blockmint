@@ -30,9 +30,8 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 	blockheight := newBlock.GetHeight()
 	minerloopnum := int(blockheight/50000 + 1)
 	if minerloopnum > 16 {
-		minerloopnum = 16
+		minerloopnum = 16 // 8年时间上升到16次
 	}
-
 	//ttt, _ := hex.DecodeString("0000f00f27700000000000000000000000000000000000000000000000000000")
 	//targethashdiff = ttt
 	//fmt.Println(targethashdiff)

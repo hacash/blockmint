@@ -84,7 +84,7 @@ func transferSimple(params map[string]string) map[string]string {
 	tranact := actions.NewAction_1_SimpleTransfer(*to_addr, *amount)
 	newTrs.AppendAction(tranact)
 	// sign
-	e9 := newTrs.FillNeedSigns(allPrivateKeyBytes)
+	e9 := newTrs.FillNeedSigns(allPrivateKeyBytes, nil)
 	if e9 != nil {
 		result["err"] = e9.Error()
 		return result

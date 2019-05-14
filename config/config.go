@@ -50,16 +50,14 @@ var Config = struct {
 	}
 
 	DiamondMiner struct {
-		PrevBlockHash string   `default:""`
-		Rewards       []string //
-		Supervene     uint64   // 启动多线程挖矿，指定线程数量（数量必须小于200）
+		Feepassword string   `default:""`
+		Rewards     []string //
+		// Supervene     uint64   // 启动多线程挖矿，指定线程数量（数量必须小于200）
 	}
-
 
 	GpuMiner struct {
-		Address string   `default:""` // 矿工地址
+		Address string `default:""` // 矿工地址
 	}
-
 }{}
 
 func LoadConfigFile() {

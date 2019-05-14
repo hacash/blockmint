@@ -58,7 +58,7 @@ func CalculateBlockHash(block typesblock.Block) []byte {
 	//fmt.Println( hex.EncodeToString( hashbase[:] ) )
 	minerloopnum := int(block.GetHeight()/50000 + 1)
 	if minerloopnum > 16 {
-		minerloopnum = 16
+		minerloopnum = 16 // 8年时间上升到16次
 	}
 	return x16rs.HashX16RS_Optimize(minerloopnum, hashbase[:])
 }

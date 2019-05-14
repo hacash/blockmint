@@ -6,12 +6,15 @@ import (
 )
 
 func (this *ChainState) Channel(cid fields.Bytes16) interface{} {
-	sto, err := this.channelDB.Read(cid)
-	if err != nil || sto == nil {
-		return nil
-	} else {
+	sto, _ := this.channelDB.Read(cid)
+	if sto != nil {
 		return sto
 	}
+	if this.base == nil {
+		return nil
+	}
+	// 递归查询
+	return this.base.Channel(cid)
 }
 
 func (this *ChainState) ChannelCreate(cid fields.Bytes16, store interface{}) {

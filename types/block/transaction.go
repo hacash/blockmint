@@ -17,9 +17,9 @@ type Transaction interface {
 	HashNoFee() []byte // 无手续费的哈希
 
 	// 从 actions 拿出需要签名的地址
-	RequestSignAddrs() ([][]byte, error)
+	RequestSignAddrs([][]byte) ([][]byte, error)
 	// 填充签名
-	FillNeedSigns(map[string][]byte) error
+	FillNeedSigns(map[string][]byte, [][]byte) error
 	// 验证需要的签名，包含参数时则检查指定地址的签名
 	VerifyNeedSigns([][]byte) (bool, error)
 

@@ -48,8 +48,8 @@ func (this *ChannelStoreItemData) Parse(buf []byte, seek uint32) (uint32, error)
 
 func (this *ChannelStoreItemData) Serialize() ([]byte, error) {
 	var buffer = new(bytes.Buffer)
-	b1, _ := this.LockBlock.Serialize()
-	b2, _ := this.BelongHeight.Serialize()
+	b1, _ := this.BelongHeight.Serialize()
+	b2, _ := this.LockBlock.Serialize()
 	b3, _ := this.LeftAddress.Serialize()
 	b4, _ := this.LeftAmount.Serialize()
 	b5, _ := this.RightAddress.Serialize()

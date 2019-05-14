@@ -48,6 +48,10 @@ type Block interface {
 
 	// 验证需要的签名
 	VerifyNeedSigns() (bool, error)
+
+	// 检查和设置已经包含钻石
+	CheckHasHaveDiamond(string) bool
+	DoMarkHaveDiamond(string)
 }
 
 type SerializeTransactionsIterator interface {

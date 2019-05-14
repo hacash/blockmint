@@ -139,12 +139,12 @@ func (trs *Transaction_0_Coinbase) HashNoFee() []byte {
 
 // 从 actions 拿出需要签名的地址
 
-func (trs *Transaction_0_Coinbase) RequestSignAddrs() ([][]byte, error) {
+func (trs *Transaction_0_Coinbase) RequestSignAddrs([][]byte) ([][]byte, error) {
 	return make([][]byte, 0), nil
 }
 
 // 填充签名
-func (trs *Transaction_0_Coinbase) FillNeedSigns(map[string][]byte) error {
+func (trs *Transaction_0_Coinbase) FillNeedSigns(map[string][]byte, [][]byte) error {
 	return nil
 }
 

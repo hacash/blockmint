@@ -99,7 +99,7 @@ func GenTxCreateDiamond(ctx ctx.Context, params []string) {
 		return
 	}
 	// sign
-	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes())
+	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), nil)
 	if e6 != nil {
 		fmt.Println("sign transaction error, " + e6.Error())
 		return
@@ -180,7 +180,7 @@ func GenTxDiamondTransfer(ctx ctx.Context, params []string) {
 		return
 	}
 	// sign
-	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes())
+	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), nil)
 	if e6 != nil {
 		fmt.Println("sign transaction error, " + e6.Error())
 		return

@@ -111,23 +111,24 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	if miner == nil {
 		panic("Action get state.Miner() cannot be nil !")
 	}
+
 	blkhei := blk.GetHeight()
 	// 检查区块高度值是否为5的倍数
-	// {BACKTOPOOL} 表示扔回交易池等待再次处理
+	// {BACKTOPOOL} 表示扔回交易池等待下个区块再次处理
 	if blkhei%5 != 0 {
 		return fmt.Errorf("{BACKTOPOOL} Diamond must be in block height multiple of 5.")
 	}
 	// 检查一个区块只能包含一枚钻石
-	statedmnumber, stateprevhash := state.GetPrevDiamondHash()
-	if statedmnumber > 0 || stateprevhash != nil {
+	if blk.CheckHasHaveDiamond(diamondstrval) {
 		return fmt.Errorf("This block height:%d has already exist diamond.", blkhei)
 	}
+	//statedmnumber, stateprevhash := state.GetPrevDiamondHash()
+	//if statedmnumber > 0 || stateprevhash != nil {
+	//	return fmt.Errorf("This block height:%d has already exist diamond.", blkhei)
+	//}
 	// 矿工状态检查
 	blkhash := blk.HashFresh()
 	dmnumber, minerprevhash := miner.GetPrevDiamondHash()
-	if bytes.Compare(blkhash, minerprevhash) == 0 {
-		return fmt.Errorf("This block height:%d has already exist diamond.", blkhei)
-	}
 	if uint32(act.Number) != dmnumber+1 {
 		return fmt.Errorf("This block diamond number must be %d but got %d.", dmnumber+1, uint32(act.Number))
 	}
@@ -140,6 +141,8 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	state.DiamondSet(act.Diamond, act.Address)
 	// 设置矿工状态
 	state.SetPrevDiamondHash(uint32(act.Number), blkhash)
+	//标记本区块已经包含钻石
+	blk.DoMarkHaveDiamond(diamondstrval)
 	return nil
 }
 

@@ -123,8 +123,9 @@ func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fie
 		coinnums[i] = newamt
 	}
 
-	fmt.Println(amts[0].ToFinString(), " => ", coinnums[0].ToFinString())
-	fmt.Println(amts[1].ToFinString(), " => ", coinnums[1].ToFinString())
+	//fmt.Println("insnum: ", insnum)
+	//fmt.Println(amts[0].ToFinString(), " => ", coinnums[0].ToFinString())
+	//fmt.Println(amts[1].ToFinString(), " => ", coinnums[1].ToFinString())
 
 	return coinnums[0], coinnums[1]
 

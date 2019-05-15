@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
+	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/block/transactions"
 	"github.com/hacash/blockmint/miner"
@@ -62,6 +63,7 @@ func getBlockAbstractList(params map[string]string) map[string]string {
 		// 解析矿工信息
 		var coinbase transactions.Transaction_0_Coinbase
 		coinbase.ParseHead(blkbytes, uint32(len(blkbytes))-coinbase_head_len+1)
+		coinbase.Message = fields.TrimString16([]byte(coinbase.Message)[0:12])
 		// 返回
 		jsondata = append(jsondata, fmt.Sprintf(
 			`{"hash":"%s","txs":%d,"time":%d,"height":%d,"nonce":%d,"bits":%d,"rewards":{"amount":"%s","address":"%s","message":"%s"}}`,

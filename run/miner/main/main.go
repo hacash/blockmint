@@ -49,6 +49,13 @@ func main() {
 	//res := sss.Channel(fields.Bytes16(cid))
 	//fmt.Println(res)
 
+	//nonce, _ := hex.DecodeString("010000005689050d") // 010000005689050d
+	//prevHash, _ := hex.DecodeString("000000077790ba2fcdeaef4a4299d9b667135bac577ce204dee8388f1b97f7e6")
+	//address, _ := fields.CheckReadableAddress("1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9") // 1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9
+	//r1, r2 := x16rs.Diamond(uint32(1), prevHash, nonce, *address)
+	//fmt.Println(hex.EncodeToString(r1),  r2)
+
+
 	StartHacash()
 
 }

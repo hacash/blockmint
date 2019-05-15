@@ -91,17 +91,19 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 	for i, addr := range dm.rewards {
 		// 开启挖矿线程
 		go func(i int, addr fields.Address) {
-			loopnum := stat.Number/2048 + 1
+			loopnum := (stat.Number+1)/2048 + 1
 			if loopnum > 16 {
 				loopnum = 16
 			}
-			nonce, diastr := x16rs.MinerHacashDiamond(int(loopnum), &stopMark, []byte{}, addr)
+			nonce, diastr := x16rs.MinerHacashDiamond(int(loopnum), &stopMark, stat.PrevHash, addr)
+			//fmt.Println(hex.EncodeToString(nonce), diastr, addr.ToReadable())
 			if dm.CheckDiamond(stat, nonce, addr, diastr) {
-				if successAddr != nil {
+				if successAddr == nil {
 					// 挖掘成功
-					fmt.Println("◈◈◈◈ 【%s miner】 i:%d, addr:%s, nonce:<%s> mining successfully!", diastr, i, addr.ToReadable(), hex.EncodeToString(nonce))
+					fmt.Printf("◈◈◈◈◈◈◈◈ 【%s】 number:%d, prevhash:<%s>, nonce:<%s>, addr:%s,  mining successfully!\n", diastr, stat.Number+1, hex.EncodeToString(stat.PrevHash), hex.EncodeToString(nonce), addr.ToReadable())
 					successAddr = &addr
 					successDiamond = string([]byte(diastr)[10:])
+					stopMark = 1 // 停止挖掘
 					successCh <- nonce
 				} else {
 					fmt.Printf("[%d] miner '%s' finish out.\n", i, addr.ToReadable())
@@ -131,6 +133,7 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 	}
 
 	// 创建并发送钻石交易
+	fmt.Println("create and send transaction...")
 	dm.CreateAndSendTransaction(stat, successDiamond, successNonce, *successAddr)
 
 	// 等待交易成功，下一轮
@@ -183,16 +186,21 @@ func (dm *DiamondMiner) CreateAndSendTransaction(stat *ReStartMinerStat, diamond
 	}
 
 	// 加入交易池
-	txpool.GetGlobalInstanceMemTxPool().AddTx(newTrs)
+	err := txpool.GetGlobalInstanceMemTxPool().AddTx(newTrs)
 
-	fmt.Printf("put trs <%s> to mem pool.\n", hex.EncodeToString(newTrs.HashNoFee()))
+	if err != nil {
+		fmt.Println(err)
+	}else{
+		fmt.Printf("put trs <%s> to mem pool.\n", hex.EncodeToString(newTrs.HashNoFee()))
+	}
+
 
 }
 
 // 判断是否为合格的钻石
 func (dm *DiamondMiner) CheckDiamond(stat *ReStartMinerStat, nonce []byte, address fields.Address, diamond string) bool {
 	// 检查钻石挖矿计算
-	diamond_resbytes, diamond_str := x16rs.Diamond(uint32(stat.Number), stat.PrevHash, nonce, address)
+	diamond_resbytes, diamond_str := x16rs.Diamond(uint32(stat.Number+1), stat.PrevHash, nonce, address)
 	_, isdia := x16rs.IsDiamondHashResultString(diamond_str)
 	if !isdia {
 		return false // fmt.Errorf("String <%s> is not diamond.", diamond_str)
@@ -201,7 +209,7 @@ func (dm *DiamondMiner) CheckDiamond(stat *ReStartMinerStat, nonce []byte, addre
 		return false // fmt.Errorf("Diamond need <%s> but got <%s>", act.Diamond, diamondstrval)
 	}
 	// 检查钻石难度值
-	difok := x16rs.CheckDiamondDifficulty(uint32(stat.Number), diamond_resbytes)
+	difok := x16rs.CheckDiamondDifficulty(uint32(stat.Number+1), diamond_resbytes)
 	if !difok {
 		return false // fmt.Errorf("Diamond difficulty not meet the requirements.")
 	}

@@ -106,7 +106,7 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 				}
 			} else {
 				if stopMark > 0 {
-					fmt.Printf("[%d] miner '%s' break out.\n", i, addr.ToReadable())
+					// fmt.Printf("[%d] miner '%s' break out.\n", i, addr.ToReadable())
 				} else {
 					fmt.Printf("[%d] miner '%s' over max nonce.\n", i, addr.ToReadable())
 				}

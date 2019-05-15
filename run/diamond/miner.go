@@ -91,11 +91,7 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 	for i, addr := range dm.rewards {
 		// 开启挖矿线程
 		go func(i int, addr fields.Address) {
-			loopnum := (stat.Number+1)/2048 + 1
-			if loopnum > 16 {
-				loopnum = 16
-			}
-			nonce, diastr := x16rs.MinerHacashDiamond(int(stat.Number+1), int(loopnum), &stopMark, stat.PrevHash, addr)
+			nonce, diastr := x16rs.MinerHacashDiamond(int(stat.Number+1), &stopMark, stat.PrevHash, addr)
 			//fmt.Println(hex.EncodeToString(nonce), diastr, addr.ToReadable())
 			if dm.CheckDiamond(stat, nonce, addr, diastr) {
 				if successAddr == nil {

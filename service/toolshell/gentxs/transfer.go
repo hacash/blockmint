@@ -15,7 +15,7 @@ import (
 
 // 创建一笔交易
 func GenTxSimpleTransfer(ctx ctx.Context, params []string) {
-	if len(params) < 3 {
+	if len(params) < 4 {
 		fmt.Println("params not enough")
 		return
 	}

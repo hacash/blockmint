@@ -36,26 +36,6 @@ func main() {
 	//Test_coinbaseAddress(16231)
 	//Test_opencl()
 
-	//amt1, _ := fields.NewAmountFromFinString("HCX1:248")
-	//amt2 := fields.NewAmountSmall(1,248)
-	//actions.DoAppendCompoundInterest1Of10000By2500Height(amt1, amt2, 142)
-
-	// account.FindNiceAccounts("yangjie+422826199202030717+", 6,40000)
-	//fmt.Println( x16rs.CheckDiamondDifficulty(1, []byte{0,0,255,255}) )
-	//fmt.Println( x16rs.CheckDiamondDifficulty(2048*256*2 + 2048+1, []byte{0,0,254,255}) )
-
-	//sss := state.GetGlobalInstanceChainState()
-	//cid, _ := hex.DecodeString("f89d8e27bf6c5c8c6b236221210593ee")
-	//res := sss.Channel(fields.Bytes16(cid))
-	//fmt.Println(res)
-
-	//nonce, _ := hex.DecodeString("010000005689050d") // 010000005689050d
-	//prevHash, _ := hex.DecodeString("000000077790ba2fcdeaef4a4299d9b667135bac577ce204dee8388f1b97f7e6")
-	//address, _ := fields.CheckReadableAddress("1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9") // 1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9
-	//r1, r2 := x16rs.Diamond(uint32(1), prevHash, nonce, *address)
-	//fmt.Println(hex.EncodeToString(r1),  r2)
-
-
 	StartHacash()
 
 }
@@ -113,145 +93,6 @@ func StartHacash() {
 
 }
 
-/*
-var kernelSource = `
-__kernel void square(
-   __global float* input,
-   __global float* output,
-   const unsigned int count)
-{
-   int i = get_global_id(0);
-   if(i < count)
-       output[i] = input[i] * input[i];
-}
-`
-
-// 测试opencl编程
-func Test_opencl() {
-
-	var data [1024]float32
-	for i := 0; i < len(data); i++ {
-		data[i] = rand.Float32()
-	}
-
-	platforms, err := cl.GetPlatforms()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	if len(platforms) == 0 {
-		fmt.Println("platforms.length = 0")
-		return
-	}
-	for _, plat := range platforms {
-		fmt.Println(plat.Name())
-	}
-	platform := platforms[0]
-	devices, err := platform.GetDevices(cl.DeviceTypeAll)
-	for i, d := range devices {
-		fmt.Println("Device %d (%s): %s", i, d.Type(), d.Name())
-	}
-	device := devices[0]
-	context, err1 := cl.CreateContext([]*cl.Device{device})
-	if err1 != nil {
-		fmt.Println("CreateContext failed: %+v", err1)
-		return
-	}
-	queue, err2 := context.CreateCommandQueue(device, 0)
-	if err2 != nil {
-		fmt.Println("CreateCommandQueue failed: %+v", err2)
-		return
-	}
-	program, err3 := context.CreateProgramWithSource([]string{kernelSource})
-	if err3 != nil {
-		fmt.Println("CreateProgramWithSource failed: %+v", err3)
-		return
-	}
-	if err4 := program.BuildProgram(nil, ""); err4 != nil {
-		fmt.Println("BuildProgram failed: %+v", err4)
-		return
-	}
-	kernel, err5 := program.CreateKernel("square")
-	if err5 != nil {
-		fmt.Println("CreateKernel failed: %+v", err5)
-		return
-	}
-	for i := 0; i < 3; i++ {
-		name, err := kernel.ArgName(i)
-		if err == cl.ErrUnsupported {
-			break
-		} else if err != nil {
-			fmt.Println("GetKernelArgInfo for name failed: %+v", err)
-			break
-		} else {
-			fmt.Println("Kernel arg %d: %s", i, name)
-		}
-	}
-	input, err6 := context.CreateEmptyBuffer(cl.MemReadOnly, 4*len(data))
-	if err6 != nil {
-		fmt.Println("CreateBuffer failed for input: %+v", err6)
-		return
-	}
-	output, err7 := context.CreateEmptyBuffer(cl.MemReadOnly, 4*len(data))
-	if err7 != nil {
-		fmt.Println("CreateBuffer failed for output: %+v", err7)
-		return
-	}
-	if _, err8 := queue.EnqueueWriteBufferFloat32(input, true, 0, data[:], nil); err8 != nil {
-		fmt.Println("EnqueueWriteBufferFloat32 failed: %+v", err8)
-		return
-	}
-	if err9 := kernel.SetArgs(input, output, uint32(len(data))); err9 != nil {
-		fmt.Println("SetKernelArgs failed: %+v", err9)
-		return
-	}
-
-	local, err10 := kernel.WorkGroupSize(device)
-	if err10 != nil {
-		fmt.Println("WorkGroupSize failed: %+v", err10)
-		return
-	}
-	fmt.Println("Work group size: %d", local)
-	size, _ := kernel.PreferredWorkGroupSizeMultiple(nil)
-	fmt.Println("Preferred Work Group Size Multiple: %d", size)
-
-	global := len(data)
-	d := len(data) % local
-	if d != 0 {
-		global += local - d
-	}
-	if _, err := queue.EnqueueNDRangeKernel(kernel, nil, []int{global}, []int{local}, nil); err != nil {
-		fmt.Println("EnqueueNDRangeKernel failed: %+v", err)
-		return
-	}
-
-	if err := queue.Finish(); err != nil {
-		fmt.Println("Finish failed: %+v", err)
-		return
-	}
-
-	results := make([]float32, len(data))
-	if _, err := queue.EnqueueReadBufferFloat32(output, true, 0, results, nil); err != nil {
-		fmt.Println("EnqueueReadBufferFloat32 failed: %+v", err)
-		return
-	}
-	fmt.Println(results)
-
-	correct := 0
-	for i, v := range data {
-		if results[i] == v*v {
-			correct++
-		}
-	}
-
-	if correct != len(data) {
-		fmt.Println("%d/%d correct values", correct, len(data))
-	}
-
-	fmt.Println("==========================")
-
-}
-*/
 
 //
 // 测试打印区块奖励地址
@@ -347,4 +188,29 @@ func Test_coinbaseAmt() {
 	fmt.Println("total", total, totalAmt.ToFinString())
 
 	//////// COUNT END
+}
+
+
+
+func Test_others()  {
+
+
+	//amt1, _ := fields.NewAmountFromFinString("HCX1:248")
+	//amt2 := fields.NewAmountSmall(1,248)
+	//actions.DoAppendCompoundInterest1Of10000By2500Height(amt1, amt2, 142)
+
+	//fmt.Println( x16rs.CheckDiamondDifficulty(1, []byte{0,0,255,255}) )
+	//fmt.Println( x16rs.CheckDiamondDifficulty(2048*256*2 + 2048+1, []byte{0,0,254,255}) )
+
+	//sss := state.GetGlobalInstanceChainState()
+	//cid, _ := hex.DecodeString("f89d8e27bf6c5c8c6b236221210593ee")
+	//res := sss.Channel(fields.Bytes16(cid))
+	//fmt.Println(res)
+
+	//nonce, _ := hex.DecodeString("010000005689050d") // 010000005689050d
+	//prevHash, _ := hex.DecodeString("000000077790ba2fcdeaef4a4299d9b667135bac577ce204dee8388f1b97f7e6")
+	//address, _ := fields.CheckReadableAddress("1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9") // 1MzNY1oA3kfgYi75zquj3SRUPYztzXHzK9
+	//r1, r2 := x16rs.Diamond(uint32(1), prevHash, nonce, *address)
+	//fmt.Println(hex.EncodeToString(r1),  r2)
+
 }

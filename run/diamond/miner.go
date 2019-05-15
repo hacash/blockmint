@@ -95,12 +95,12 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 			if loopnum > 16 {
 				loopnum = 16
 			}
-			nonce, diastr := x16rs.MinerHacashDiamond(int(loopnum), &stopMark, stat.PrevHash, addr)
+			nonce, diastr := x16rs.MinerHacashDiamond(int(stat.Number+1), int(loopnum), &stopMark, stat.PrevHash, addr)
 			//fmt.Println(hex.EncodeToString(nonce), diastr, addr.ToReadable())
 			if dm.CheckDiamond(stat, nonce, addr, diastr) {
 				if successAddr == nil {
 					// 挖掘成功
-					fmt.Printf("◈◈◈◈◈◈◈◈ 【%s】 number:%d, prevhash:<%s>, nonce:<%s>, addr:%s,  mining successfully!\n", diastr, stat.Number+1, hex.EncodeToString(stat.PrevHash), hex.EncodeToString(nonce), addr.ToReadable())
+					fmt.Printf("◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈ 【%s】 number:%d, prevhash:<%s>, nonce:<%s>, addr:%s,  mining successfully!\n", diastr, stat.Number+1, hex.EncodeToString(stat.PrevHash), hex.EncodeToString(nonce), addr.ToReadable())
 					successAddr = &addr
 					successDiamond = string([]byte(diastr)[10:])
 					stopMark = 1 // 停止挖掘

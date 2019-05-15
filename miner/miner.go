@@ -712,7 +712,7 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 		hxstate.SetMiner(this)
 		errun := trs.ChangeChainState(hxstate)
 		if errun != nil {
-			fmt.Println(errun)
+			// fmt.Println(errun)
 			if strings.HasPrefix(errun.Error(), "{BACKTOPOOL}") {
 				// put back to pool // 保留，下一个区块处理
 				cacheNextTrs = append(cacheNextTrs, trs)

@@ -86,7 +86,7 @@ func (act *Action_2_OpenPaymentChannel) ChangeChainState(state state.ChainStateO
 	if len(labt) > 6 || len(rabt) > 6 {
 		return fmt.Errorf("Payment Channel create error: left or right Amount bytes too long.")
 	}
-	// 不能小于等于零
+	// 不能为零或负数
 	if !act.LeftAmount.IsPositive() || !act.RightAmount.IsPositive() {
 		return fmt.Errorf("Payment Channel create error: left or right Amount is not positive.")
 	}
@@ -246,7 +246,7 @@ func (act *Action_3_ClosePaymentChannel) RecoverChainState(state state.ChainStat
 			leftAmount, rightAmount = *a1, *a2
 		}
 	}
-	// 扣除余额
+	// 减除余额
 	DoSubBalanceFromChainState(state, paychan.LeftAddress, leftAmount)
 	DoSubBalanceFromChainState(state, paychan.RightAddress, rightAmount)
 	// 恢复通道状态

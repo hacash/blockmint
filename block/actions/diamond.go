@@ -115,12 +115,12 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	blkhei := blk.GetHeight()
 	// 检查区块高度值是否为5的倍数
 	// {BACKTOPOOL} 表示扔回交易池等待下个区块再次处理
-	if blkhei%5 != 0 {
+	if blkhei % 5 != 0 {
 		return fmt.Errorf("{BACKTOPOOL} Diamond must be in block height multiple of 5.")
 	}
 	// 检查一个区块只能包含一枚钻石
 	if blk.CheckHasHaveDiamond(diamondstrval) {
-		return fmt.Errorf("This block height:%d has already exist diamond.", blkhei)
+		return fmt.Errorf("This block height:%d has already exist diamond:<%s> .", blkhei, diamondstrval)
 	}
 	//statedmnumber, stateprevhash := state.GetPrevDiamondHash()
 	//if statedmnumber > 0 || stateprevhash != nil {
@@ -208,6 +208,10 @@ func (elm *Action_5_DiamondTransfer) RequestSignAddrs() [][]byte {
 func (act *Action_5_DiamondTransfer) ChangeChainState(state state.ChainStateOperation) error {
 	if act.trs == nil {
 		panic("Action belong to transaction not be nil !")
+	}
+	// 自己不能转给自己
+	if bytes.Compare(act.Address, act.trs.GetAddress()) == 0 {
+		return fmt.Errorf("Cannot transfer to self.")
 	}
 	// 查询钻石是否已经存在
 	hasaddr := state.Diamond(act.Diamond)

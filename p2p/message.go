@@ -25,9 +25,9 @@ func CreateHandShakeStatusData() handShakeStatusData {
 	blockminer := miner.GetGlobalInstanceHacashMiner()
 	return handShakeStatusData{
 		GenesisBlockHash:   coin.GetGenesisBlock().Hash(),
-		BlockVersion:       1,
-		TransactionType:    1,
-		ActionKind:         0, // not use
+		BlockVersion:       1, // 不匹配的版本，不相连接
+		TransactionType:    2, // 不匹配的版本，不相连接
+		ActionKind:         5, // 不匹配的版本，不相连接
 		CurrentBlockHeight: blockminer.State.CurrentHeight(),
 		CurrentBlockHash:   blockminer.State.CurrentBlockHash(),
 	}
@@ -38,11 +38,14 @@ func (this *handShakeStatusData) Confirm(other *handShakeStatusData) error {
 	if bytes.Compare(this.GenesisBlockHash, other.GenesisBlockHash) != 0 {
 		return fmt.Errorf("GenesisBlockHash is difference")
 	}
-	if this.BlockVersion != this.BlockVersion {
+	if this.BlockVersion != other.BlockVersion {
 		return fmt.Errorf("BlockVersion is difference")
 	}
-	if this.TransactionType != this.TransactionType {
+	if this.TransactionType != other.TransactionType {
 		return fmt.Errorf("TransactionType is difference")
+	}
+	if this.ActionKind != other.ActionKind {
+		return fmt.Errorf("ActionKind is difference")
 	}
 	return nil
 }

@@ -84,19 +84,19 @@ func FindNiceAccounts(basestr string, prenum int, start int64) {
 
 }
 
-func FindNiceAccounts2(basestr string, start int64) {
+func FindNiceAccounts2(basestr string, start uint64, total uint64) {
 
 	var n uint64 = 0
 	for i := start; ; i++ {
-		password := basestr + strconv.FormatInt(i, 10)
+		password := basestr + strconv.FormatUint(i, 10)
 		addr := CreateAccountByPassword(password)
 		rdble := addr.AddressReadable
-		macth := regexp.MustCompile(`(^1[1-9]+$)|(^1[A-Z]+$)|(^1[a-z]+$)`).FindAllString(string(rdble), -1)
+		macth := regexp.MustCompile(`(^1[1-9]+$)|(^1[A-Za-z]+$)`).FindAllString(string(rdble), -1)
 		if len(macth) > 0 && len(macth[0]) > 0 {
 			//fmt.Println(password)
 			fmt.Println(n, " ", i, " ", rdble)
 			n++
-			if n == 2000 {
+			if n >= total {
 				break
 			}
 			//fmt.Println(password, rdble)

@@ -178,7 +178,7 @@ func (this *MinerState) FetchLoad() {
 		this.prevDiamondNumber = 0 // 默认值
 	}
 	head := this.prevBlockHead
-	this.Log.Note("miner state load from file", "height", head.GetHeight(), "hash", hex.EncodeToString(head.Hash()), "difficulty", head.GetDifficulty(), "prevDiamondBlockHash", hex.EncodeToString(this.prevDiamondBlockHash))
+	this.Log.Note("miner state load from file", "height:", head.GetHeight(), "hash:", hex.EncodeToString(head.Hash()), "difficulty:", head.GetDifficulty(), "prev_diamond:", this.prevDiamondNumber, hex.EncodeToString(this.prevDiamondBlockHash))
 
 	////// 2019-05-16 BUG 修复 //////
 	pdbhhex := hex.EncodeToString(this.prevDiamondBlockHash)

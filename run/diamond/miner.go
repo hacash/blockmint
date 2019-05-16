@@ -26,7 +26,7 @@ type DiamondMiner struct {
 
 	// 有几个地址就开几个线程
 	rewards     []fields.Address
-	feePassword string // 手续费地址私钥
+	feeAccount  *account.Account // 手续费地址
 
 	// 停止并启动下一轮挖矿
 	statCh     chan *ReStartMinerStat
@@ -45,10 +45,13 @@ func (dm *DiamondMiner) Start(blkminer *miner.HacashMiner) error {
 	dm.stopmarkCh = make(chan bool, 10)
 
 	// 检查配置
-	dm.feePassword = config.Config.DiamondMiner.Feepassword
-	if len(dm.feePassword) < 6 { // 手续费地址私钥
+	feePassword := config.Config.DiamondMiner.Feepassword
+	if len(feePassword) < 6 { // 手续费地址私钥
 		panic(fmt.Sprintf("Fee Secret Must."))
 	}
+	// 手续费账户
+	dm.feeAccount = account.CreateAccountByPassword(feePassword)
+	// 钻石收取账户
 	dm.rewards = make([]fields.Address, 0, 8)
 	rwds := config.Config.DiamondMiner.Rewards
 	if len(rwds) < 1 {
@@ -86,7 +89,7 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 
 	supervene := len(dm.rewards)
 
-	fmt.Printf("--◈--◈--◈-- do diamond mining, supervene:%d, number:%d prevhash:<%s>   \n", supervene, stat.Number+1, hex.EncodeToString(stat.PrevHash))
+	fmt.Printf("--◈--◈-- do diamond mining, supervene:%d, number:%d, prevhash:<%s>, feeaddr:%s   \n", supervene, stat.Number+1, hex.EncodeToString(stat.PrevHash), dm.feeAccount.Address.ToReadable())
 
 	for i, addr := range dm.rewards {
 		// 开启挖矿线程
@@ -147,16 +150,13 @@ func (dm *DiamondMiner) CreateAndSendTransaction(stat *ReStartMinerStat, diamond
 	dimcreate.Nonce = fields.Bytes8(nonce)
 	dimcreate.Address = address
 
-	// 拿出手续费账户
-	feeacc := account.CreateAccountByPassword(dm.feePassword)
-
-	// 创建交易
-	newTrs, e5 := transactions.NewEmptyTransaction_2_Simple(feeacc.Address)
+	// 拿出手续费账户 创建交易
+	newTrs, e5 := transactions.NewEmptyTransaction_2_Simple(dm.feeAccount.Address)
 	newTrs.Timestamp = fields.VarInt5(time.Now().Unix()) // 使用 hold 的时间戳
 	if e5 != nil {
 		panic("create transaction error, " + e5.Error())
 	}
-	newTrs.Fee = *fields.NewAmountSmall(4, 244) // set fee
+	newTrs.Fee = *fields.NewAmountSmall(2, 244) // set fee
 	// 放入action
 	newTrs.AppendAction(&dimcreate)
 
@@ -167,7 +167,7 @@ func (dm *DiamondMiner) CreateAndSendTransaction(stat *ReStartMinerStat, diamond
 	}
 	// sign
 	privates := make(map[string][]byte)
-	privates[string(feeacc.Address)] = feeacc.PrivateKey
+	privates[string(dm.feeAccount.Address)] = dm.feeAccount.PrivateKey
 	e6 := newTrs.FillNeedSigns(privates, nil)
 	if e6 != nil {
 		panic("sign transaction error, " + e6.Error())

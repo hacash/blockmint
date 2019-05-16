@@ -99,27 +99,6 @@ func Test_5(t *testing.T) {
 
 }
 
-func Test_6(t *testing.T) {
-
-	addr, err := fields.CheckReadableAddress("1DJcykHUKFjMJbJVcmCynQqviDrm373988")
-	fmt.Println(err)
-	fmt.Println(addr)
-
-	add := account.CreateAccountByPassword("yangjie19920203+liyang19940622+14079340")
-
-	fmt.Println(add.AddressReadable)
-	fmt.Println(len(add.AddressReadable))
-	fmt.Println(add.Address)
-	fmt.Println(len(add.Address))
-	fmt.Println(hex.EncodeToString(add.Address))
-
-	fmt.Println(add.PublicKey)
-	fmt.Println(hex.EncodeToString(add.PublicKey))
-
-	fmt.Println(add.PrivateKey)
-	fmt.Println(hex.EncodeToString(add.PrivateKey))
-
-}
 
 func Test_loop_nice(t *testing.T) {
 

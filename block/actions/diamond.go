@@ -180,7 +180,7 @@ func (elm *Action_5_DiamondTransfer) SetBelongTrs(t block.Transaction) {
 }
 
 func (elm *Action_5_DiamondTransfer) Size() uint32 {
-	return elm.Diamond.Size() + elm.Address.Size()
+	return 2 + elm.Diamond.Size() + elm.Address.Size()
 }
 
 func (elm *Action_5_DiamondTransfer) Serialize() ([]byte, error) {

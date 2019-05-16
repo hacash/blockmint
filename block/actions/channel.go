@@ -37,7 +37,7 @@ func (elm *Action_2_OpenPaymentChannel) SetBelongTrs(t block.Transaction) {
 }
 
 func (elm *Action_2_OpenPaymentChannel) Size() uint32 {
-	return elm.ChannelId.Size() + ((elm.LeftAddress.Size() + elm.LeftAddress.Size()) * 2)
+	return 2 + elm.ChannelId.Size() + ((elm.LeftAddress.Size() + elm.LeftAddress.Size()) * 2)
 }
 
 func (elm *Action_2_OpenPaymentChannel) Serialize() ([]byte, error) {
@@ -108,7 +108,7 @@ func (act *Action_2_OpenPaymentChannel) ChangeChainState(state state.ChainStateO
 	// 创建 channel
 	var storeItem db.ChannelStoreItemData
 	storeItem.BelongHeight = fields.VarInt5(curheight)
-	storeItem.LockBlock = fields.VarInt2(uint16(5000))
+	storeItem.LockBlock = fields.VarInt2(uint16(5000)) // 单方面提出的锁定期约为 17 天
 	storeItem.LeftAddress = act.LeftAddress
 	storeItem.LeftAmount = act.LeftAmount
 	storeItem.RightAddress = act.RightAddress

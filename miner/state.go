@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"os"
 	"path"
+	"strings"
 )
 
 var ( // 4294967295
@@ -178,4 +179,16 @@ func (this *MinerState) FetchLoad() {
 	}
 	head := this.prevBlockHead
 	this.Log.Note("miner state load from file", "height", head.GetHeight(), "hash", hex.EncodeToString(head.Hash()), "difficulty", head.GetDifficulty(), "prevDiamondBlockHash", hex.EncodeToString(this.prevDiamondBlockHash))
+
+	////// 2019-05-16 BUG 修复 //////
+	pdbhhex := hex.EncodeToString(this.prevDiamondBlockHash)
+	if (this.prevDiamondNumber==0 || this.prevDiamondNumber==1) && (strings.HasSuffix(pdbhhex, "ca335af48") || strings.HasSuffix(pdbhhex, "00000000")) {
+		// 恢复
+		this.prevDiamondNumber = 0
+		this.prevDiamondBlockHash = genesis.HashFresh() // 默认值：创世区块hash
+		this.FlushSave()
+	}
+	///////////// END //////////////
+
+
 }

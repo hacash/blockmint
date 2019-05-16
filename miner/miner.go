@@ -837,7 +837,7 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 	// 修改矿工状态
 	this.State.SetNewBlock(blkhead)
 	diamondNumber, diamondHash := state.GetPrevDiamondHash()
-	if diamondNumber > 0 && diamondHash != nil {
+	if diamondNumber >= 0 && diamondHash != nil {
 		this.SetPrevDiamondHash(diamondNumber, diamondHash)
 		state.SetPrevDiamondHash(0, nil) // 状态复位
 	}

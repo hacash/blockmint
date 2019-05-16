@@ -108,19 +108,27 @@ func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fie
 		//fmt.Println(mulnum)
 		mulnumint := int64(mulnum)
 		//fmt.Println(mulnumint)
-		subzore := uint8(0)
+		newunit := int(amts[i].Unit) - 8
+		if newunit < 0 {
+			coinnums[i] = amts[i] // 数额极小， 余额不变
+			continue
+		}
 		for {
-			if mulnumint%10 == 0 {
+			if newunit<255 && mulnumint%10 == 0 {
 				mulnumint /= 10
-				subzore++
+				newunit++
 			} else {
 				break
 			}
 		}
 		newNumeral := big.NewInt(int64(mulnumint)).Bytes()
 		//fmt.Println(newNumeral)
-		newamt := fields.NewAmount(amts[i].Unit-8+subzore, newNumeral)
-		coinnums[i] = newamt
+		if newunit > 0 && newunit <= 255 {
+			newamt := fields.NewAmount(uint8(newunit), newNumeral)
+			coinnums[i] = newamt // 正常情况
+		}else{
+			coinnums[i] = amts[i] // 计算错误， 余额不变
+		}
 	}
 
 	//fmt.Println("insnum: ", insnum)

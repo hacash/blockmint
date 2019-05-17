@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	MemTxPoolMaxLimit = 500                          // 交易池的大小
-	MemTxPoolMaxSize  = uint64(1024 * 1024 * 2 * 10) // 交易池的大小
+	MemTxPoolMaxLimit = 500                           // 交易池的大小
+	MemTxPoolMaxSize  = uint64(1024 * 1024 * 2 * 100) // 交易池的大小 200MB
 )
 
 type MemTxItem struct {
@@ -101,8 +101,7 @@ func (this *MemTxPool) pickUpTx(hashnofee []byte, drop bool) *MemTxItem {
 			if drop {
 				prev.next = next.next
 				// 更新统计
-				this.Length -= 1
-				this.Size -= uint64(next.Tx.Size())
+				this.ChangeCount(-1, next.Tx.Size())
 			}
 			// 返回
 			return next
@@ -161,7 +160,7 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 
 	// 检查
 	txsize := tx.Size()
-	if uint64(txsize)+this.Size > MemTxPoolMaxSize {
+	if uint64(txsize) + this.Size > MemTxPoolMaxSize {
 		return fmt.Errorf("Mem Tx Pool Over Max Size %d", MemTxPoolMaxSize)
 	}
 
@@ -184,8 +183,7 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 		this.pickUpTx(hashnofee, true) // 删除旧的交易
 	}
 	// size change
-	this.Size += uint64(txsize)
-	this.Length += 1
+	this.ChangeCount(+1, txsize)
 	// append
 	if this.TxHead == nil {
 		this.TxHead = txItem
@@ -231,8 +229,7 @@ func (this *MemTxPool) PopTxByHighestFee() block.Transaction {
 	head := this.TxHead
 	this.TxHead = head.next
 	// 更新统计
-	this.Length -= 1
-	this.Size -= uint64(head.Tx.Size())
+	this.ChangeCount(-1, head.Tx.Size())
 	// 返回
 	return head.Tx
 }
@@ -270,4 +267,17 @@ func (this *MemTxPool) RemoveTxs(txs []block.Transaction) {
 		this.pickUpTx(tx.HashNoFee(), true) // 取出并丢弃
 	}
 
+}
+
+// 修改统计
+func (this *MemTxPool) ChangeCount(num int, sizes uint32)  {
+	this.Length += num // num可为负
+	if this.Length < 0 {
+		this.Length = 0 // 防止为负
+	}
+	if num > 0 {
+		this.Size += uint64(sizes)
+	}else if num < 0 || this.Size > uint64(sizes){ // 防止为负
+		this.Size -= uint64(sizes)
+	}
 }

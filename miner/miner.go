@@ -717,6 +717,7 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 				// put back to pool // 保留，下一个区块处理
 				cacheNextTrs = append(cacheNextTrs, trs)
 			}
+			// 出现其他错误则直接丢弃交易
 			hxstate.Destroy()
 			continue // error , give up tx
 		}
@@ -728,8 +729,11 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 		// 手续费
 		fee := fields.ParseAmount(trs.GetFee(), 0)
 		blockTotalFee, _ = blockTotalFee.Add(fee)
+		// put back to pool // 成功的交易，保留，供其他连接的节点下载同步
+		cacheNextTrs = append(cacheNextTrs, trs)
 	}
-	// 将交易扔回交易池，下一个区块处理
+	// 将交易扔回交易池，下一个区块处理或者供其他连接的节点下载同步
+	// 出块成功时将移除已经出块的交易
 	for _, trs := range cacheNextTrs {
 		this.TxPool.AddTx(trs)
 	}

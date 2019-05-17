@@ -84,7 +84,7 @@ func StartHacash() {
 	// 如果挖掘钻石
 	if len(config.Config.DiamondMiner.Feepassword) > 6 {
 		dm := diamond.NewDiamondMiner()
-		fmt.Println("◈ start diamond mining...")
+		fmt.Println("❂ start diamond mining...")
 		go dm.Start(miner) // 开始挖掘
 	}
 

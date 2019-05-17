@@ -274,6 +274,8 @@ func (this *MemTxPool) ChangeCount(num int, sizes uint32)  {
 	this.Length += num // num可为负
 	if this.Length < 0 {
 		this.Length = 0 // 防止为负
+		this.Size = 0
+		return
 	}
 	if num > 0 {
 		this.Size += uint64(sizes)

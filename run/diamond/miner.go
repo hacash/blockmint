@@ -89,7 +89,7 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 
 	supervene := len(dm.rewards)
 
-	fmt.Printf("--◈--◈-- do diamond mining, supervene:%d, number:%d, prevhash:<%s>, feeaddr:%s   \n", supervene, stat.Number+1, hex.EncodeToString(stat.PrevHash), dm.feeAccount.Address.ToReadable())
+	fmt.Printf("--❂--❂-- do diamond mining, supervene:%d, number:%d, prevhash:<%s>, feeaddr:%s   \n", supervene, stat.Number+1, hex.EncodeToString(stat.PrevHash), dm.feeAccount.Address.ToReadable())
 
 	for i, addr := range dm.rewards {
 		// 开启挖矿线程
@@ -99,19 +99,19 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 			if dm.CheckDiamond(stat, nonce, addr, diastr) {
 				if successAddr == nil {
 					// 挖掘成功
-					fmt.Printf("◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈ 【%s】 number:%d, prevhash:<%s>, nonce:<%s>, addr:%s,  mining successfully!\n", diastr, stat.Number+1, hex.EncodeToString(stat.PrevHash), hex.EncodeToString(nonce), addr.ToReadable())
+					fmt.Printf("◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ 【%s】 number:%d, prevhash:<%s>, nonce:<%s>, addr:%s,  mining successfully!\n", diastr, stat.Number+1, hex.EncodeToString(stat.PrevHash), hex.EncodeToString(nonce), addr.ToReadable())
 					successAddr = &addr
 					successDiamond = string([]byte(diastr)[10:])
 					stopMark = 1 // 停止挖掘
 					successCh <- nonce
 				} else {
-					fmt.Printf("[%d] miner '%s' finish out.\n", i, addr.ToReadable())
+					fmt.Printf("--❂--❂-- [%d] miner '%s' finish out.\n", i, addr.ToReadable())
 				}
 			} else {
 				if stopMark > 0 {
 					// fmt.Printf("[%d] miner '%s' break out.\n", i, addr.ToReadable())
 				} else {
-					fmt.Printf("[%d] miner '%s' over max nonce.\n", i, addr.ToReadable())
+					fmt.Printf("--❂--❂-- [%d] miner '%s' over max nonce.\n", i, addr.ToReadable())
 				}
 
 			}
@@ -132,7 +132,7 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 	}
 
 	// 创建并发送钻石交易
-	fmt.Println("create and send transaction...")
+	fmt.Println("--❂--❂-- create and send transaction...")
 	dm.CreateAndSendTransaction(stat, successDiamond, successNonce, *successAddr)
 
 	// 等待交易成功，下一轮
@@ -187,7 +187,7 @@ func (dm *DiamondMiner) CreateAndSendTransaction(stat *ReStartMinerStat, diamond
 	if err != nil {
 		fmt.Println(err)
 	}else{
-		fmt.Printf("put trs <%s> to mem pool.\n", hex.EncodeToString(newTrs.HashNoFee()))
+		fmt.Printf("--❂--❂-- put trs <%s> to mem pool.\n", hex.EncodeToString(newTrs.HashNoFee()))
 	}
 
 

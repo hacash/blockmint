@@ -235,3 +235,115 @@ func (act *Action_5_DiamondTransfer) RecoverChainState(state state.ChainStateOpe
 	state.DiamondSet(act.Diamond, act.trs.GetAddress())
 	return nil
 }
+
+
+///////////////////////////////////////////////////////////////
+
+// 批量转移钻石
+type Action_6_OutfeeQuantityDiamondTransfer struct {
+	FromAddress  fields.Address  // 拥有钻石的账户
+	ToAddress    fields.Address  // 收钻方账户
+	DiamondCount fields.VarInt1  // 钻石数量
+	Diamonds     []fields.Bytes6 // 钻石字面量数组
+
+	// 数据指针
+	// 所属交易
+	trs block.Transaction
+}
+
+func (elm *Action_6_OutfeeQuantityDiamondTransfer) Kind() uint16 {
+	return 6
+}
+
+func (elm *Action_6_OutfeeQuantityDiamondTransfer) SetBelongTrs(t block.Transaction) {
+	elm.trs = t
+}
+
+func (elm *Action_6_OutfeeQuantityDiamondTransfer) Size() uint32 {
+	return 2 +
+		elm.FromAddress.Size() +
+		elm.ToAddress.Size() +
+		elm.DiamondCount.Size() +
+		uint32(len(elm.Diamonds)) * 6
+}
+
+func (elm *Action_6_OutfeeQuantityDiamondTransfer) Serialize() ([]byte, error) {
+	if int(elm.DiamondCount) != len(elm.Diamonds){
+		return nil, fmt.Errorf("diamonds number quantity count error")
+	}
+	var kindByte = make([]byte, 2)
+	binary.BigEndian.PutUint16(kindByte, elm.Kind())
+	var addr1Bytes, _ = elm.FromAddress.Serialize()
+	var addr2Bytes, _ = elm.ToAddress.Serialize()
+	var countBytes, _ = elm.DiamondCount.Serialize()
+	var buffer bytes.Buffer
+	buffer.Write(kindByte)
+	buffer.Write(addr1Bytes)
+	buffer.Write(addr2Bytes)
+	buffer.Write(countBytes)
+	for _, v := range elm.Diamonds {
+		diabts, _ := v.Serialize()
+		buffer.Write(diabts)
+	}
+	return buffer.Bytes(), nil
+}
+
+func (elm *Action_6_OutfeeQuantityDiamondTransfer) Parse(buf []byte, seek uint32) (uint32, error) {
+	seek, _ = elm.FromAddress.Parse(buf, seek)
+	seek, _ = elm.ToAddress.Parse(buf, seek)
+	seek, _ = elm.DiamondCount.Parse(buf, seek)
+	elm.Diamonds = make([]fields.Bytes6, int(elm.DiamondCount))
+	for i:=0; i<int(elm.DiamondCount); i++ {
+		elm.Diamonds[i] = fields.Bytes6{}
+		seek, _ = elm.Diamonds[i].Parse(buf, seek)
+	}
+	return seek, nil
+}
+
+func (elm *Action_6_OutfeeQuantityDiamondTransfer) RequestSignAddrs() [][]byte {
+	reqs := make([][]byte, 1) // 需from签名
+	reqs[0] = elm.FromAddress
+	return reqs
+}
+
+func (act *Action_6_OutfeeQuantityDiamondTransfer) ChangeChainState(state state.ChainStateOperation) error {
+	if act.trs == nil {
+		panic("Action belong to transaction not be nil !")
+	}
+	// 数量检查
+	if int(act.DiamondCount) != len(act.Diamonds){
+		return fmt.Errorf("Diamonds number quantity count error")
+	}
+	// 自己不能转给自己
+	if bytes.Compare(act.FromAddress, act.ToAddress) == 0 {
+		return fmt.Errorf("Cannot transfer to self.")
+	}
+	// 批量转移钻石
+	for i:=0; i<len(act.Diamonds); i++ {
+		diamond := act.Diamonds[i]
+		// 查询钻石是否已经存在
+		hasaddr := state.Diamond(diamond)
+		if hasaddr == nil {
+			return fmt.Errorf("Diamond <%s> not exist.", string(diamond))
+		}
+		// 检查所属
+		if bytes.Compare(hasaddr, act.FromAddress) != 0 {
+			return fmt.Errorf("Diamond <%s> not belong to address '%s'", string(diamond), act.FromAddress.ToReadable())
+		}
+		// 转移钻石
+		state.DiamondSet(diamond, act.ToAddress)
+	}
+	return nil
+}
+
+func (act *Action_6_OutfeeQuantityDiamondTransfer) RecoverChainState(state state.ChainStateOperation) error {
+	if act.trs == nil {
+		panic("Action belong to transaction not be nil !")
+	}
+	// 批量回退钻石
+	for i:=0; i<len(act.Diamonds); i++ {
+		diamond := act.Diamonds[i]
+		state.DiamondSet(diamond, act.FromAddress)
+	}
+	return nil
+}

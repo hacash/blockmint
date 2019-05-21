@@ -22,6 +22,9 @@ func NewActionByKind(kind uint16) (block.Action, error) {
 		return new(actions.Action_4_DiamondCreate), nil
 	case 5:
 		return new(actions.Action_5_DiamondTransfer), nil
+	case 6:
+		return new(actions.Action_6_OutfeeQuantityDiamondTransfer), nil
+
 	}
 	////////////////////    END      ////////////////////
 	return nil, err.New("Cannot find Action kind of " + string(kind))

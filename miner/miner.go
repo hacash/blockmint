@@ -702,8 +702,8 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 		if e2 != nil || ext {
 			continue // drop tx
 		}
-		blockSize += trs.Size()
-		if int64(blockSize) > config.MaximumBlockSize {
+		blockSize += trs.Size() // 区块大小上限2MB
+		if int64(blockSize) > int64(1024)*1024*2 {
 			this.TxPool.AddTx(trs)
 			break // over block size
 		}

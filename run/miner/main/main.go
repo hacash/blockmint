@@ -29,6 +29,10 @@ func main() {
 	//Test_coinbaseAddress(16231)
 	//Test_opencl()
 	//Test_address_balance()
+	//Test_allAddressDiamonds()
+
+
+	
 
 	StartHacash()
 

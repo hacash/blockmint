@@ -9,6 +9,7 @@ import (
 	"github.com/hacash/blockmint/service/toolshell/ctx"
 	"github.com/hacash/x16rs"
 	"strconv"
+	"strings"
 )
 
 /*
@@ -90,12 +91,6 @@ func GenTxCreateDiamond(ctx ctx.Context, params []string) {
 	// 放入action
 	newTrs.AppendAction(&dimcreate)
 
-	// 数据化
-	bodybytes, e7 := newTrs.Serialize()
-	if e7 != nil {
-		fmt.Println("transaction serialize error, " + e7.Error())
-		return
-	}
 	// sign
 	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), nil)
 	if e6 != nil {
@@ -104,12 +99,15 @@ func GenTxCreateDiamond(ctx ctx.Context, params []string) {
 	}
 	// 检查签名
 	sigok, sigerr := newTrs.VerifyNeedSigns(nil)
-	if sigerr != nil {
-		fmt.Println("transaction VerifyNeedSigns error")
+	if sigerr != nil || !sigok {
+		fmt.Println("transaction VerifyNeedSigns fail")
 		return
 	}
-	if !sigok {
-		fmt.Println("transaction VerifyNeedSigns fail")
+
+	// 数据化
+	bodybytes, e7 := newTrs.Serialize()
+	if e7 != nil {
+		fmt.Println("transaction serialize error, " + e7.Error())
 		return
 	}
 
@@ -171,12 +169,6 @@ func GenTxDiamondTransfer(ctx ctx.Context, params []string) {
 	// 放入action
 	newTrs.AppendAction(&dimtransfer)
 
-	// 数据化
-	bodybytes, e7 := newTrs.Serialize()
-	if e7 != nil {
-		fmt.Println("transaction serialize error, " + e7.Error())
-		return
-	}
 	// sign
 	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), nil)
 	if e6 != nil {
@@ -185,14 +177,114 @@ func GenTxDiamondTransfer(ctx ctx.Context, params []string) {
 	}
 	// 检查签名
 	sigok, sigerr := newTrs.VerifyNeedSigns(nil)
-	if sigerr != nil {
-		fmt.Println("transaction VerifyNeedSigns error")
-		return
-	}
-	if !sigok {
+	if sigerr != nil || !sigok {
 		fmt.Println("transaction VerifyNeedSigns fail")
 		return
 	}
+
+	// 数据化
+	bodybytes, e7 := newTrs.Serialize()
+	if e7 != nil {
+		fmt.Println("transaction serialize error, " + e7.Error())
+		return
+	}
+
+	// ok
+	fmt.Println("transaction create success! ")
+	fmt.Println("hash: <" + hex.EncodeToString(newTrs.HashNoFee()) + ">, hash_with_fee: <" + hex.EncodeToString(newTrs.Hash()) + ">")
+	fmt.Println("body length " + strconv.Itoa(len(bodybytes)) + " bytes, hex body is:")
+	fmt.Println("-------- TRANSACTION BODY START --------")
+	fmt.Println(hex.EncodeToString(bodybytes))
+	//fmt.Println( hex.EncodeToString( bodybytes2 ) )
+	fmt.Println("-------- TRANSACTION BODY END   --------")
+
+	// 记录
+	ctx.SetTxToRecord(newTrs.HashNoFee(), newTrs)
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+// 批量转移钻石
+func GenTxOutfeeQuantityDiamondTransfer(ctx ctx.Context, params []string) {
+	if len(params) < 5 {
+		fmt.Println("params not enough")
+		return
+	}
+	fromAddressArgv := params[0]
+	toAddressArgv := params[1]
+	diamondsArgv := params[2]
+	feeAddressArgv := params[3]
+	feeArgv := params[4]
+	// 检查字段
+	diamonds := strings.Split(diamondsArgv, ",")
+	if len(diamonds) > 200 {
+		fmt.Printf("diamonds number is too much.\n")
+		return
+	}
+	for _, diamond := range diamonds {
+		_, dddok := x16rs.IsDiamondHashResultString("0000000000" + diamond)
+		if !dddok {
+			fmt.Printf("%s is not diamond value.\n", diamond)
+			return
+		}
+	}
+
+	fromaddress := ctx.IsInvalidAccountAddress(fromAddressArgv)
+	if fromaddress == nil {
+		return
+	}
+	toaddress := ctx.IsInvalidAccountAddress(toAddressArgv)
+	if toaddress == nil {
+		return
+	}
+	feeAddress := ctx.IsInvalidAccountAddress(feeAddressArgv)
+	if feeAddress == nil {
+		return
+	}
+	feeAmount := ctx.IsInvalidAmountString(feeArgv)
+	if feeAmount == nil {
+		return
+	}
+	// 创建 action
+	var dimtransfer actions.Action_6_OutfeeQuantityDiamondTransfer
+	dimtransfer.FromAddress = *fromaddress
+	dimtransfer.ToAddress = *toaddress
+	dimtransfer.DiamondCount = fields.VarInt1(len(diamonds))
+	dimtransfer.Diamonds = make([]fields.Bytes6, len(diamonds))
+	for i, v := range diamonds {
+		dimtransfer.Diamonds[i] = fields.Bytes6(v)
+	}
+	// 创建交易
+	newTrs, e5 := transactions.NewEmptyTransaction_2_Simple(*feeAddress)
+	newTrs.Timestamp = fields.VarInt5(ctx.UseTimestamp()) // 使用 hold 的时间戳
+	if e5 != nil {
+		fmt.Println("create transaction error, " + e5.Error())
+		return
+	}
+	newTrs.Fee = *feeAmount // set fee
+	// 放入action
+	newTrs.AppendAction(&dimtransfer)
+
+	// sign
+	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), nil)
+	if e6 != nil {
+		fmt.Println("sign transaction error, " + e6.Error())
+		return
+	}
+	// 检查签名
+	sigok, sigerr := newTrs.VerifyNeedSigns(nil)
+	if sigerr != nil || !sigok {
+		fmt.Println("transaction VerifyNeedSigns fail")
+		return
+	}
+
+	// 数据化
+	bodybytes, e7 := newTrs.Serialize()
+	if e7 != nil {
+		fmt.Println("transaction serialize error, " + e7.Error())
+		return
+	}
+	//rrrtrs, _ := blocks.ParseTransaction(bodybytes, 0)
 
 	// ok
 	fmt.Println("transaction create success! ")

@@ -24,6 +24,9 @@ func genTx(ctx ctx.Context, params []string) {
 		gentxs.GenTxCreateDiamond(ctx, bodys)
 	case "diamond_transfer": // 转移钻石
 		gentxs.GenTxDiamondTransfer(ctx, bodys)
+	case "diamond_transfer_quantity": // 转移钻石
+		gentxs.GenTxOutfeeQuantityDiamondTransfer(ctx, bodys)
+
 	default:
 		fmt.Println("Sorry, undefined gentx type: " + typename)
 	}

@@ -154,12 +154,6 @@ func GenTxClosePaymentChannel(ctx ctx.Context, params []string) {
 	// 放入action
 	newTrs.AppendAction(&paychanclose)
 
-	// 数据化
-	bodybytes, e7 := newTrs.Serialize()
-	if e7 != nil {
-		fmt.Println("transaction serialize error, " + e7.Error())
-		return
-	}
 	// sign
 	e6 := newTrs.FillNeedSigns(ctx.GetAllPrivateKeyBytes(), nil)
 	if e6 != nil {
@@ -167,6 +161,12 @@ func GenTxClosePaymentChannel(ctx ctx.Context, params []string) {
 		return
 	}
 	// 不检查签名
+	// 数据化
+	bodybytes, e7 := newTrs.Serialize()
+	if e7 != nil {
+		fmt.Println("transaction serialize error, " + e7.Error())
+		return
+	}
 
 	// ok
 	fmt.Println("transaction create success! ")

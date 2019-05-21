@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"github.com/hacash/bitcoin/address/base58check"
@@ -11,8 +12,53 @@ import (
 	"github.com/hacash/blockmint/chain/state"
 	"github.com/hacash/blockmint/chain/state/db"
 	"github.com/hacash/blockmint/miner"
+	"os"
 	"strings"
 )
+
+
+// 测试打印全部的钻石关系
+func Test_allAddressDiamonds() {
+
+	diamondDB := db.GetGlobalInstanceDiamondDB()
+
+	diamondsfile, fe := os.OpenFile("./diamonds.idx", os.O_RDWR, 0777)
+	if fe != nil {
+		panic(fe)
+	}
+
+
+	diastat, _ := diamondsfile.Stat()
+	signum := diastat.Size() / 6
+	diastr := make([]byte, 6)
+	basebts := []byte("WTYUIAHXVMEKBSZN")
+	asddressDiamonds := make(map[string][]string)
+	for i:=int64(0); i<signum; i ++ {
+		diamondsfile.ReadAt(diastr, i * 6)
+		if bytes.IndexByte(basebts, diastr[0]) == -1 {
+			continue
+		}
+		// 查询钻石
+		addr, _ := diamondDB.Read(diastr)
+		if addr != nil {
+			key := addr.ToReadable()
+			if _, ok := asddressDiamonds[key]; !ok {
+				asddressDiamonds[key] = make([]string, 0, 16)
+			}
+			asddressDiamonds[key] = append(asddressDiamonds[key], string(diastr))
+		}
+	}
+	// 打印全部钻石所属
+	for k, dias := range asddressDiamonds {
+		fmt.Print("\n"+k+": ")
+		for _, v := range dias {
+			fmt.Print(v+",")
+		}
+	}
+
+
+}
+
 
 //
 // 测试打印区块奖励地址

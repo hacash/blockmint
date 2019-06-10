@@ -134,7 +134,6 @@ func (this *HacashMiner) Start() {
 func (this *HacashMiner) StartMining() {
 	//this.Log.Noise("hacash miner will start mining by call func StartMining()")
 	this.miningStatusCh <- true
-	this.Log.Note("start mining ...")
 	/*
 		if 0 == len(this.startingCh) {
 			// 如果是停止状态

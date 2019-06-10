@@ -49,12 +49,15 @@ func Test_allAddressDiamonds() {
 		}
 	}
 	// 打印全部钻石所属
+	total_num := 0
 	for k, dias := range asddressDiamonds {
 		fmt.Print("\n"+k+": ")
 		for _, v := range dias {
 			fmt.Print(v+",")
+			total_num++
 		}
 	}
+	fmt.Println("\n TOTAL: ", total_num)
 
 
 }

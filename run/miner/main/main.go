@@ -7,7 +7,7 @@ import (
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner"
 	p2p2 "github.com/hacash/blockmint/p2p"
-	"github.com/hacash/blockmint/run/diamond"
+	"github.com/hacash/blockmint/run/miner/diamond"
 	"github.com/hacash/blockmint/service/rpc"
 	"os"
 	"os/signal"

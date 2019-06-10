@@ -13,7 +13,7 @@ import (
 func Test_t1(t *testing.T) {
 
 	for i := uint64(0); ; i++ {
-		h := i*10000*10 + 99999
+		h := i*10000*10 + 1
 		rw := coin.BlockCoinBaseReward(h)
 		fmt.Printf("%d: %s \n", h, rw.ToFinString())
 		time.Sleep(time.Duration(33) * time.Millisecond)

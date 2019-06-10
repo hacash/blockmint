@@ -459,7 +459,7 @@ func (pm *ProtocolManager) checkBlockFork(p *peer, peer_height uint64, self_heig
 				return liheight, nil // SUCCESS
 			}
 		}
-		if endHight+100 < self_height {
+		if endHight+288 < self_height {
 			// 分叉太长，不能回退
 			return 0, fmt.Errorf("block fork to long, cannot to switch back !!!")
 		}

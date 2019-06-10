@@ -39,7 +39,11 @@ func CalculateNextTargetDifficulty(
 
 	lastTarget := Uint32ToBig(currentBits)
 	// 计算公式： target = lastTarget * actualTime / expectTime
-	newTarget := lastTarget.Mul(lastTarget, big.NewInt(int64(actualTimespan.Seconds())))
+	actual_time_use := int64(actualTimespan.Seconds())
+	if currentHeight >= 44640 { // 第155天之后，调整到时间的十分之九，解决 Uint32ToBig 和 BigToUint32 的精度损失问题导致的实际出块时间为4分钟而不是五分钟
+		actual_time_use = actual_time_use * 9 / 10
+	}
+	newTarget := lastTarget.Mul(lastTarget, big.NewInt(actual_time_use))
 	newTarget = newTarget.Div(newTarget, big.NewInt(int64(powTargetTimespan.Seconds())))
 
 	nextBits := BigToUint32(newTarget)

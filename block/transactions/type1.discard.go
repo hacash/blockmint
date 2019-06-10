@@ -346,6 +346,17 @@ func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) RequestAddressBalance() ([][]byte,
 
 // 修改 / 恢复 状态数据库
 func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) ChangeChainState(state state.ChainStateOperation) error {
+	/*********************************************************/
+	/******* 在区块37000 以上不能接受 trs_type==1 的交易 ********/
+	/******* 从而解决第一种交易类型的签名验证的BUG问题     ********/
+	/*********************************************************/
+	blkptr := state.Block()
+	if blkptr != nil {
+		blk := blkptr.(typesblock.Block)
+		if blk.GetHeight() > 37000 {
+			return fmt.Errorf("Transaction type<1> be discard DO_NOT_USE_WITH_BUG")
+		}
+	}
 	// actions
 	for i := 0; i < len(trs.Actions); i++ {
 		trs.Actions[i].SetBelongTrs(trs)

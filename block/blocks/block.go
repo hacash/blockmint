@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/hacash/blockmint/block/fields"
-	"github.com/hacash/blockmint/miner/x16rs"
 	"github.com/hacash/blockmint/sys/err"
 	typesblock "github.com/hacash/blockmint/types/block"
+	"github.com/hacash/x16rs"
 
 	"golang.org/x/crypto/sha3"
 )

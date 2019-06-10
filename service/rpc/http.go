@@ -44,13 +44,15 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	if prev288height <= 0 {
 		prev288height = 1
 	}
+	diamondNumber, _ := miner.State.GetPrevDiamondBlockHash()
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
-		"height: %d, tx: %d, hash: %s, difficulty: %d, create_time: %s",
+		"height: %d, tx: %d, hash: %s, difficulty: %d, create_time: %s, diamond number: %d",
 		curheight,
 		minerblkhead.GetTransactionCount()-1,
 		hex.EncodeToString(miner.State.CurrentBlockHash()),
 		minerblkhead.GetDifficulty(),
 		time.Unix(int64(minerblkhead.GetTimestamp()), 0).Format("2006/01/02 15:04:05"),
+		diamondNumber,
 	))
 	// 出块统计
 	cost288_7miao := getMiao(minerblkhead, prev288_7height, 288*7)
@@ -107,6 +109,9 @@ func getMiao(minerblkhead block.Block, prev288height uint64, blknum uint64) uint
 	}
 	prevblock, _, _ := blocks.ParseBlockHead(prevblockbytes, 0)
 	costtotalmiao := minerblkhead.GetTimestamp() - prevblock.GetTimestamp()
+	if blknum == 0 {
+		blknum = 1 // fix bug
+	}
 	costmiao := costtotalmiao / blknum
 	return costmiao
 }

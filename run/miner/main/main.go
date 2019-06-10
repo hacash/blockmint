@@ -69,7 +69,6 @@ func StartHacash() {
 			fmt.Println("HacashMiner start mining in force on start...")
 			t := time.NewTimer(5 * time.Second)
 			<-t.C
-			fmt.Println("start mining...")
 			miner.StartMining() // 开始挖矿
 		}()
 	}

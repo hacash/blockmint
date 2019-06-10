@@ -292,7 +292,6 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	if bytes.Compare(pm.miner.State.CurrentBlockHash(), blkhash) == 0 {
 		pm.Log.News("all block status is sync ok, peer head match")
 		if peerone { // 开始挖矿
-			pm.Log.Note("start mining...")
 			pm.miner.StartMining()
 		} else {
 
@@ -303,16 +302,14 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	if peer_height <= self_height {
 		pm.Log.News("all block status is sync ok, peer height less than or equal with me")
 		if peerone { // 开始挖矿
-			pm.Log.Note("start mining...")
 			pm.miner.StartMining()
 		}
 		return // 高度小于我，或各自在一条高度相同的分叉上，不需要同步，等待下一个区块的出现
 	}
 	// 对方区块高度大于我，开始同步
 	pm.miner.StopMining() // 停止挖矿
-	pm.Log.Note("peer", p.Name(), "height", peer_height, "more than me height", self_height, "to check block fork and sync blocks")
-
 	match_height, err := pm.checkBlockFork(p, peer_height, self_height)
+	pm.Log.Note("peer", p.Name(), "height", peer_height, "more than me height", self_height, "to check block fork and sync blocks, match_height:", match_height)
 	if err != nil {
 		pm.regainStatusToSimple() // 恢复状态
 		pm.miner.StartMining()    // 开始挖矿
@@ -322,7 +319,7 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	var backblks []block.Block
 	if match_height < self_height {
 		// 回退区块
-		pm.Log.News("back chain block height from", self_height, "to", match_height)
+		pm.Log.Note("deal fork back chain block height from", self_height, "to", match_height)
 		backblks, err = pm.miner.BackTheWorldToHeight(match_height)
 		if err != nil {
 			pm.Log.Error("check block fork back to height", match_height, "error:", err)
@@ -350,6 +347,9 @@ func (pm *ProtocolManager) regainStatusToSimple() {
 
 // 读取同步区块
 func (pm *ProtocolManager) syncBlocksFormPeer(p *peer, startHeight uint64, peer_height uint64) error {
+	if startHeight > peer_height {
+		return nil
+	}
 	// 设置状态
 	atomic.StoreUint32(&pm.currentStatus, SyncBlocksStatus) // 同步区块
 
@@ -440,9 +440,12 @@ func (pm *ProtocolManager) checkBlockFork(p *peer, peer_height uint64, self_heig
 		if msg.msg.StartHeight != startHeight || msg.msg.EndHeight != endHight {
 			return 0, fmt.Errorf("check block fork peer %s send wrong hashs", p.Name())
 		}
-		for i := uint64(len(msg.msg.Hashs)) - 1; i > 0; i-- {
+		for i := int64(len(msg.msg.Hashs)) - 1; ; i-- {
+			if i < 0 {
+				break
+			}
 			lihash := []byte(msg.msg.Hashs[i])
-			liheight := startHeight + i
+			liheight := startHeight + uint64(i)
 			var selfheihash []byte
 			if liheight == self_height {
 				selfheihash = pm.miner.State.CurrentBlockHash()

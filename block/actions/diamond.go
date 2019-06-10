@@ -97,7 +97,17 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	if !difok {
 		return fmt.Errorf("Diamond difficulty not meet the requirements.")
 	}
-	// 检查钻石状态
+	// 检查矿工状态
+	miner := state.Miner()
+	if miner == nil {
+		//panic("Action get state.Miner() cannot be nil !")
+		return nil
+	}
+	dmnumber, minerprevhash := miner.GetPrevDiamondHash()
+	if uint32(act.Number) != dmnumber+1 {
+		return fmt.Errorf("This block diamond number must be %d but got %d.", dmnumber+1, uint32(act.Number))
+	}
+	// 检查区块状态
 	blkptr := state.Block()
 	if blkptr == nil {
 		// 再交易池内临时性检查，直接返回正确
@@ -107,11 +117,6 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	if blk == nil {
 		panic("Action get state.Block() cannot be nil !")
 	}
-	miner := state.Miner()
-	if miner == nil {
-		panic("Action get state.Miner() cannot be nil !")
-	}
-
 	blkhei := blk.GetHeight()
 	// 检查区块高度值是否为5的倍数
 	// {BACKTOPOOL} 表示扔回交易池等待下个区块再次处理
@@ -128,10 +133,6 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	//}
 	// 矿工状态检查
 	blkhash := blk.HashFresh()
-	dmnumber, minerprevhash := miner.GetPrevDiamondHash()
-	if uint32(act.Number) != dmnumber+1 {
-		return fmt.Errorf("This block diamond number must be %d but got %d.", dmnumber+1, uint32(act.Number))
-	}
 	// 检查钻石是否是从上一个区块得来
 	if bytes.Compare(act.PrevHash, minerprevhash) != 0 {
 		return fmt.Errorf("Diamond prev hash must be <%s> but got <%s>.", hex.EncodeToString(minerprevhash), hex.EncodeToString(act.PrevHash))

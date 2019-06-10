@@ -418,3 +418,7 @@ func (trs *Transaction_2_Simple) GetFee() []byte {
 	feebts, _ := trs.Fee.Serialize()
 	return feebts
 }
+
+func (trs *Transaction_2_Simple) GetActions() []typesblock.Action{
+	return trs.Actions
+}

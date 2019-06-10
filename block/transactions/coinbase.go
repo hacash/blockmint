@@ -3,6 +3,7 @@ package transactions
 import (
 	"bytes"
 	"github.com/hacash/blockmint/block/actions"
+	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/state"
 	"math/big"
 
@@ -185,4 +186,8 @@ func (trs *Transaction_0_Coinbase) GetAddress() []byte {
 func (trs *Transaction_0_Coinbase) GetFee() []byte {
 	bts, _ := trs.TotalFee.Serialize()
 	return bts
+}
+
+func (trs *Transaction_0_Coinbase) GetActions() []block.Action{
+	return nil
 }

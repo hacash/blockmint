@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/hacash/blockmint/chain/state"
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner"
@@ -73,6 +74,9 @@ func StartHacash() {
 		}()
 	}
 
+	// 设置矿工状态
+	state.GetGlobalInstanceChainState().SetMiner(miner)
+
 	var ptcmng = p2p2.GetGlobalInstanceProtocolManager()
 	go ptcmng.Start(0)
 
@@ -85,6 +89,10 @@ func StartHacash() {
 		fmt.Println("❂ start diamond mining...")
 		go dm.Start(miner) // 开始挖掘
 	}
+
+
+
+
 
 	s := <-c
 	fmt.Println("Got signal:", s)

@@ -790,7 +790,6 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 
 	db := store.GetGlobalInstanceBlocksDataStore()
 	state := state.GetGlobalInstanceChainState()
-	state.SetMiner(this)
 	for {
 		_, blkbts, err := db.GetBlockBytesByHeight(current_height, true, true, 0)
 		if err != nil {

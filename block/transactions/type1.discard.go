@@ -404,3 +404,7 @@ func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) GetFee() []byte {
 	feebts, _ := trs.Fee.Serialize()
 	return feebts
 }
+
+func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) GetActions() []typesblock.Action{
+	return trs.Actions
+}

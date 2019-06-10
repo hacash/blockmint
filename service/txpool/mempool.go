@@ -139,8 +139,9 @@ func (this *MemTxPool) checkTx(tx block.Transaction) error {
 	// 尝试执行，检查余额
 	state_base := state.GetGlobalInstanceChainState()
 	state_temp_tx := state.NewTempChainState(state_base)
+	defer state_temp_tx.Destroy() // 销毁临时执行栈
+	state_temp_tx.SetMiner( state_base.Miner() ) // 矿工状态
 	runerr := tx.ChangeChainState(state_temp_tx)
-	state_temp_tx.Destroy() // 销毁临时执行栈
 	if runerr != nil {
 		return fmt.Errorf(runerr.Error()) // 执行失败
 	}
@@ -183,6 +184,8 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 		this.pickUpTx(hashnofee, true) // 删除旧的交易
 	}
 	// size change
+	// fmt.Println(hex.EncodeToString(hashnofee))
+	// fmt.Println( base58check.Encode(tx.GetAddress() ) )
 	this.ChangeCount(+1, txsize)
 	// append
 	if this.TxHead == nil {

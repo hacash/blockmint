@@ -33,4 +33,5 @@ type Transaction interface {
 	// 查询
 	GetAddress() []byte
 	GetFee() []byte
+	GetActions() []Action
 }

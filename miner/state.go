@@ -71,11 +71,11 @@ func (this *MinerState) SetNewBlock(block block.Block) {
 func (this *MinerState) TargetDifficultyCompact(height uint64, print *string) (*big.Int, uint32) {
 	// 预设难度
 	if height < config.ChangeDifficultyBlockNumber {
-		return difficulty.Uint32ToBig(LowestDifficultyCompact), LowestDifficultyCompact
+		return difficulty.Uint32ToBig(height, LowestDifficultyCompact), LowestDifficultyCompact
 	}
 	head := this.prevBlockHead
 	//targetdiff := difficulty.CalculateNextWorkTarget(
-	targetbig, targetdiff := difficulty.CalculateNextTargetDifficulty(
+	_, targetbig, targetdiff := difficulty.CalculateNextTarget(
 		head.GetDifficulty(),
 		height,
 		this.prev288BlockTimestamp,

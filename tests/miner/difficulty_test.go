@@ -5,12 +5,12 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/hacash/blockmint/miner/difficulty"
+	//"github.com/hacash/blockmint/miner/difficulty"
 	"math"
 	"math/big"
 	"os"
 	"path"
-	"strconv"
+	//"strconv"
 	"testing"
 )
 
@@ -54,18 +54,18 @@ func Test_d2(t *testing.T) {
 	compact := uint32(538673160)
 
 	fmt.Println(compact)
-
-	target := difficulty.CalculateNextWorkTarget(
-		compact,
-		2016,
-		1549704600, /*2019/2/9 17:30:00*/
-		1550050200, /*2019/2/13 17:30:00*/
-		15,
-		10,
-		nil,
-	)
-
-	fmt.Println(target)
+	//
+	//target := difficulty.CalculateNextWorkTarget(
+	//	compact,
+	//	2016,
+	//	1549704600, /*2019/2/9 17:30:00*/
+	//	1550050200, /*2019/2/13 17:30:00*/
+	//	15,
+	//	10,
+	//	nil,
+	//)
+	//
+	//fmt.Println(target)
 
 }
 
@@ -81,38 +81,38 @@ func Test_d3(t *testing.T) {
 
 func Test_t4(t *testing.T) {
 
-	bits, _ := strconv.ParseUint("172e6117", 16, 0)
-
-	hash, _ := hex.DecodeString("00000000000000000028197fec7637dd3ff7a0e2b1efa7917772b8c94a37acb2")
-	hash2, _ := hex.DecodeString("00000078ee442ce4177cf835217b6e9e4f55990467f5e1575868385c64d20c43")
-
-	hash3, _ := hex.DecodeString("000000009b7262315dbf071787ad3656097b892abffd1f95a1a022f896f533fc")
-	bits3, _ := strconv.ParseUint("1d00ffff", 16, 0)
-
-
-	cccbits := difficulty.BigToCompact( difficulty.HashToBig(&hash) )
-	cccbits2 := difficulty.BigToCompact( difficulty.HashToBig(&hash2) )
-	cccbits3 := difficulty.BigToCompact( difficulty.HashToBig(&hash3) )
+	//bits, _ := strconv.ParseUint("172e6117", 16, 0)
+	//
+	//hash, _ := hex.DecodeString("00000000000000000028197fec7637dd3ff7a0e2b1efa7917772b8c94a37acb2")
+	//hash2, _ := hex.DecodeString("00000078ee442ce4177cf835217b6e9e4f55990467f5e1575868385c64d20c43")
+	//
+	//hash3, _ := hex.DecodeString("000000009b7262315dbf071787ad3656097b892abffd1f95a1a022f896f533fc")
+	//bits3, _ := strconv.ParseUint("1d00ffff", 16, 0)
 
 
-	fmt.Println(bits)
-	fmt.Println(cccbits)
-	fmt.Println(cccbits2)
-
-	fmt.Println(cccbits3)
-	fmt.Println(bits3)
-
-
-	fmt.Println("----------")
-
-
-	hhhh := difficulty.BigToHash( difficulty.CompactToBig(483787182) )
-	bbbb := make([]byte, 32)
-	copy(bbbb[32-len(hhhh):], hhhh)
-
-	fmt.Println("00000000000000000028197fec7637dd3ff7a0e2b1efa7917772b8c94a37acb2")
-	fmt.Println(hex.EncodeToString(bbbb))
-
+	//cccbits := difficulty.BigToCompact( difficulty.HashToBig(&hash) )
+	//cccbits2 := difficulty.BigToCompact( difficulty.HashToBig(&hash2) )
+	//cccbits3 := difficulty.BigToCompact( difficulty.HashToBig(&hash3) )
+	//
+	//
+	//fmt.Println(bits)
+	//fmt.Println(cccbits)
+	//fmt.Println(cccbits2)
+	//
+	//fmt.Println(cccbits3)
+	//fmt.Println(bits3)
+	//
+	//
+	//fmt.Println("----------")
+	//
+	//
+	//hhhh := difficulty.BigToHash( difficulty.CompactToBig(483787182) )
+	//bbbb := make([]byte, 32)
+	//copy(bbbb[32-len(hhhh):], hhhh)
+	//
+	//fmt.Println("00000000000000000028197fec7637dd3ff7a0e2b1efa7917772b8c94a37acb2")
+	//fmt.Println(hex.EncodeToString(bbbb))
+	//
 
 
 }
@@ -168,7 +168,7 @@ func Test_t5(t *testing.T) {
 
 
 
-		targethash := Uint32ToHash(uint32(i))
+		targethash := Uint32ToHashBytes(uint32(i))
 		hexbts := hex.EncodeToString( targethash )
 		fmt.Printf("%-64s %-10d %s \n", hexbts, i, new(big.Int).SetBytes(reverse(targethash)).String())
 
@@ -363,6 +363,243 @@ func Test_t11(t *testing.T) {
 }
 
 
+
+
+
+
+func Test_t12(t *testing.T) {
+
+	hashs := []string{
+		"000000008949759533c7fd54385f529757bc6fd0f22eb27e340e0efd433b3caf",
+		"000000007949759533c7fd54385f529757bc6fd0f22eb27e340e0efd433b3caf",
+		"000000000949759533c7fd54385f529757bc6fd0f22eb27e340e0efd433b3caf",
+
+		//"000000000000000000000054385f529757bc6fd0f22eb27e340e0efd433b3caf",
+		//"0000000000000000000000000000009757bc6fd0f22eb27e340e0efd433b3caf",
+		//"0000000000000000000000000000000000000fd0f22eb27e340e0efd433b3caf",
+		//"0000000000000000000000000000000000000000002eb27e340e0efd433b3caf",
+		//"000000000000000000000000000000000000000000000000040e0efd433b3caf",
+		//"0000000000000000000000000000000000000000000000000000000d433b3caf",
+		//"00000000000000000000000000000000000000000000000000000000000b3caf",
+		//"00000000000000000000000000000000000000000000000000000000000000af",
+	}
+
+	for _, hash := range hashs {
+		hash_byte, _ := hex.DecodeString(hash)
+
+		fmt.Println("\n--------------", hash, "-------------")
+		fmt.Println("           byte:", len(hash_byte), hash_byte)
+
+		// HASH256 转 UINT32
+		//fmt.Println(hash_byte)
+		hash_bits := BytesToBits(hash_byte)
+		//fmt.Println(len(hash_bits), hash_bits)
+		headzero := 0
+		for _, v := range hash_bits {
+			if v!=0{
+				break
+			}else{
+				headzero++
+			}
+		}
+		hash_bits = append(hash_bits, bytes.Repeat([]byte{1}, 3*8 + 12)...)
+		//fmt.Println(len(hash_bits), hash_bits)
+		//fmt.Println(headzero, headzero+3*8)
+		hash_bits_2 := BitsToBytes(hash_bits[headzero: headzero+3*8])
+		//fmt.Println(len(hash_bits_2), hash_bits_2)
+		//
+		diff_byte := make([]byte, 4)
+		diff_byte[0] = 255 - uint8(headzero)
+		diff_byte[1] = hash_bits_2[0]
+		diff_byte[2] = hash_bits_2[1]
+		diff_byte[3] = hash_bits_2[2]
+
+		diff_number := binary.BigEndian.Uint32(diff_byte)
+		fmt.Println("diff_number:", diff_number)
+
+		// 还原
+		originally_bits_1 := bytes.Repeat([]byte{0}, 255 - int(diff_byte[0]))
+		//fmt.Println("originally_bits_1:", len(originally_bits_1), originally_bits_1)
+		originally_bits_2 := BytesToBits(hash_bits_2)
+		//fmt.Println("originally_bits_2:", len(originally_bits_2), originally_bits_2)
+		originally_yushu :=  256 - len(originally_bits_1) - len(originally_bits_2)
+		originally_bits_3 := []byte{}
+		if originally_yushu > 0 {
+			originally_bits_3 = bytes.Repeat([]byte{0}, originally_yushu)
+		}
+		originally_bits_bufs := bytes.NewBuffer(originally_bits_1)
+		originally_bits_bufs.Write(originally_bits_2)
+		originally_bits_bufs.Write(originally_bits_3)
+		originally_bits := originally_bits_bufs.Bytes()
+		//fmt.Println("originally_bits:", len(originally_bits), originally_bits)
+		originally_byte := BitsToBytes(originally_bits)[0:32]
+		fmt.Println("originally_byte:", len(originally_byte), originally_byte)
+
+		// 算力加倍
+		b1 := new(big.Int).SetBytes( originally_byte )
+		b2 := b1.Mul(b1, big.NewInt(3))
+		b3 := b2.Div(b2, big.NewInt(4))
+
+		fmt.Println("originally_byte:", "00", BigToHash(b3))
+
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// UINT32 转 HASH256
+	//var diffnumber uint32 = 3769272771
+	//var diffbyte []byte = make([]byte, 4)
+	//binary.BigEndian.PutUint32(diffbyte, diffnumber)
+	////
+	//var pow_num = uint8(diffbyte[0])
+	//var base_num
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
+func Test_t13(t *testing.T) {
+
+	cur_byte, _ := hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+	//cur_byte, _ := hex.DecodeString("000000008949759533c7fd54385f529757bc6fd0f22eb27e340e0efd433b3caf")
+	old := float64(1.0)
+
+	for i:=int64(0); i<70; i++ {
+
+		diffnum := HashToUint32(cur_byte)
+		cur_byte = Uint32ToHash(diffnum)
+		cur_big := new(big.Int).SetBytes(bytes.TrimLeft(cur_byte, string([]byte{0})))
+
+		// strconv.FormatUint(uint64(math.Pow(2.0, float64(i))), 10)
+		fmt.Println(i, new(big.Int).Exp(big.NewInt(10), big.NewInt(i), big.NewInt(0)), diffnum, old/float64(diffnum), cur_big, cur_byte)
+		old = float64(diffnum)
+
+		// 算力加倍
+		cur_big = cur_big.Mul(cur_big, big.NewInt(1))
+		cur_big = cur_big.Div(cur_big, big.NewInt(10))
+		// 算力增加固定数字
+		//subnum, _ := big.NewInt(0).SetString("335500000069848633007197573932045576244532214531591869071028845388905840640", 10)
+		//cur_big = cur_big.Sub(cur_big, subnum)
+		//fmt.Println(cur_big)
+
+		cur_byte = BigToHash(cur_big)
+		//fmt.Println(cur_byte)
+
+
+	}
+
+
+
+}
+
+
+
+
+
+
+
+
+
+func Uint32ToHash(diff_num uint32) []byte {
+
+	diff_byte := make([]byte, 4)
+	binary.BigEndian.PutUint32(diff_byte, diff_num)
+
+	// 还原
+	originally_bits_1 := bytes.Repeat([]byte{0}, 255 - int(diff_byte[0]))
+	//fmt.Println("originally_bits_1:", len(originally_bits_1), originally_bits_1)
+	originally_bits_2 := BytesToBits([]byte{diff_byte[1],diff_byte[2],diff_byte[3]})
+	//fmt.Println("originally_bits_2:", len(originally_bits_2), originally_bits_2)
+	originally_yushu :=  256 - len(originally_bits_1) - len(originally_bits_2)
+	originally_bits_3 := []byte{}
+	if originally_yushu > 0 {
+		originally_bits_3 = bytes.Repeat([]byte{0}, originally_yushu)
+	}
+	originally_bits_bufs := bytes.NewBuffer(originally_bits_1)
+	originally_bits_bufs.Write(originally_bits_2)
+	originally_bits_bufs.Write(originally_bits_3)
+	originally_bits := originally_bits_bufs.Bytes()
+	//fmt.Println("originally_bits:", len(originally_bits), originally_bits)
+	originally_byte := BitsToBytes(originally_bits)[0:32]
+	//fmt.Println("originally_byte:", len(originally_byte), originally_byte)
+	return originally_byte
+}
+
+
+
+func HashToUint32(hash_byte []byte) uint32 {
+
+	//hash_byte, _ := hex.DecodeString(hash)
+	//
+	//fmt.Println("\n--------------", hash, "-------------")
+	//fmt.Println("           byte:", len(hash_byte), hash_byte)
+
+	// HASH256 转 UINT32
+	//fmt.Println(hash_byte)
+	hash_bits := BytesToBits(hash_byte)
+	//fmt.Println(len(hash_bits), hash_bits)
+	headzero := 0
+	for _, v := range hash_bits {
+		if v!=0{
+			break
+		}else{
+			headzero++
+		}
+	}
+	hash_bits = append(hash_bits, bytes.Repeat([]byte{1}, 3*8 + 12)...)
+	//fmt.Println(len(hash_bits), hash_bits)
+	//fmt.Println(headzero, headzero+3*8)
+	hash_bits_2 := BitsToBytes(hash_bits[headzero: headzero+3*8])
+	//fmt.Println(len(hash_bits_2), hash_bits_2)
+	//
+	diff_byte := make([]byte, 4)
+	diff_byte[0] = 255 - uint8(headzero)
+	diff_byte[1] = hash_bits_2[0]
+	diff_byte[2] = hash_bits_2[1]
+	diff_byte[3] = hash_bits_2[2]
+
+	diff_number := binary.BigEndian.Uint32(diff_byte)
+	//fmt.Println("diff_number:", diff_number)
+
+	return diff_number
+}
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////
+
+
 func reverse(s []byte) []byte {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
@@ -372,16 +609,30 @@ func reverse(s []byte) []byte {
 
 
 
+func BigToHash(bignum *big.Int) []byte {
+	bigbytes := bignum.Bytes()
+	bytes32 := bytes.Repeat([]byte{0}, 32)
+	start := 32-len(bigbytes)
+	if start < 0 {
+		start = 0
+	}
+	copy(bytes32[start:], bigbytes)
+	return bytes32
+}
+
+
+
+
 //
 func Uint32ToHash256(number uint32) []byte {
-	resbytes := Uint32ToHash(number)
+	resbytes := Uint32ToHashBytes(number)
 	results := make([]byte, 32)
 	copy(results, resbytes)
 	return results
 }
 
 //
-func Uint32ToHash(number uint32) []byte {
+func Uint32ToHashBytes(number uint32) []byte {
 	numbts := make([]byte, 4)
 	binary.BigEndian.PutUint32(numbts, number)
 	//fmt.Println(numbts)

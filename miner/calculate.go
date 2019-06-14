@@ -26,8 +26,8 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 		panic("config.Config.Miner.Supervene value must in [0, 200]")
 	}
 	_, bigintdiff, _, _ := this.State.NextHeightTargetDifficultyCompact()
-	targethashdiff := difficulty.BigToHash256(bigintdiff)
 	blockheight := newBlock.GetHeight()
+	targethashdiff := difficulty.BigToHash(blockheight, bigintdiff)
 	minerloopnum := int(blockheight/50000 + 1)
 	if minerloopnum > 16 {
 		minerloopnum = 16 // 8年时间上升到16次

@@ -23,7 +23,7 @@ func CalculateNextTargetDifficulty(
 	powTargetTimespan := time.Second * time.Duration(eachblocktime*changeblocknum) // 一分钟一个快
 	// 如果新区块height不是 288 的整数倍，则不需要更新，仍然是最后一个区块的 bits
 	if currentHeight%changeblocknum != 0 {
-		return Uint32ToBig(currentBits), currentBits
+		return Uint32ToBig_v1(currentBits), currentBits
 	}
 	prev2016blockTimestamp := time.Unix(int64(prevTimestamp), 0)
 	lastBlockTimestamp := time.Unix(int64(lastTimestamp), 0)
@@ -37,12 +37,12 @@ func CalculateNextTargetDifficulty(
 		actualTimespan = powTargetTimespan * 4
 	}
 
-	lastTarget := Uint32ToBig(currentBits)
+	lastTarget := Uint32ToBig_v1(currentBits)
 	// 计算公式： target = lastTarget * actualTime / expectTime
 	newTarget := lastTarget.Mul(lastTarget, big.NewInt(int64(actualTimespan.Seconds())))
 	newTarget = newTarget.Div(newTarget, big.NewInt(int64(powTargetTimespan.Seconds())))
 
-	nextBits := BigToUint32(newTarget)
+	nextBits := BigToUint32_v1(newTarget)
 
 	if printInfo != nil {
 		actual_t, target_t := uint64(actualTimespan.Seconds()), uint64(powTargetTimespan.Seconds())
@@ -60,25 +60,25 @@ func CalculateNextTargetDifficulty(
 	return newTarget, nextBits
 }
 
-func Uint32ToBig(number uint32) *big.Int {
-	resbytes := Uint32ToHash256(number)
+func Uint32ToBig_v1(number uint32) *big.Int {
+	resbytes := Uint32ToHash256_v1(number)
 	return new(big.Int).SetBytes(resbytes)
 }
 
 
-func HashToBig(hash []byte) *big.Int {
+func HashToBig_v1(hash []byte) *big.Int {
 	return new(big.Int).SetBytes(hash)
 }
 
-func Uint32ToHash256(number uint32) []byte {
-	resbytes := Uint32ToHash(number)
+func Uint32ToHash256_v1(number uint32) []byte {
+	resbytes := Uint32ToHash_v1(number)
 	results := bytes.Repeat([]byte{0}, 32)
 	copy(results, resbytes)
 	return results
 }
 
 //
-func Uint32ToHash(number uint32) []byte {
+func Uint32ToHash_v1(number uint32) []byte {
 	numbts := make([]byte, 4)
 	binary.BigEndian.PutUint32(numbts, number)
 	//fmt.Println(numbts)
@@ -91,7 +91,7 @@ func Uint32ToHash(number uint32) []byte {
 	return resbytes
 }
 
-func BigToHash256(bignum *big.Int) []byte {
+func BigToHash256_v1(bignum *big.Int) []byte {
 	bigbytes := bignum.Bytes()
 	bytes32 := bytes.Repeat([]byte{0}, 32)
 	start := 32-len(bigbytes)
@@ -102,14 +102,14 @@ func BigToHash256(bignum *big.Int) []byte {
 	return bytes32
 }
 
-func BigToUint32(bignum *big.Int) uint32 {
+func BigToUint32_v1(bignum *big.Int) uint32 {
 
-	bytes32 := BigToHash256(bignum)
-	return Hash256ToUint32( bytes32 )
+	bytes32 := BigToHash256_v1(bignum)
+	return Hash256ToUint32_v1( bytes32 )
 }
 
 //
-func Hash256ToUint32(hash []byte) uint32 {
+func Hash256ToUint32_v1(hash []byte) uint32 {
 	if len(hash) != 32 {
 		panic(fmt.Sprintf("hash length not be %d", len(hash)))
 	}

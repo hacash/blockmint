@@ -20,6 +20,7 @@ import (
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/service"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -36,6 +37,10 @@ var (
 )
 
 type HacashMiner struct {
+
+	PowMiningWorkHashPower *big.Int // 哈希率，算力值
+	PowMiningWorkTime uint64 // 哈希率，算力值
+
 	State *MinerState
 
 	TxPool service.TxPool
@@ -105,8 +110,16 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 	miner.miningStatusCh = make(chan bool, 200)
 	miner.insertBlocksCh = make(chan *DiscoveryNewBlockEvent, insertBlocksChSize)
 	miner.CurrentPenddingBlock = nil
+	miner.PowMiningWorkHashPower = big.NewInt(0) // 算力
+	miner.PowMiningWorkTime = 0
 
 	return miner
+}
+
+
+// 获取实时算力值，哈希率
+func (this *HacashMiner) GetHashPower() {
+
 }
 
 /////////////  start interface  /////////////

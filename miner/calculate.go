@@ -43,6 +43,7 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 	var successMsgi = uint8(0)
 	var stopsign *byte = new(byte)
 	*stopsign = 0
+	this.PowMiningWorkTime += 1 // 算力计数
 	for i := uint8(0); i < uint8(supercpu); i++ {
 		minermsg[15] = i
 		coinbase.Message = fields.TrimString16(minermsg)
@@ -55,12 +56,14 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 		go func(i uint8) {
 			//fmt.Println([]byte{i})
 			// 开始挖矿
-			nonce_bytes := x16rs.MinerNonceHashX16RS(minerloopnum, stopsign, targethashdiff, basestuff)
+			success, nonce_bytes := x16rs.MinerNonceHashX16RS(minerloopnum, stopsign, targethashdiff, basestuff)
 			nonce := binary.BigEndian.Uint32(nonce_bytes)
 			this.Log.Info("end supercpu", i, nonce)
 			//fmt.Println("end supercpu", i, nonce)
-			if nonce > 0 {
+			// this.PowMiningWorkHashPower = new(big.Int).Add(this.PowMiningWorkHashPower, big.NewInt(int64(nonce))) // 统计算力
+			if success && nonce > 0 {
 				// 成功挖出
+				// fmt.Println("success && nonce > 0")
 				successMsgi = i
 				successch <- nonce
 			}

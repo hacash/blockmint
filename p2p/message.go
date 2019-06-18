@@ -15,6 +15,7 @@ type handShakeStatusData struct {
 	BlockVersion    uint8
 	TransactionType uint8
 	ActionKind      uint16
+	RepairVersion   uint16
 
 	// status
 	CurrentBlockHeight uint64
@@ -28,6 +29,7 @@ func CreateHandShakeStatusData() handShakeStatusData {
 		BlockVersion:       1, // 不匹配的版本，不相连接
 		TransactionType:    2, // 不匹配的版本，不相连接
 		ActionKind:         6, // 不匹配的版本，不相连接
+		RepairVersion:      1, // 不匹配的版本，不相连接
 		CurrentBlockHeight: blockminer.State.CurrentHeight(),
 		CurrentBlockHash:   blockminer.State.CurrentBlockHash(),
 	}
@@ -53,6 +55,9 @@ func (this *handShakeStatusData) Confirm(other *handShakeStatusData) error {
 	}
 	if this.ActionKind != other.ActionKind {
 		return fmt.Errorf("ActionKind is difference")
+	}
+	if this.RepairVersion != other.RepairVersion {
+		return fmt.Errorf("RepairVersion is difference")
 	}
 	return nil
 }

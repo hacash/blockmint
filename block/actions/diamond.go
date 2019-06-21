@@ -78,11 +78,6 @@ func (elm *Action_4_DiamondCreate) RequestSignAddrs() [][]byte {
 }
 
 func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperation) error {
-	// 查询钻石是否已经存在
-	hasaddr := state.Diamond(act.Diamond)
-	if hasaddr != nil {
-		return fmt.Errorf("Diamond <%s> already exist.", string(act.Diamond))
-	}
 	// 检查钻石挖矿计算
 	diamond_resbytes, diamond_str := x16rs.Diamond(uint32(act.Number), act.PrevHash, act.Nonce, act.Address)
 	diamondstrval, isdia := x16rs.IsDiamondHashResultString(diamond_str)
@@ -122,6 +117,11 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	// {BACKTOPOOL} 表示扔回交易池等待下个区块再次处理
 	if blkhei % 5 != 0 {
 		return fmt.Errorf("{BACKTOPOOL} Diamond must be in block height multiple of 5.")
+	}
+	// 查询钻石是否已经存在
+	hasaddr := state.Diamond(act.Diamond)
+	if hasaddr != nil {
+		return fmt.Errorf("Diamond <%s> already exist.", string(act.Diamond))
 	}
 	// 检查一个区块只能包含一枚钻石
 	if blk.CheckHasHaveDiamond(diamondstrval) {

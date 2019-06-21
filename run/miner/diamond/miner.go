@@ -24,7 +24,8 @@ type ReStartMinerStat struct {
 type DiamondMiner struct {
 	blkminer *miner.HacashMiner
 
-	// 有几个地址就开几个线程
+	// 有几个地址，每次随机取一个
+	supervene   uint32 // 多核支持，多少核心同时挖掘
 	rewards     []fields.Address
 	feeAccount  *account.Account // 手续费地址
 
@@ -49,6 +50,11 @@ func (dm *DiamondMiner) Start(blkminer *miner.HacashMiner) error {
 	if len(feePassword) < 6 { // 手续费地址私钥
 		panic(fmt.Sprintf("Fee Secret Must."))
 	}
+	supervene := config.Config.DiamondMiner.Supervene
+	if supervene > 200 {
+		panic(fmt.Sprintf("Config.DiamondMiner.Supervene number must be 1 to 200."))
+	}
+	dm.supervene = uint32(supervene)
 	// 手续费账户
 	dm.feeAccount = account.CreateAccountByPassword(feePassword)
 	// 钻石收取账户
@@ -87,35 +93,38 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 	successCh := make(chan []byte)
 	stopMark := byte(0)
 
-	supervene := len(dm.rewards)
-
-	fmt.Printf("--❂--❂-- do diamond mining, supervene:%d, number:%d, prevhash:<%s>, feeaddr:%s   \n", supervene, stat.Number+1, hex.EncodeToString(stat.PrevHash), dm.feeAccount.Address.ToReadable())
-
-	for i, addr := range dm.rewards {
+ 	// 钻石接受地址
+	target_addr := dm.GetRandomMinerRewardAddress()
+	target_addr_readable := target_addr.ToReadable()
+	nonce_segment := 4294967294 / dm.supervene // 分片
+	fmt.Printf("--❂--❂-- do diamond mining, supervene:%d, number:%d, prevhash:<%s>, feeaddr:%s, rewardaddr:%s\n", dm.supervene, stat.Number+1, hex.EncodeToString(stat.PrevHash), dm.feeAccount.Address.ToReadable(), target_addr_readable)
+	for i:=uint32(0); i<dm.supervene; i++ {
 		// 开启挖矿线程
-		go func(i int, addr fields.Address) {
-			nonce, diastr := x16rs.MinerHacashDiamond(int(stat.Number+1), &stopMark, stat.PrevHash, addr)
+		go func(i uint32, target_addr fields.Address) {
+			nc_start := nonce_segment * i
+			nc_end  := nc_start + nonce_segment
+			nonce, diastr := x16rs.MinerHacashDiamond(nc_start, nc_end, int(stat.Number+1), &stopMark, stat.PrevHash, target_addr)
 			//fmt.Println(hex.EncodeToString(nonce), diastr, addr.ToReadable())
-			if dm.CheckDiamond(stat, nonce, addr, diastr) {
+			if dm.CheckDiamond(stat, nonce, target_addr, diastr) {
 				if successAddr == nil {
 					// 挖掘成功
-					fmt.Printf("◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ 【%s】 number:%d, prevhash:<%s>, nonce:<%s>, addr:%s,  mining successfully!\n", diastr, stat.Number+1, hex.EncodeToString(stat.PrevHash), hex.EncodeToString(nonce), addr.ToReadable())
-					successAddr = &addr
+					fmt.Printf("◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈◈ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ ❂ 【%s】 number:%d, prevhash:<%s>, nonce:<%s>, addr:%s,  mining successfully!\n", diastr, stat.Number+1, hex.EncodeToString(stat.PrevHash), hex.EncodeToString(nonce), target_addr_readable)
+					successAddr = &target_addr
 					successDiamond = string([]byte(diastr)[10:])
 					stopMark = 1 // 停止挖掘
 					successCh <- nonce
 				} else {
-					fmt.Printf("--❂--❂-- [%d] miner '%s' finish out.\n", i, addr.ToReadable())
+					fmt.Printf("--❂--❂-- [%d] miner '%s' finish out.\n", i, target_addr_readable)
 				}
 			} else {
 				if stopMark > 0 {
 					// fmt.Printf("[%d] miner '%s' break out.\n", i, addr.ToReadable())
 				} else {
-					fmt.Printf("--❂--❂-- [%d] miner '%s' over max nonce.\n", i, addr.ToReadable())
+					fmt.Printf("--❂--❂-- [%d] miner '%s' over max nonce.\n", i, target_addr_readable)
 				}
 
 			}
-		}(i, addr)
+		}(i, target_addr)
 	}
 	// 停止
 	go func() {

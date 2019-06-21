@@ -50,6 +50,7 @@ var Config = struct {
 	}
 
 	DiamondMiner struct {
+		Supervene   uint64   // 启动多线程挖矿，指定线程数量（数量必须小于200）
 		Feepassword string   `default:""`
 		Rewards     []string //
 		// Supervene     uint64   // 启动多线程挖矿，指定线程数量（数量必须小于200）
@@ -90,6 +91,10 @@ func LoadConfigFile() {
 		panic("Config.Miner.Minfeeratio value format error")
 	}
 	MinimalFeePurity = feep
+	// diamond
+	if Config.DiamondMiner.Supervene <= 0 {
+		Config.DiamondMiner.Supervene = 1
+	}
 }
 
 func strnumdeal(in string) string {

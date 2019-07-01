@@ -56,7 +56,7 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 		go func(i uint8) {
 			//fmt.Println([]byte{i})
 			// 开始挖矿
-			success, nonce_bytes := x16rs.MinerNonceHashX16RS(minerloopnum, stopsign, targethashdiff, basestuff)
+			success, nonce_bytes, _ := x16rs.MinerNonceHashX16RS(minerloopnum, false, stopsign, 1, 4294967294, targethashdiff, basestuff)
 			nonce := binary.BigEndian.Uint32(nonce_bytes)
 			this.Log.Info("end supercpu", i, nonce)
 			//fmt.Println("end supercpu", i, nonce)

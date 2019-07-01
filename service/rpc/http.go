@@ -117,13 +117,7 @@ func getMiao(minerblkhead block.Block, prev288height uint64, blknum uint64) uint
 }
 
 func dealQuery(response http.ResponseWriter, request *http.Request) {
-	request.ParseForm()
-	params := make(map[string]string, 0)
-	for k, v := range request.Form {
-		//fmt.Println("key:", k)
-		//fmt.Println("val:", strings.Join(v, ""))
-		params[k] = strings.Join(v, "")
-	}
+	params := parseRequestQuery(request)
 	if _, ok := params["action"]; !ok {
 		response.Write([]byte("must action"))
 		return
@@ -148,6 +142,17 @@ func dealOperate(response http.ResponseWriter, request *http.Request) {
 	routeOperateRequest(response, binary.BigEndian.Uint32(bodybytes[0:4]), bodybytes[4:])
 }
 
+func parseRequestQuery(request *http.Request) map[string]string {
+	request.ParseForm()
+	params := make(map[string]string, 0)
+	for k, v := range request.Form {
+		//fmt.Println("key:", k)
+		//fmt.Println("val:", strings.Join(v, ""))
+		params[k] = strings.Join(v, "")
+	}
+	return params
+}
+
 func RunHttpRpcService() {
 
 	initRoutes()
@@ -155,6 +160,8 @@ func RunHttpRpcService() {
 	http.HandleFunc("/", dealHome)           //设置访问的路由
 	http.HandleFunc("/query", dealQuery)     //设置访问的路由
 	http.HandleFunc("/operate", dealOperate) //设置访问的路由
+
+	http.HandleFunc("/minerpool/statistics", minerPoolStatistics) //设置访问的路由
 
 	port := config.Config.P2p.Port.Rpc
 

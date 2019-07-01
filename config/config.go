@@ -59,6 +59,12 @@ var Config = struct {
 	GpuMiner struct {
 		Address string `default:""` // 矿工地址
 	}
+
+	MiningPool struct {
+		StatisticsDir string `default:""` // 记录统计地址
+		Markword      string // 矿工寄语/标识，例如 pool.HCX （不超过8位）
+		AddressMax    uint64 // 记录矿工地址数量上限  默认 200
+	}
 }{}
 
 func LoadConfigFile() {
@@ -94,6 +100,9 @@ func LoadConfigFile() {
 	// diamond
 	if Config.DiamondMiner.Supervene <= 0 {
 		Config.DiamondMiner.Supervene = 1
+	}
+	if Config.MiningPool.AddressMax == 0 {
+		Config.MiningPool.AddressMax = 200 // 默认值
 	}
 }
 

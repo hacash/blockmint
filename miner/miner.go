@@ -37,9 +37,8 @@ var (
 )
 
 type HacashMiner struct {
-
 	PowMiningWorkHashPower *big.Int // 哈希率，算力值
-	PowMiningWorkTime uint64 // 哈希率，算力值
+	PowMiningWorkTime      uint64   // 哈希率，算力值
 
 	State *MinerState
 
@@ -115,7 +114,6 @@ func NewHacashMiner(logger log.Logger) *HacashMiner {
 
 	return miner
 }
-
 
 // 获取实时算力值，哈希率
 func (this *HacashMiner) GetHashPower() {
@@ -239,8 +237,43 @@ func (this *HacashMiner) doMining() error {
 	var rewardAddr *fields.Address
 	var rewardAddrReadble string
 	var targetFinishHash []byte
-	// 是否为多线程挖矿
-	if config.Config.Miner.Supervene > 0 {
+
+	//fmt.Println(config.Config.MiningPool.StatisticsDir)
+	// 是否为矿池
+	if strings.Compare(config.Config.MiningPool.StatisticsDir, "") != 0 {
+		// 发送新区块给矿池
+		plm := GetGlobalInstanceMiningPool()
+		ncm := &NewCreateBlock{
+			newBlock,
+			coinbase,
+		}
+		// 清空队列
+		for {
+			select {
+			case <-plm.CalcSuccessBlockCh:
+			default:
+				goto CLEAN_CalcSuccessBlockCh
+			}
+		}
+	CLEAN_CalcSuccessBlockCh:
+		// 通知挖新区块
+		plm.NewCreateBlockCh <- *ncm
+		// 等待矿池的返回
+		select {
+		case stat := <-this.miningStatusCh: // 新区快到来
+			if stat == false {
+				this.reputAllTxsFromBlock(newBlock)                        // 重新放入所有交易到交易池
+				return fmt.Errorf("mining break by set sign stoping chan") // 停止挖矿
+			}
+		// 矿池挖出
+		case <-plm.CalcSuccessBlockCh:
+			this.Log.Info("find a valid nonce for block", "height", newBlock.GetHeight())
+			targetFinishHash = newBlock.Hash()
+			goto MINING_SUCCESS
+		}
+
+		// 是否为多线程挖矿
+	} else if config.Config.Miner.Supervene > 0 {
 		// 多线程并发挖矿
 		_, rewardAddrReadble = this.setMinerForCoinbase(coinbase, false)
 		newBlock = this.calculateNextBlock(newBlock, coinbase)

@@ -32,9 +32,6 @@ func main() {
 	//Test_address_balance()
 	//Test_allAddressDiamonds()
 
-
-	
-
 	StartHacash()
 
 }
@@ -62,19 +59,19 @@ func StartHacash() {
 	// http 接口
 	go rpc.RunHttpRpcService()
 
-	var miner = miner.GetGlobalInstanceHacashMiner()
-	go miner.Start()
+	var minerobj = miner.GetGlobalInstanceHacashMiner()
+	go minerobj.Start()
 	if config.Config.Miner.Forcestart == "true" {
 		go func() {
 			fmt.Println("HacashMiner start mining in force on start ...")
 			t := time.NewTimer(5 * time.Second)
 			<-t.C
-			miner.StartMining() // 开始挖矿
+			minerobj.StartMining() // 开始挖矿
 		}()
 	}
 
 	// 设置矿工状态
-	state.GetGlobalInstanceChainState().SetMiner(miner)
+	state.GetGlobalInstanceChainState().SetMiner(minerobj)
 
 	var ptcmng = p2p2.GetGlobalInstanceProtocolManager()
 	go ptcmng.Start(0)
@@ -86,15 +83,14 @@ func StartHacash() {
 	if len(config.Config.DiamondMiner.Feepassword) > 6 {
 		dm := diamond.NewDiamondMiner()
 		fmt.Println("❂ start diamond mining...")
-		go dm.Start(miner) // 开始挖掘
+		go dm.Start(minerobj) // 开始挖掘
 	}
 
-
-
-
+	// 矿池测试
+	miningpool := miner.GetGlobalInstanceMiningPool()
+	go miningpool.Start() // 启动
 
 	s := <-c
 	fmt.Println("Got signal:", s)
 
 }
-

@@ -111,7 +111,7 @@ type MiningPool struct {
 	currentNewCreateBlock      *NewCreateBlock // 正在挖掘的区块
 	prevSuccessBlockHash       []byte
 
-	allActiveConns sync.Map // 全部客户端连接
+	AllActiveConns sync.Map // 全部客户端连接
 
 	autoincrementMiningCoinbaseStuffNum uint64 // 自增的挖矿序号
 	prevPowerStatisticsBlockHeadMeta    []byte // 89 上一个区块的区块头，用来统计算力

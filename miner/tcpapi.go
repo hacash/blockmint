@@ -24,7 +24,7 @@ func (mp *MiningPool) startApiListen() error {
 
 // 发送挖矿信息
 func (mp *MiningPool) sendMiningStuffToAllNode(ncb *NewCreateBlock) error {
-	mp.allActiveConns.Range(func(key interface{}, val interface{}) bool {
+	mp.AllActiveConns.Range(func(key interface{}, val interface{}) bool {
 		client := key.(*Client)
 		mp.sendMiningStuff(client, ncb)
 		//client.Close()
@@ -106,7 +106,7 @@ func handle(mp *MiningPool, conn net.Conn) {
 		MiningCoinbaseStuffNum: 0,
 		RewordAddress:          nil,
 	}
-	mp.allActiveConns.Store(client, 1)
+	mp.AllActiveConns.Store(client, 1)
 	// 使用 bufio 标准库提供的缓冲区功能
 	reader := bufio.NewReader(conn)
 	for {
@@ -118,7 +118,7 @@ func handle(mp *MiningPool, conn net.Conn) {
 			// 通常遇到的错误是连接中断或被关闭，用io.EOF表示
 			if err == io.EOF {
 				// log.Println("connection close")
-				mp.allActiveConns.Delete(conn)
+				mp.AllActiveConns.Delete(conn)
 			} else {
 				log.Println(err)
 			}
@@ -133,7 +133,7 @@ func handle(mp *MiningPool, conn net.Conn) {
 			addr, err := fields.CheckReadableAddress(string(msgbytes[1:]))
 			if err != nil {
 				log.Println("connection error close.")
-				mp.allActiveConns.Delete(conn)
+				mp.AllActiveConns.Delete(conn)
 				return
 			}
 			// 判断是否已经满员

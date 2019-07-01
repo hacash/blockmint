@@ -86,9 +86,11 @@ func StartHacash() {
 		go dm.Start(minerobj) // 开始挖掘
 	}
 
-	// 矿池测试
-	miningpool := miner.GetGlobalInstanceMiningPool()
-	go miningpool.Start() // 启动
+	if len(config.Config.MiningPool.StatisticsDir) > 0 {
+		// 矿池启动
+		miningpool := miner.GetGlobalInstanceMiningPool()
+		go miningpool.Start() // 启动
+	}
 
 	s := <-c
 	fmt.Println("Got signal:", s)

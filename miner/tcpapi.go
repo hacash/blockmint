@@ -12,6 +12,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"time"
 )
 
 // 启动 tcp
@@ -63,6 +64,22 @@ func (mp *MiningPool) sendMiningStuff(client *Client, ncb *NewCreateBlock) error
 	return nil
 }
 
+// 定时移除非活跃地址
+func (mp *MiningPool) removeDeadConn() {
+	for {
+		time.Sleep(time.Minute * 5)
+		nnn := time.Now()
+		mp.AllActiveConns.Range(func(key interface{}, val interface{}) bool {
+			client := key.(*Client)
+			if client.ActiveTimestamp.Unix()-nnn.Unix() > 7*60*1000 {
+				client.Conn.Close()           // 关闭
+				mp.AllActiveConns.Delete(key) // 移除
+			}
+			return true
+		})
+	}
+}
+
 //////////////////////////////////////////////////////
 
 // 客户端连接的抽象
@@ -73,6 +90,8 @@ type Client struct {
 	MiningCoinbaseStuffNum uint64
 	// 奖励地址
 	RewordAddress *fields.Address
+	// 上次活跃的时间戳
+	ActiveTimestamp time.Time
 }
 
 func listenAndServe(mp *MiningPool, address string) {
@@ -105,6 +124,7 @@ func handle(mp *MiningPool, conn net.Conn) {
 		Conn:                   conn,
 		MiningCoinbaseStuffNum: 0,
 		RewordAddress:          nil,
+		ActiveTimestamp:        time.Now(),
 	}
 	mp.AllActiveConns.Store(client, 1)
 	// 使用 bufio 标准库提供的缓冲区功能
@@ -124,6 +144,13 @@ func handle(mp *MiningPool, conn net.Conn) {
 			}
 			return
 		}
+
+		if msgbytes[0] == 11 {
+			// 心跳活跃时间
+			client.ActiveTimestamp = time.Now()
+			continue
+		}
+
 		//fmt.Println(msgbytes)
 		//fmt.Println(string(msgbytes))
 

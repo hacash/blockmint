@@ -240,7 +240,7 @@ func (this *HacashMiner) doMining() error {
 
 	//fmt.Println(config.Config.MiningPool.StatisticsDir)
 	// 是否为矿池
-	if strings.Compare(config.Config.MiningPool.StatisticsDir, "") != 0 {
+	if len(config.Config.MiningPool.StatisticsDir) > 0 {
 		// 发送新区块给矿池
 		plm := GetGlobalInstanceMiningPool()
 		ncm := &NewCreateBlock{

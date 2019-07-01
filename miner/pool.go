@@ -177,10 +177,12 @@ func (mp *MiningPool) Start() error {
 	}
 	// 接口监听
 	go mp.startApiListen()
-	// 区块创建
+	// 区块创建消息监听
 	go mp.createBlockLoop()
 	// 定时保存数据到磁盘
 	go mp.storeDataLoop()
+	// 定时关闭移除假死连接
+	go mp.removeDeadConn()
 
 	return nil
 }

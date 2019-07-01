@@ -244,15 +244,18 @@ func (mp *MiningPool) createBlockLoop() {
 	for {
 		ncb := <-mp.NewCreateBlockCh
 		nhei := ncb.Block.GetHeight()
+		// 记录上一个区块头
+		if mp.currentNewCreateBlock != nil {
+			if mp.currentNewCreateBlock.Block.GetHeight() == nhei {
+				continue // 重复的区块，下次再说
+			}
+			// 用来统计算力
+			mp.prevPowerStatisticsBlockHeadMeta = blocks.CalculateBlockHashBaseStuff(mp.currentNewCreateBlock.Block)
+		}
 		// 记录挖出区块总奖励
 		if mp.currentPoolPeriodStateData != nil &&
 			bytes.Compare(mp.prevSuccessBlockHash, ncb.Block.GetPrevHash()) == 0 {
 			mp.currentPoolPeriodStateData.SuccessRewards += uint32(coin.BlockCoinBaseRewardNumber(nhei - 1))
-		}
-		// 记录上一个区块头
-		if mp.currentNewCreateBlock != nil {
-			// 用来统计算力
-			mp.prevPowerStatisticsBlockHeadMeta = blocks.CalculateBlockHashBaseStuff(mp.currentNewCreateBlock.Block)
 		}
 		// 重置统计数据
 		newdataidx := nhei / (288 * 7)

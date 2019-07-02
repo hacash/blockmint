@@ -71,7 +71,7 @@ func (mp *MiningPool) removeDeadConn() {
 		nnn := time.Now()
 		mp.AllActiveConns.Range(func(key interface{}, val interface{}) bool {
 			client := key.(*Client)
-			if client.ActiveTimestamp.Unix()-nnn.Unix() > 7*60*1000 {
+			if nnn.Unix()-client.ActiveTimestamp.Unix() > 7*60*1000 {
 				client.Conn.Close()           // 关闭
 				mp.AllActiveConns.Delete(key) // 移除
 			}

@@ -2,7 +2,6 @@ package miner
 
 import (
 	"bufio"
-	hex "encoding/hex"
 	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/fields"
@@ -207,7 +206,7 @@ func handle(mp *MiningPool, conn net.Conn) {
 					stuff[82] = msgbytes[91+i*4+3]
 					hash := blocks.CalculateBlockHashByStuff(int(msgbytes[1]), stuff)
 					// 增加算力统计
-					powval := addMinerPowerValue(hash, mp.currentPoolPeriodStateData, client)
+					addMinerPowerValue(hash, mp.currentPoolPeriodStateData, client)
 					//fmt.Println(">>>>>>>>>>>>>>>>>>>>> msgbytes[0] == 3")
 					//fmt.Println("addMinerPowerValue", client.RewordAddress.ToReadable(), powval.String(), hex.EncodeToString(hash))
 				}

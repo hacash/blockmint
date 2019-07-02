@@ -209,7 +209,7 @@ func handle(mp *MiningPool, conn net.Conn) {
 					// 增加算力统计
 					powval := addMinerPowerValue(hash, mp.currentPoolPeriodStateData, client)
 					//fmt.Println(">>>>>>>>>>>>>>>>>>>>> msgbytes[0] == 3")
-					fmt.Println("addMinerPowerValue", client.RewordAddress.ToReadable(), powval.String(), hex.EncodeToString(hash))
+					//fmt.Println("addMinerPowerValue", client.RewordAddress.ToReadable(), powval.String(), hex.EncodeToString(hash))
 				}
 			}
 

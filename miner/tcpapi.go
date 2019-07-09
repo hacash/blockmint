@@ -5,19 +5,22 @@ import (
 	"fmt"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/fields"
+	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/miner/difficulty"
 	"github.com/hacash/x16rs"
 	"io"
 	"log"
 	"math/big"
 	"net"
+	"strconv"
 	"time"
 )
 
 // 启动 tcp
 func (mp *MiningPool) startApiListen() error {
 
-	listenAndServe(mp, ":3339")
+	portstr := strconv.FormatUint(config.Config.MiningPool.Port, 10)
+	listenAndServe(mp, ":"+portstr)
 
 	return nil
 }
@@ -70,7 +73,7 @@ func (mp *MiningPool) removeDeadConn() {
 		nnn := time.Now()
 		mp.AllActiveConns.Range(func(key interface{}, val interface{}) bool {
 			client := key.(*Client)
-			if nnn.Unix()-client.ActiveTimestamp.Unix() > 7*60*1000 {
+			if nnn.Unix()-client.ActiveTimestamp.Unix() > 7*60 {
 				client.Conn.Close()           // 关闭
 				mp.AllActiveConns.Delete(key) // 移除
 			}

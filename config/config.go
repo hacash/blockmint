@@ -64,6 +64,7 @@ var Config = struct {
 		StatisticsDir string `default:""` // 记录统计地址
 		Markword      string // 矿工寄语/标识，例如 pool.HCX （不超过8位）
 		AddressMax    uint64 // 记录矿工地址数量上限  默认 200
+		Port          uint64 // 矿池服务监听端口
 	}
 }{}
 
@@ -103,6 +104,9 @@ func LoadConfigFile() {
 	}
 	if Config.MiningPool.AddressMax == 0 {
 		Config.MiningPool.AddressMax = 200 // 默认值
+	}
+	if Config.MiningPool.Port == 0 {
+		Config.MiningPool.Port = 3339 // 默认值 3339
 	}
 }
 

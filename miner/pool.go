@@ -302,6 +302,7 @@ func (mp *MiningPool) gotSuccessBlock(client *Client, success x16rs.MiningSucces
 	//fmt.Println(curdiff, targetDifficulty)
 	//fmt.Println(hx)
 	//fmt.Println(difficulty.Uint32ToHash(cncb.Block.GetHeight(), cncb.Block.GetDifficulty()))
+	redouble := int64(1) // 算力倍数
 	if curdiff.Cmp(targetDifficultyHash) == -1 {
 		log.Println("mining pool find a valid nonce for block", "height", cncb.Block.GetHeight())
 		// OK !!!!!!!!!!!!!!!
@@ -311,12 +312,15 @@ func (mp *MiningPool) gotSuccessBlock(client *Client, success x16rs.MiningSucces
 		mp.prevSuccessBlockHash = hx
 		// 加入
 		mp.CalcSuccessBlockCh <- success
+		// 算力记三倍
+		redouble = 3
 	} else {
+		redouble = 1
 		log.Println("hx not ok", cncb.Block.GetHeight(), hex.EncodeToString(hx))
 	}
 
-	// 增加算力统计
-	addMinerPowerValue(hx, mp.currentPoolPeriodStateData, client)
+	// 增加算力统计，挖出区块加上三倍算力
+	addMinerPowerValue(hx, mp.currentPoolPeriodStateData, client, redouble)
 }
 
 //////////////////////////////////

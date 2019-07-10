@@ -209,7 +209,7 @@ func handle(mp *MiningPool, conn net.Conn) {
 					stuff[82] = msgbytes[91+i*4+3]
 					hash := blocks.CalculateBlockHashByStuff(int(msgbytes[1]), stuff)
 					// 增加算力统计
-					addMinerPowerValue(hash, mp.currentPoolPeriodStateData, client)
+					addMinerPowerValue(hash, mp.currentPoolPeriodStateData, client, 1)
 					//fmt.Println(">>>>>>>>>>>>>>>>>>>>> msgbytes[0] == 3")
 					//fmt.Println("addMinerPowerValue", client.RewordAddress.ToReadable(), powval.String(), hex.EncodeToString(hash))
 				}
@@ -225,11 +225,15 @@ func handle(mp *MiningPool, conn net.Conn) {
 
 /////////////////////////////////////
 
-func addMinerPowerValue(hash []byte, datacount *PoolPeriodStateData, client *Client) *big.Int {
-
+// 增加算力统计，挖出区块的加三倍计算
+func addMinerPowerValue(hash []byte, datacount *PoolPeriodStateData, client *Client, redouble int64) *big.Int {
+	if redouble < 1 || redouble > 3 {
+		redouble = 1 // 合理的取值范围： 1,2,3
+	}
 	if datacount != nil {
 		key := client.RewordAddress.ToReadable()
 		powvalue := x16rs.CalculateHashPowerValue(hash)
+		powvalue = powvalue.Mul(powvalue, big.NewInt(redouble)) // 倍数
 		oldvalue, ld := datacount.MiningPowerStatistics.LoadOrStore(key, powvalue)
 		if ld { // 增加
 			powvaluetotal := new(big.Int).Add(powvalue, oldvalue.(*big.Int))

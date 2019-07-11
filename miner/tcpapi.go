@@ -227,8 +227,8 @@ func handle(mp *MiningPool, conn net.Conn) {
 
 // 增加算力统计，挖出区块的加三倍计算
 func addMinerPowerValue(hash []byte, datacount *PoolPeriodStateData, client *Client, redouble int64) *big.Int {
-	if redouble < 1 || redouble > 3 {
-		redouble = 1 // 合理的取值范围： 1,2,3
+	if redouble < 1 || redouble > 5 {
+		redouble = 1 // 合理的取值范围： 1,2,3,4,5
 	}
 	if datacount != nil {
 		key := client.RewordAddress.ToReadable()

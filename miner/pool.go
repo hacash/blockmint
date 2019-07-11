@@ -312,7 +312,7 @@ func (mp *MiningPool) gotSuccessBlock(client *Client, success x16rs.MiningSucces
 		mp.prevSuccessBlockHash = hx
 		// 加入
 		mp.CalcSuccessBlockCh <- success
-		// 算力记三倍
+		// 成功挖出区块，算力记3倍
 		redouble = 3
 	} else {
 		redouble = 1

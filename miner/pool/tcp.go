@@ -83,7 +83,13 @@ func (ps *PoolState) handleMessage(client *Client, typenum uint8, msgcon []byte)
 		client.ActiveTimestamp = &cctime
 
 	case 0: // 注册奖励地址
-
+		// 检查数量上限
+		if ps.ClientCount+1 > ps.MaxClientCount {
+			// 已经满员，返回错误信息
+			x16rs.MiningPoolWriteTcpMsgBytes(client.Conn, 255, []byte(`Pool miner member has exceeded the maximum, Please contact the mine service provider\n矿池数量已经超出最大值，暂时无法连接挖矿，请联系你的矿池服务商`))
+			return fmt.Errorf("Max Client Count overflow")
+		}
+		// 检查并注册
 		addr, err := fields.CheckReadableAddress(string(msgcon))
 		if err != nil {
 			return fmt.Errorf("rewards address error")
@@ -186,6 +192,7 @@ func (ps *PoolState) addMinerPowerValue(client *Client, hash []byte, redouble in
 func (ps *PoolState) register(client *Client, addr *fields.Address) {
 	// 分配 client id
 	client.RewordAddress = addr
+	ps.ClientCount += 1
 	// 获取 worker
 	wkr := ps.pool.getThePowWorker(addr)
 	wkr.ClientCount += 1 // 统计 +1

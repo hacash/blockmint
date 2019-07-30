@@ -149,6 +149,7 @@ func (mp *MiningPool) removeCloseClient(client *Client) {
 		// 统计减一
 		wk.ClientCount -= 1
 	}
+	mp.StateData.ClientCount -= 1 // 统计减一
 }
 
 // 启动端口监听

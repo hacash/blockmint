@@ -138,16 +138,14 @@ func (mp *MiningPool) removeCloseClient(client *Client) {
 	client.Conn.Close()                       // 关闭
 	// 减少 worker 统计
 	addr := client.RewordAddress
-	if addr == nil {
+	if addr == nil || client.Worker == nil {
 		return // 未注册
 	}
-	wk := mp.StateData.getPowWorker(addr)
-	if wk.ClientCount == 1 {
+	wk := client.Worker
+	wk.ClientCount -= 1 // 统计减一
+	if wk.ClientCount <= 0 {
 		// 从内存中去掉 worker
 		mp.StateData.AllPowWorkers.Delete(addr)
-	} else {
-		// 统计减一
-		wk.ClientCount -= 1
 	}
 	mp.StateData.ClientCount -= 1 // 统计减一
 }

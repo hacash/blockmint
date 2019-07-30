@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/hacash/blockmint/block/fields"
@@ -162,11 +163,14 @@ func (s *Store) ReadWorker(addr *fields.Address) *PowWorker {
 		return nil
 	}
 	var data AddressStatisticsStoreItem
-	data.Parse(val, 0)
+	seek, e1 := data.Parse(val, 0)
+	if e1 != nil {
+		return nil
+	}
 	return &PowWorker{
 		StatisticsData:          &data,
 		RewordAddress:           addr,
-		RealtimePower:           big.NewInt(0),
+		RealtimePower:           big.NewInt(0).SetBytes(val[seek:]), // 历史保存的
 		RealtimeWorkSubmitCount: 0,
 		ClientCount:             0,
 	}
@@ -180,5 +184,7 @@ func (s *Store) SaveWorker(wk *PowWorker) error {
 	// 保存
 	key := []byte("worker:" + string(*wk.RewordAddress))
 	val, _ := wk.StatisticsData.Serialize()
+	buf := bytes.NewBuffer(val)
+	buf.Write(wk.RealtimePower.Bytes()) // 保存挖矿记录
 	return s.db.Put(key, val, nil)
 }

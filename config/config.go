@@ -111,12 +111,6 @@ func LoadConfigFile() {
 	if Config.MiningPool.Port == 0 {
 		Config.MiningPool.Port = 3339 // 默认值 3339
 	}
-	if len(Config.MiningPool.PayPassword) < 6 {
-		panic("Config.MiningPool.PayPassword length must more than 6")
-	}
-	if Config.MiningPool.PayFeeRatio < 0 || Config.MiningPool.PayFeeRatio >= 1 {
-		panic("Config.MiningPool.PayFeeRatio value format error")
-	}
 
 }
 

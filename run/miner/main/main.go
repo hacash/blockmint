@@ -87,6 +87,12 @@ func StartHacash() {
 	}
 
 	if len(config.Config.MiningPool.StatisticsDir) > 0 {
+		if len(config.Config.MiningPool.PayPassword) < 6 {
+			panic("Config.MiningPool.PayPassword length must more than 6")
+		}
+		if config.Config.MiningPool.PayFeeRatio < 0 || config.Config.MiningPool.PayFeeRatio >= 1 {
+			panic("Config.MiningPool.PayFeeRatio value format error")
+		}
 		// 矿池启动
 		miningpool := miner.GetGlobalInstanceMiningPool()
 		go miningpool.Start() // 启动

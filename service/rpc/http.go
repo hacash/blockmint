@@ -79,14 +79,8 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 		))
 	}
 	// 矿池信息
-	conn_count := 0
 	minerpool := miner2.GetGlobalInstanceMiningPool()
-	minerpool.StateData.AllClients.Range(func(key interface{}, val interface{}) bool {
-		//client := key.(*minerpool.Client)
-		conn_count += 1
-		return true
-	})
-	responseStrAry = append(responseStrAry, fmt.Sprintf("miner pool: connected: %d", conn_count))
+	responseStrAry = append(responseStrAry, fmt.Sprintf("miner pool connected client: %d", minerpool.StateData.ClientCount))
 
 	// 节点连接信息
 	p2pserver := p2p.GetGlobalInstanceP2PServer()

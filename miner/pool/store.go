@@ -167,6 +167,7 @@ func (s *Store) ReadWorker(addr *fields.Address) *PowWorker {
 	if e1 != nil {
 		return nil
 	}
+	// fmt.Println("ReadWorker", seek, val, val[seek:], big.NewInt(0).SetBytes(val[seek:]).String())
 	return &PowWorker{
 		StatisticsData:          &data,
 		RewordAddress:           addr,
@@ -185,6 +186,7 @@ func (s *Store) SaveWorker(wk *PowWorker) error {
 	key := []byte("worker:" + string(*wk.RewordAddress))
 	val, _ := wk.StatisticsData.Serialize()
 	buf := bytes.NewBuffer(val)
+	// fmt.Println("SaveWorker", wk.RealtimePower.Bytes())
 	buf.Write(wk.RealtimePower.Bytes()) // 保存挖矿记录
-	return s.db.Put(key, val, nil)
+	return s.db.Put(key, buf.Bytes(), nil)
 }

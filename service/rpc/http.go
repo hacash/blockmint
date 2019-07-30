@@ -81,7 +81,7 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	// 矿池信息
 	conn_count := 0
 	minerpool := miner2.GetGlobalInstanceMiningPool()
-	minerpool.AllActiveConns.Range(func(key interface{}, val interface{}) bool {
+	minerpool.StateData.AllClients.Range(func(key interface{}, val interface{}) bool {
 		//client := key.(*minerpool.Client)
 		conn_count += 1
 		return true
@@ -170,6 +170,9 @@ func RunHttpRpcService() {
 	http.HandleFunc("/", dealHome)           //设置访问的路由
 	http.HandleFunc("/query", dealQuery)     //设置访问的路由
 	http.HandleFunc("/operate", dealOperate) //设置访问的路由
+
+	http.HandleFunc("/minerpool", minerPoolStatisticsAutoTransfer)       //设置访问的路由
+	http.HandleFunc("/minerpool/transactions", minerPoolAllTransactions) //设置访问的路由
 
 	http.HandleFunc("/minerpool/statistics", minerPoolStatistics) //设置访问的路由
 

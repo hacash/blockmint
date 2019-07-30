@@ -9,12 +9,177 @@ import (
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/core/account"
 	"github.com/hacash/blockmint/miner"
+	pool2 "github.com/hacash/blockmint/miner/pool"
 	"github.com/hacash/blockmint/sys/file"
 	"math/big"
 	"net/http"
 	"strconv"
 	"time"
 )
+
+// 查看所有交易
+func minerPoolAllTransactions(response http.ResponseWriter, request *http.Request) {
+	if len(config.Config.MiningPool.PayPassword) == 0 {
+		response.Write([]byte("miner pool not open."))
+		return
+	}
+	params := parseRequestQuery(request)
+	var page_num uint64 = 0
+	var transaction_id uint64 = 0
+	if v, ok := params["page"]; ok {
+		if num, e := strconv.ParseUint(v, 10, 0); e == nil {
+			page_num = num
+		}
+	}
+	if v, ok := params["transaction_id"]; ok {
+		if num, e := strconv.ParseUint(v, 10, 0); e == nil {
+			transaction_id = num
+		}
+	}
+
+	// 显示数据
+	htmltext := "<html><head><title>miner pool data statistics</title></head><body>"
+	htmltext += `<style>#table{ border-collapse: collapse; } td{padding: 0 5px;} </style>`
+
+	pool := miner.GetGlobalInstanceMiningPool()
+	trsRec := pool.StoreDB.ReadTransferRecord(false)
+	// 查看全部转账交易
+	trs_end := int(trsRec.Latest - (20 * page_num))
+	trs_start := trs_end - 19
+	if trs_start < 1 {
+		trs_start = 1
+	}
+	// fmt.Println("=================== page limit ", trs_start, trs_end)
+	if transaction_id > 0 {
+		trs_start = int(transaction_id)
+		trs_end = int(transaction_id)
+	} else {
+		htmltext += `<h5>`
+		if page_num > 0 {
+			htmltext += fmt.Sprintf(`<a href="?page=%d">PrevPage</a>`, page_num-1)
+		}
+		if trs_start > 1 {
+			htmltext += fmt.Sprintf(` · · · <a href="?page=%d">NextPage</a>`, page_num+1)
+		}
+		htmltext += `</h5>`
+	}
+	htmltext += `<table id="table" border="1">
+		<tr>
+			<th>#</th>
+			<th>TxId</th>
+			<th>Amount</th>
+			<th>Address</th>
+			<th>CreateTime</th>
+			<th>SubmitTime</th>
+			<th>Detail</th>
+		</tr>
+    `
+	// 查询交易
+	for i := trs_end; i >= trs_start; i-- {
+		trs := pool.StoreDB.ReadTransfer(uint64(i))
+		if trs != nil {
+			time_fmt := "2006-01-02 15:04"
+			detail := fmt.Sprintf(`<a target="_blank" href="?transaction_id=%d">detail</a>`, i)
+			if transaction_id > 0 {
+				time_fmt += ":05" // 精确到秒
+				txbody := pool.StoreDB.ReadTransactionBody(trs.TxId)
+				detail = `<p>Transaction Body:</p><textarea style="height:120px;width:300px;margin-bottom: 14px;">` + hex.EncodeToString(txbody) + `</textarea>`
+			}
+			subtime := ""
+			if trs.SubmitTimestamp > 0 {
+				subtime = time.Unix(int64(trs.SubmitTimestamp), 0).Format(time_fmt)
+			}
+			htmltext += fmt.Sprintf(`<tr>
+				<td>%d</td>
+				<td>%d</td>
+				<td>ㄜ%d:240</td>
+				<td>%s</td>
+				<td>%s</td>
+				<td>%s</td>
+				<td>%s</td>
+			</tr>`,
+				trs.Id,
+				trs.TxId,
+				trs.Amount,
+				trs.Address.ToReadable(),
+				time.Unix(int64(trs.CreateTimestamp), 0).Format(time_fmt),
+				subtime,
+				detail,
+			)
+
+		}
+	}
+
+	// 返回显示
+	htmltext += "</table>"
+	htmltext += "</body></html>"
+	response.Write([]byte(htmltext))
+
+}
+
+// 自动打币矿池状态
+func minerPoolStatisticsAutoTransfer(response http.ResponseWriter, request *http.Request) {
+	if len(config.Config.MiningPool.PayPassword) == 0 {
+		response.Write([]byte("miner pool not open."))
+		return
+	}
+	// 显示数据
+	htmltext := "<html><head><title>miner pool data statistics</title></head><body>"
+	htmltext += `<style>#table{ border-collapse: collapse; } td{padding: 0 5px;} </style>`
+
+	// 查看统计信息
+	pool := miner.GetGlobalInstanceMiningPool()
+	trsRec := pool.StoreDB.ReadTransferRecord(false)
+	htmltext += fmt.Sprintf(`<div>
+		<p>Latest: %d, Submit: %d, <a href="/minerpool/transactions" target="_blank">show transactions</a></p>
+		<p>TxLatestId: %d, TxConfirm: %d</p>
+		<p>PrevSendHeight: %d</p>
+	</div>`,
+		trsRec.Latest, trsRec.Submit,
+		trsRec.TxLatestId, trsRec.TxConfirm,
+		trsRec.PrevSendHeight,
+	)
+	htmltext += `<table id="table" border="1">
+		<tr>
+			<th>Address</th>
+			<th>RealTime-Client,Thread,Power</th>
+			<th>FindBlocks,Coins</th>
+			<th>CompleteRewards</th>
+			<th>DeservedRewards</th>
+			<th>PrevTransferBlockHeight</th>
+		</tr>
+    `
+	// 查看当前全部在线挖矿的 矿工
+	pool.StateData.AllPowWorkers.Range(func(key interface{}, val interface{}) bool {
+		powwk := val.(*pool2.PowWorker)
+		htmltext += fmt.Sprintf(`<tr>
+			<td>%s</td>
+			<td>%d , %d , %s</td>
+			<td>%d , %d</td>
+			<td>ㄜ%d:240</td>
+			<td>ㄜ%d:240</td>
+			<td>%d</td>
+		</tr>`,
+			powwk.RewordAddress.ToReadable(),
+			powwk.ClientCount,
+			powwk.RealtimeWorkSubmitCount,
+			powwk.RealtimePower.String(),
+			powwk.StatisticsData.FindBlocks,
+			powwk.StatisticsData.FindCoins,
+			powwk.StatisticsData.CompleteRewards,
+			powwk.StatisticsData.DeservedRewards,
+			powwk.StatisticsData.PrevTransferBlockHeight,
+		)
+		return true
+	})
+
+	// 返回显示
+	htmltext += "</table>"
+	htmltext += "</body></html>"
+	response.Write([]byte(htmltext))
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func minerPoolStatistics(response http.ResponseWriter, request *http.Request) {
 	params := parseRequestQuery(request)

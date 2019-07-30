@@ -51,7 +51,7 @@ func GenTestData_trs_simple() []byte {
 	var testbuffer bytes.Buffer
 
 	testbuffer.Write([]byte{1})                       // kind
-	testbuffer.Write([]byte{99, 99, 99, 99, 99})      // Timestamp
+	testbuffer.Write([]byte{99, 99, 99, 99, 99})      // CreateTimestamp
 	testbuffer.Write([]byte("addrass1111111addrass")) // address
 	testbuffer.Write([]byte{248, 1, 77})              // fee
 	testbuffer.Write([]byte{0, 1})                    // actionCount

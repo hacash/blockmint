@@ -239,7 +239,7 @@ func (p *peer) readStatus(selfstatus, status *handShakeStatusData) error {
 	p.headBlockHash = status.CurrentBlockHash
 	p.knownHeight = status.CurrentBlockHeight
 
-	//fmt.Println(" selfstatus.Confirm(status) Completed", p.Name())
+	//fmt.Println(" selfstatus.TxConfirm(status) Completed", p.Name())
 
 	return nil
 }

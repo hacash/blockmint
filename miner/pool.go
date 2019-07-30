@@ -11,6 +11,7 @@ import (
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner/difficulty"
+	"github.com/hacash/blockmint/miner/pool"
 	"github.com/hacash/blockmint/sys/file"
 	sys_log "github.com/hacash/blockmint/sys/log"
 	"github.com/hacash/blockmint/types/block"
@@ -28,6 +29,27 @@ import (
 /**
  * 矿池程序
  */
+
+var (
+	globalInstanceMiningPoolMutex sync.Mutex
+	globalInstanceMiningPool      *pool.MiningPool = nil
+)
+
+func GetGlobalInstanceMiningPool() *pool.MiningPool {
+	globalInstanceMiningPoolMutex.Lock()
+	defer globalInstanceMiningPoolMutex.Unlock()
+	if globalInstanceMiningPool == nil {
+		lg := config.GetGlobalInstanceLogger()
+		globalInstanceMiningPool = NewMiningPool(lg)
+	}
+	return globalInstanceMiningPool
+}
+
+func NewMiningPool(logger sys_log.Logger) *pool.MiningPool {
+	return pool.NewMiningPool(logger)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
 
 // 结算数据储存
 type PoolPeriodStateData struct {
@@ -127,22 +149,7 @@ type MiningPool struct {
 
 }
 
-var (
-	globalInstanceMiningPoolMutex sync.Mutex
-	globalInstanceMiningPool      *MiningPool = nil
-)
-
-func GetGlobalInstanceMiningPool() *MiningPool {
-	globalInstanceMiningPoolMutex.Lock()
-	defer globalInstanceMiningPoolMutex.Unlock()
-	if globalInstanceMiningPool == nil {
-		lg := config.GetGlobalInstanceLogger()
-		globalInstanceMiningPool = NewMiningPool(lg)
-	}
-	return globalInstanceMiningPool
-}
-
-func NewMiningPool(logger sys_log.Logger) *MiningPool {
+func NewMiningPool_old(logger sys_log.Logger) *MiningPool {
 
 	fnp := config.Config.MiningPool.StatisticsDir
 	if strings.Compare(fnp, "") == 0 {
@@ -158,7 +165,7 @@ func NewMiningPool(logger sys_log.Logger) *MiningPool {
 		prevPowerStatisticsBlockHeadMeta: nil,
 		prevSuccessBlockHash:             nil,
 
-		addressMaxNum: config.Config.MiningPool.AddressMax,
+		addressMaxNum: config.Config.MiningPool.ClientMax,
 		markword:      config.Config.MiningPool.Markword,
 	}
 
@@ -304,7 +311,7 @@ func (mp *MiningPool) gotSuccessBlock(client *Client, success x16rs.MiningSucces
 	//fmt.Println(difficulty.Uint32ToHash(cncb.Block.GetHeight(), cncb.Block.GetDifficulty()))
 	redouble := int64(1) // 算力倍数
 	if curdiff.Cmp(targetDifficultyHash) == -1 {
-		log.Println("mining pool find a valid nonce for block", "height", cncb.Block.GetHeight())
+		log.Println("mining pool find a valid nonce for block", "height", cncb.Block.GetHeight(), "address", client.RewordAddress.ToReadable())
 		// OK !!!!!!!!!!!!!!!
 		//goto MINING_SUCCESS
 		// 发现满足要求的区块
@@ -316,7 +323,7 @@ func (mp *MiningPool) gotSuccessBlock(client *Client, success x16rs.MiningSucces
 		redouble = 3
 	} else {
 		redouble = 1
-		log.Println("hx not ok", cncb.Block.GetHeight(), hex.EncodeToString(hx))
+		log.Println("hash not valid", cncb.Block.GetHeight(), hex.EncodeToString(hx))
 	}
 
 	// 增加算力统计，挖出区块加上三倍算力

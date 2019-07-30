@@ -18,6 +18,9 @@ go get -x github.com/hacash/x16rs
 # bitcoin
 go get -x github.com/hacash/bitcoin
 
+# database
+go get -x github.com/syndtr/goleveldb/leveldb
+
 # gpu miner
 go get -x github.com/samuel/go-opencl
 

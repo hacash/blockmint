@@ -63,8 +63,10 @@ var Config = struct {
 	MiningPool struct {
 		StatisticsDir string `default:""` // 记录统计地址
 		Markword      string // 矿工寄语/标识，例如 pool.HCX （不超过8位）
-		AddressMax    uint64 // 记录矿工地址数量上限  默认 200
+		ClientMax     uint64 // 实时客户端连接的数量上限  默认 200
 		Port          uint64 // 矿池服务监听端口
+		PayPassword   string `default:""` // 记录统计地址
+		PayFeeRatio   float64
 	}
 }{}
 
@@ -102,12 +104,20 @@ func LoadConfigFile() {
 	if Config.DiamondMiner.Supervene <= 0 {
 		Config.DiamondMiner.Supervene = 1
 	}
-	if Config.MiningPool.AddressMax == 0 {
-		Config.MiningPool.AddressMax = 200 // 默认值
+	// pool
+	if Config.MiningPool.ClientMax == 0 {
+		Config.MiningPool.ClientMax = 200 // 默认值
 	}
 	if Config.MiningPool.Port == 0 {
 		Config.MiningPool.Port = 3339 // 默认值 3339
 	}
+	if len(Config.MiningPool.PayPassword) < 6 {
+		panic("Config.MiningPool.PayPassword length must more than 6")
+	}
+	if Config.MiningPool.PayFeeRatio < 0 || Config.MiningPool.PayFeeRatio >= 1 {
+		panic("Config.MiningPool.PayFeeRatio value format error")
+	}
+
 }
 
 func strnumdeal(in string) string {

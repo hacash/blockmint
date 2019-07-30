@@ -14,6 +14,7 @@ import (
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner/difficulty"
+	"github.com/hacash/blockmint/miner/pool"
 	"github.com/hacash/blockmint/protocol/block1def"
 	"github.com/hacash/blockmint/service/txpool"
 	"github.com/hacash/blockmint/sys/log"
@@ -222,9 +223,15 @@ func gpuMinerHttpGet(url string, statusCh chan bool) string {
 
 // 执行挖矿
 func (this *HacashMiner) doMining() error {
+	isMiningPoolWork := len(config.Config.MiningPool.StatisticsDir) > 0
 	//return fmt.Errorf("not do")
 	// 创建区块
-	newBlock, _, coinbase, _, e := this.CreateNewBlock()
+	var cbrwaddr *fields.Address = nil
+	if isMiningPoolWork {
+		plm := GetGlobalInstanceMiningPool()
+		cbrwaddr = &plm.StateData.FeeAccount.Address // 矿池地址
+	}
+	newBlock, _, coinbase, _, e := this.CreateNewBlock(cbrwaddr)
 	this.CurrentPenddingBlock = newBlock
 	if e != nil {
 		this.Log.Warning("create new block for mining error", e)
@@ -240,10 +247,10 @@ func (this *HacashMiner) doMining() error {
 
 	//fmt.Println(config.Config.MiningPool.StatisticsDir)
 	// 是否为矿池
-	if len(config.Config.MiningPool.StatisticsDir) > 0 {
+	if isMiningPoolWork {
 		// 发送新区块给矿池
 		plm := GetGlobalInstanceMiningPool()
-		ncm := &NewCreateBlock{
+		ncm := &pool.NewCreateBlockEvent{
 			newBlock,
 			coinbase,
 		}
@@ -257,7 +264,7 @@ func (this *HacashMiner) doMining() error {
 		}
 	CLEAN_CalcSuccessBlockCh:
 		// 通知挖新区块
-		plm.NewCreateBlockCh <- *ncm
+		plm.NewCreateBlockCh <- ncm
 		// 等待矿池的返回
 		select {
 		case stat := <-this.miningStatusCh: // 新区快到来
@@ -651,12 +658,12 @@ func (this *HacashMiner) InsertBlockWait(blk block.Block, bodys []byte) Discover
 }
 
 // 创建区块
-func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *transactions.Transaction_0_Coinbase, *fields.Amount, error) {
+func (this *HacashMiner) CreateNewBlock(minerAddress *fields.Address) (block.Block, *state.ChainState, *transactions.Transaction_0_Coinbase, *fields.Amount, error) {
 	nextblock := blocks.NewEmptyBlock_v1(this.State.prevBlockHead)
 
 	//////////////// test ////////////////
 	//timeset := coin.GetGenesisBlock().GetTimestamp() + nextblock.GetHeight()*300 - 150 + uint64(rand.Int63n(300))
-	//nextblock.Timestamp = fields.VarInt5(timeset)
+	//nextblock.CreateTimestamp = fields.VarInt5(timeset)
 	//if timeset > uint64(time.Now().Unix()) {
 	//	panic("okokokok")
 	//}
@@ -669,6 +676,9 @@ func (this *HacashMiner) CreateNewBlock() (block.Block, *state.ChainState, *tran
 	nextblock.Height = fields.VarInt5(hei)
 	nextblock.Difficulty = fields.VarInt4(dfct)
 	coinbase := this.createCoinbaseTx(nextblock)
+	if minerAddress != nil {
+		coinbase.Address = *minerAddress // 自定义矿工地址
+	}
 	nextblock.TransactionCount = 1
 	nextblock.Transactions = append(nextblock.Transactions, coinbase)
 	// 获取交易并验证
@@ -778,6 +788,7 @@ func (this *HacashMiner) BackTheWorldToHeight(target_height uint64) ([]block.Blo
 
 	db := store.GetGlobalInstanceBlocksDataStore()
 	state := state.GetGlobalInstanceChainState()
+	state.SetMiner(this)
 	for {
 		_, blkbts, err := db.GetBlockBytesByHeight(current_height, true, true, 0)
 		if err != nil {

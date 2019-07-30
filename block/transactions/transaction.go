@@ -39,3 +39,5 @@ func ParseAction(buf []byte, seek uint32) (block.Action, uint32, error) {
 	var mv, err = act.Parse(buf, seek+2)
 	return act, mv, err
 }
+
+// 创建普通转账交易

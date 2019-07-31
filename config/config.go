@@ -111,6 +111,9 @@ func LoadConfigFile() {
 	if Config.MiningPool.Port == 0 {
 		Config.MiningPool.Port = 3339 // 默认值 3339
 	}
+	if len(Config.MiningPool.StatisticsDir) > 0 {
+		Config.MiningPool.StatisticsDir = dealHomeDirBase(Config.MiningPool.StatisticsDir) //  home 路径处理
+	}
 
 }
 

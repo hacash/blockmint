@@ -130,7 +130,7 @@ func (ps *PoolState) settlementAllWorkerRewards(coinnum uint32) {
 			}
 			successworker = wk
 			// 除去挖出的地址
-		} else {
+		} else if wk != nil {
 			// 剩余总算力统计
 			othertotalpower = othertotalpower.Add(othertotalpower, wk.RealtimePower)
 			otherworkers = append(otherworkers, wk)
@@ -155,7 +155,9 @@ func (ps *PoolState) settlementAllWorkerRewards(coinnum uint32) {
 	}
 	// 保存 worker 进磁盘
 	go func() {
-		ps.pool.StoreDB.SaveWorker(successworker)
+		if successworker != nil {
+			ps.pool.StoreDB.SaveWorker(successworker)
+		}
 		for i := 0; i < length; i++ {
 			ps.pool.StoreDB.SaveWorker(otherworkers[i])
 		}

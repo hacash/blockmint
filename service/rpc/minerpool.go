@@ -131,10 +131,12 @@ func minerPoolStatisticsAutoTransfer(response http.ResponseWriter, request *http
 	pool := miner.GetGlobalInstanceMiningPool()
 	trsRec := pool.StoreDB.ReadTransferRecord(false)
 	htmltext += fmt.Sprintf(`<div>
+		<p>FeeRatio: %.2f %%</p>
 		<p>Latest: %d, Submit: %d, <a href="/minerpool/transactions" target="_blank">show transactions</a></p>
 		<p>TxLatestId: %d, TxConfirm: %d</p>
 		<p>PrevSendHeight: %d</p>
 	</div>`,
+		config.Config.MiningPool.PayFeeRatio*100,
 		trsRec.Latest, trsRec.Submit,
 		trsRec.TxLatestId, trsRec.TxConfirm,
 		trsRec.PrevSendHeight,

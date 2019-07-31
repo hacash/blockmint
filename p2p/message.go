@@ -29,7 +29,7 @@ func CreateHandShakeStatusData() handShakeStatusData {
 		BlockVersion:       1, // 不匹配的版本，不相连接
 		TransactionType:    2, // 不匹配的版本，不相连接
 		ActionKind:         6, // 不匹配的版本，不相连接
-		RepairVersion:      1, // 不匹配的版本，不相连接
+		RepairVersion:      2, // 不匹配的版本，不相连接
 		CurrentBlockHeight: blockminer.State.CurrentHeight(),
 		CurrentBlockHash:   blockminer.State.CurrentBlockHash(),
 	}

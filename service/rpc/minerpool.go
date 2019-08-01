@@ -152,7 +152,7 @@ func minerPoolStatisticsAutoTransfer(response http.ResponseWriter, request *http
 			<p>FeeRatio: %.2f %%</p>
 			<p>Latest: %d, Submit: %d, <a href="/minerpool/transactions" target="_blank">show transactions</a></p>
 			<p>TxLatestId: %d, TxConfirm: %d</p>
-			<p>PrevSendHeight: %d</p>
+			<p>Clients: %d, PrevSendHeight: %d</p>
 			<form action="?" method="get" target="_blank">
   				<p>Address: <input type="text" name="address" placeholder="find undisplayed address" style="width:320px" value="%s" />
   				<input type="submit" value="Search" />
@@ -162,6 +162,7 @@ func minerPoolStatisticsAutoTransfer(response http.ResponseWriter, request *http
 			config.Config.MiningPool.PayFeeRatio*100,
 			trsRec.Latest, trsRec.Submit,
 			trsRec.TxLatestId, trsRec.TxConfirm,
+			pool.StateData.ClientCount,
 			trsRec.PrevSendHeight,
 			address,
 		)

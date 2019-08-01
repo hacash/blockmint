@@ -79,8 +79,10 @@ func minerPoolAllTransactions(response http.ResponseWriter, request *http.Reques
 		trs := pool.StoreDB.ReadTransfer(uint64(i))
 		if trs != nil {
 			time_fmt := "2006-01-02 15:04"
-			detail := fmt.Sprintf(`<a target="_blank" href="?transaction_id=%d">detail</a>`, i)
-			if transaction_id > 0 {
+			detail := ""
+			if trs.TxId > 0 {
+				detail = fmt.Sprintf(`<a target="_blank" href="?transaction_id=%d">detail</a>`, i)
+			} else if transaction_id > 0 {
 				time_fmt += ":05" // 精确到秒
 				txbody := pool.StoreDB.ReadTransactionBody(trs.TxId)
 				detail = `<p>Transaction Body:</p><textarea style="height:120px;width:300px;margin-bottom: 14px;">` + hex.EncodeToString(txbody) + `</textarea>`
@@ -123,24 +125,47 @@ func minerPoolStatisticsAutoTransfer(response http.ResponseWriter, request *http
 		response.Write([]byte("miner pool not open."))
 		return
 	}
+	// 查询单个地址
+	params := parseRequestQuery(request)
+	var target_address *fields.Address = nil
+	var address string = ""
+	if v, ok := params["address"]; ok {
+		if addr, e := fields.CheckReadableAddress(v); e == nil {
+			target_address = addr
+			address = v
+		} else {
+			response.Write([]byte("address format error."))
+			return
+		}
+	}
+
 	// 显示数据
 	htmltext := "<html><head><title>miner pool data statistics</title></head><body>"
 	htmltext += `<style>#table{ border-collapse: collapse; } td{padding: 0 5px;} </style>`
 
 	// 查看统计信息
 	pool := miner.GetGlobalInstanceMiningPool()
-	trsRec := pool.StoreDB.ReadTransferRecord(false)
-	htmltext += fmt.Sprintf(`<div>
-		<p>FeeRatio: %.2f %%</p>
-		<p>Latest: %d, Submit: %d, <a href="/minerpool/transactions" target="_blank">show transactions</a></p>
-		<p>TxLatestId: %d, TxConfirm: %d</p>
-		<p>PrevSendHeight: %d</p>
-	</div>`,
-		config.Config.MiningPool.PayFeeRatio*100,
-		trsRec.Latest, trsRec.Submit,
-		trsRec.TxLatestId, trsRec.TxConfirm,
-		trsRec.PrevSendHeight,
-	)
+	if target_address == nil {
+		// 显示统计信息
+		trsRec := pool.StoreDB.ReadTransferRecord(false)
+		htmltext += fmt.Sprintf(`<div>
+			<p>FeeRatio: %.2f %%</p>
+			<p>Latest: %d, Submit: %d, <a href="/minerpool/transactions" target="_blank">show transactions</a></p>
+			<p>TxLatestId: %d, TxConfirm: %d</p>
+			<p>PrevSendHeight: %d</p>
+			<form action="?" method="get" target="_blank">
+  				<p>Address: <input type="text" name="address" placeholder="find undisplayed address" style="width:320px" value="%s" />
+  				<input type="submit" value="Search" />
+				</p>
+			</form>
+		</div>`,
+			config.Config.MiningPool.PayFeeRatio*100,
+			trsRec.Latest, trsRec.Submit,
+			trsRec.TxLatestId, trsRec.TxConfirm,
+			trsRec.PrevSendHeight,
+			address,
+		)
+	}
 	htmltext += `<table id="table" border="1">
 		<tr>
 			<th>Address</th>
@@ -148,13 +173,34 @@ func minerPoolStatisticsAutoTransfer(response http.ResponseWriter, request *http
 			<th>FindBlocks,Coins</th>
 			<th>CompleteRewards</th>
 			<th>DeservedRewards</th>
-			<th>PrevTransferBlockHeight</th>
+			<th>TrsHeight</th>
 		</tr>
     `
-	// 查看当前全部在线挖矿的 矿工
-	pool.StateData.AllPowWorkers.Range(func(key interface{}, val interface{}) bool {
-		powwk := val.(*pool2.PowWorker)
-		htmltext += fmt.Sprintf(`<tr>
+	if target_address == nil {
+		// 查看当前全部在线挖矿的 矿工
+		pool.StateData.AllPowWorkers.Range(func(key interface{}, val interface{}) bool {
+			powwk := val.(*pool2.PowWorker)
+			htmltext += parsePowWorkerTableRow(powwk)
+			return true
+		})
+	} else {
+		// 查询指定的矿工
+		if val, ok := pool.StateData.AllPowWorkers.Load(string(*target_address)); ok {
+			powwk := val.(*pool2.PowWorker)
+			htmltext += parsePowWorkerTableRow(powwk)
+		} else {
+			htmltext += "<p>sorry, not find.</p>"
+		}
+	}
+
+	// 返回显示
+	htmltext += "</table>"
+	htmltext += "</body></html>"
+	response.Write([]byte(htmltext))
+}
+
+func parsePowWorkerTableRow(powwk *pool2.PowWorker) string {
+	return fmt.Sprintf(`<tr>
 			<td>%s</td>
 			<td>%d , %d , %s</td>
 			<td>%d , %d</td>
@@ -162,23 +208,16 @@ func minerPoolStatisticsAutoTransfer(response http.ResponseWriter, request *http
 			<td>ㄜ%d:240</td>
 			<td>%d</td>
 		</tr>`,
-			powwk.RewordAddress.ToReadable(),
-			powwk.ClientCount,
-			powwk.RealtimeWorkSubmitCount,
-			powwk.RealtimePower.String(),
-			powwk.StatisticsData.FindBlocks,
-			powwk.StatisticsData.FindCoins,
-			powwk.StatisticsData.CompleteRewards,
-			powwk.StatisticsData.DeservedRewards,
-			powwk.StatisticsData.PrevTransferBlockHeight,
-		)
-		return true
-	})
-
-	// 返回显示
-	htmltext += "</table>"
-	htmltext += "</body></html>"
-	response.Write([]byte(htmltext))
+		powwk.RewordAddress.ToReadable(),
+		powwk.ClientCount,
+		powwk.RealtimeWorkSubmitCount,
+		powwk.RealtimePower.String(),
+		powwk.StatisticsData.FindBlocks,
+		powwk.StatisticsData.FindCoins,
+		powwk.StatisticsData.CompleteRewards,
+		powwk.StatisticsData.DeservedRewards,
+		powwk.StatisticsData.PrevTransferBlockHeight,
+	)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////

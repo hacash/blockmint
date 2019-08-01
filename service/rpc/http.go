@@ -79,8 +79,10 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 		))
 	}
 	// 矿池信息
-	minerpool := miner2.GetGlobalInstanceMiningPool()
-	responseStrAry = append(responseStrAry, fmt.Sprintf("miner pool connected client: %d", minerpool.StateData.ClientCount))
+	if len(config.Config.MiningPool.StatisticsDir) > 0 {
+		minerpool := miner2.GetGlobalInstanceMiningPool()
+		responseStrAry = append(responseStrAry, fmt.Sprintf("miner pool connected client: %d", minerpool.StateData.ClientCount))
+	}
 
 	// 节点连接信息
 	p2pserver := p2p.GetGlobalInstanceP2PServer()

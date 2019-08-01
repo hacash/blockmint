@@ -21,3 +21,16 @@ func newAccountByPassword(params map[string]string) map[string]string {
 
 	return result
 }
+
+// 随机创建
+func newAccount(params map[string]string) map[string]string {
+
+	result := make(map[string]string)
+	// 创建账户
+	acc := account.CreateNewAccount()
+
+	result["address"] = string(acc.AddressReadable)
+	result["private_key"] = hex.EncodeToString(acc.PrivateKey)
+
+	return result
+}

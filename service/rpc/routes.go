@@ -16,6 +16,7 @@ func initRoutes() {
 	queryRoutes["diamond"] = getDiamond          // 查询钻石
 	queryRoutes["channel"] = getChannel          // 查询通道
 	queryRoutes["passwd"] = newAccountByPassword // 通过密码创建账户
+	queryRoutes["newacc"] = newAccount           // 随机创建账户
 	queryRoutes["createtx"] = transferSimple     // 创建普通转账交易
 	queryRoutes["txconfirm"] = txStatus          // 查询交易确认状态
 

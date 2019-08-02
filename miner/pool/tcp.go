@@ -192,9 +192,9 @@ func (ps *PoolState) addMinerPowerValue(client *Client, hash []byte, redouble in
 func (ps *PoolState) register(client *Client, addr *fields.Address) {
 	// 分配 client id
 	client.RewordAddress = addr
-	ps.ClientCount += 1
 	// 获取 worker
 	wkr := ps.pool.getThePowWorker(addr)
+	ps.ClientCount += 1  // 统计 +1
 	wkr.ClientCount += 1 // 统计 +1
 	client.Worker = wkr  // worker set
 	// 连接放入内存

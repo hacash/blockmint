@@ -143,15 +143,15 @@ func (mp *MiningPool) removeCloseClient(client *Client) {
 	}
 	wk := client.Worker
 	if wk != nil {
-		wk.ClientCount -= 1 // 统计减一
-		if wk.ClientCount <= 0 {
+		mp.StateData.ClientCount -= 1 // 统计减一
+		wk.ClientCount -= 1           // 统计减一
+		if wk.ClientCount == 0 {
 			// 保存 wk
 			mp.StoreDB.SaveWorker(wk)
 			// 从内存中去掉 worker
 			mp.StateData.AllPowWorkers.Delete(string(*addr))
 		}
 	}
-	mp.StateData.ClientCount -= 1 // 统计减一
 }
 
 // 启动端口监听

@@ -152,6 +152,9 @@ func (mp *MiningPool) removeCloseClient(client *Client) {
 			mp.StateData.AllPowWorkers.Delete(string(*addr))
 		}
 	}
+	// 复位
+	client.RewordAddress = nil
+	client.Worker = nil
 }
 
 // 启动端口监听

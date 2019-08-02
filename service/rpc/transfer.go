@@ -40,9 +40,8 @@ func transferSimple(params map[string]string) map[string]string {
 		//fmt.Println(params["from"])
 	}
 	if strings.Compare(string(acc.AddressReadable), params["from"]) != 0 {
-		result["err"] = "Privite Key is not address " + params["from"]
+		result["err"] = "Privite Key error with address " + params["from"]
 		return result
-
 	}
 	// 私钥
 	allPrivateKeyBytes := make(map[string][]byte, 1)

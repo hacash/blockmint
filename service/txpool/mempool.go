@@ -25,7 +25,7 @@ type MemTxItem struct {
 	HashNoFee []byte // 哈希
 	Tx        block.Transaction
 	// 单链表
-	next *MemTxItem
+	Next *MemTxItem
 }
 
 type MemTxPool struct {
@@ -99,7 +99,7 @@ func (this *MemTxPool) pickUpTx(hashnofee []byte, drop bool) *MemTxItem {
 		}
 		if bytes.Compare(next.HashNoFee, hashnofee) == 0 {
 			if drop {
-				prev.next = next.next
+				prev.Next = next.Next
 				// 更新统计
 				this.ChangeCount(-1, next.Tx.Size())
 			}
@@ -107,7 +107,7 @@ func (this *MemTxPool) pickUpTx(hashnofee []byte, drop bool) *MemTxItem {
 			return next
 		}
 		prev = next
-		next = next.next
+		next = next.Next
 	}
 	return nil
 }
@@ -139,8 +139,8 @@ func (this *MemTxPool) checkTx(tx block.Transaction) error {
 	// 尝试执行，检查余额
 	state_base := state.GetGlobalInstanceChainState()
 	state_temp_tx := state.NewTempChainState(state_base)
-	defer state_temp_tx.Destroy() // 销毁临时执行栈
-	state_temp_tx.SetMiner( state_base.Miner() ) // 矿工状态
+	defer state_temp_tx.Destroy()              // 销毁临时执行栈
+	state_temp_tx.SetMiner(state_base.Miner()) // 矿工状态
 	runerr := tx.ChangeChainState(state_temp_tx)
 	if runerr != nil {
 		return fmt.Errorf(runerr.Error()) // 执行失败
@@ -161,7 +161,7 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 
 	// 检查
 	txsize := tx.Size()
-	if uint64(txsize) + this.Size > MemTxPoolMaxSize {
+	if uint64(txsize)+this.Size > MemTxPoolMaxSize {
 		return fmt.Errorf("Mem Tx Pool Over Max Size %d", MemTxPoolMaxSize)
 	}
 
@@ -173,7 +173,7 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 		Size:      txsize,
 		HashNoFee: hashnofee,
 		Tx:        tx,
-		next:      nil,
+		Next:      nil,
 	}
 	// pick up
 	hashave := this.pickUpTx(hashnofee, false)
@@ -196,20 +196,20 @@ func (this *MemTxPool) AddTx(tx block.Transaction) error {
 	}
 	txSeekPtr := this.TxHead
 	for {
-		if txSeekPtr.next == nil {
-			txSeekPtr.next = txItem
+		if txSeekPtr.Next == nil {
+			txSeekPtr.Next = txItem
 			this.feedTx(hashnofee, tx) // 广播
 			break
 		}
-		if txSeekPtr.next.FeePer < txItem.FeePer {
-			txItem.next = txSeekPtr.next
-			txSeekPtr.next = txItem
+		if txSeekPtr.Next.FeePer < txItem.FeePer {
+			txItem.Next = txSeekPtr.Next
+			txSeekPtr.Next = txItem
 			// 插入链表 广播添加事件
 			this.feedTx(hashnofee, tx) // 广播
 			break
 		}
 		// 下一个
-		txSeekPtr = txSeekPtr.next
+		txSeekPtr = txSeekPtr.Next
 	}
 
 	return nil
@@ -230,7 +230,7 @@ func (this *MemTxPool) PopTxByHighestFee() block.Transaction {
 		return nil
 	}
 	head := this.TxHead
-	this.TxHead = head.next
+	this.TxHead = head.Next
 	// 更新统计
 	this.ChangeCount(-1, head.Tx.Size())
 	// 返回
@@ -256,7 +256,7 @@ func (this *MemTxPool) GetTxs() []block.Transaction {
 			break
 		}
 		results = append(results, next.Tx)
-		next = next.next
+		next = next.Next
 	}
 	return results
 }
@@ -273,7 +273,7 @@ func (this *MemTxPool) RemoveTxs(txs []block.Transaction) {
 }
 
 // 修改统计
-func (this *MemTxPool) ChangeCount(num int, sizes uint32)  {
+func (this *MemTxPool) ChangeCount(num int, sizes uint32) {
 	this.Length += num // num可为负
 	if this.Length < 0 {
 		this.Length = 0 // 防止为负
@@ -282,7 +282,7 @@ func (this *MemTxPool) ChangeCount(num int, sizes uint32)  {
 	}
 	if num > 0 {
 		this.Size += uint64(sizes)
-	}else if num < 0 || this.Size > uint64(sizes){ // 防止为负
+	} else if num < 0 || this.Size > uint64(sizes) { // 防止为负
 		this.Size -= uint64(sizes)
 	}
 }

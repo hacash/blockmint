@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/hacash/blockmint/block/actions"
 	"github.com/hacash/blockmint/block/blocks"
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/config"
@@ -72,10 +73,31 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	// 交易池信息
 	txpool := txpool2.GetGlobalInstanceMemTxPool()
 	if pool, ok := txpool.(*txpool2.MemTxPool); ok {
+		diamonds := ""
+		hd := pool.TxHead
+		for i := 0; i < 200; i++ {
+			if hd != nil {
+				if as := hd.Tx.GetActions(); len(as) > 0 {
+					if as[0].Kind() == 4 {
+						if dia, ok := as[0].(*actions.Action_4_DiamondCreate); ok {
+							if len(diamonds) > 0 {
+								diamonds += "/" + string(dia.Diamond)
+							} else {
+								diamonds = string(dia.Diamond)
+							}
+						}
+					}
+				}
+				hd = hd.Next
+			} else {
+				break
+			}
+		}
 		responseStrAry = append(responseStrAry, fmt.Sprintf(
-			"txpool length: %d, size: %fkb",
+			"txpool length: %d, size: %fkb, diamond: %s",
 			pool.Length,
 			float64(pool.Size)/1024,
+			diamonds,
 		))
 	}
 	// 矿池信息

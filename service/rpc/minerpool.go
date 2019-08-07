@@ -80,12 +80,12 @@ func minerPoolAllTransactions(response http.ResponseWriter, request *http.Reques
 		if trs != nil {
 			time_fmt := "2006-01-02 15:04"
 			detail := ""
-			if trs.TxId > 0 {
-				detail = fmt.Sprintf(`<a target="_blank" href="?transaction_id=%d">detail</a>`, i)
-			} else if transaction_id > 0 {
+			if transaction_id > 0 {
 				time_fmt += ":05" // 精确到秒
 				txbody := pool.StoreDB.ReadTransactionBody(trs.TxId)
 				detail = `<p>Transaction Body:</p><textarea style="height:120px;width:300px;margin-bottom: 14px;">` + hex.EncodeToString(txbody) + `</textarea>`
+			} else if trs.TxId > 0 {
+				detail = fmt.Sprintf(`<a target="_blank" href="?transaction_id=%d">detail</a>`, i)
 			}
 			subtime := ""
 			if trs.SubmitTimestamp > 0 {

@@ -32,7 +32,7 @@ type HashTreeDB struct {
 	MaxNumGCPool int
 
 	// fileLock
-	FileLock map[string]*sync.Mutex
+	FileLock sync.Map // map[string]*sync.Mutex
 }
 
 // 创建DataBase
@@ -60,7 +60,7 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 		FileAbsPath:  FileAbsPath,
 		MaxValueSize: MaxValueSize,
 
-		FileLock: make(map[string]*sync.Mutex),
+		// FileLock: make(map[string]*sync.Mutex),
 	}
 }
 
@@ -97,13 +97,13 @@ func (this *HashTreeDB) CreateQuery(hash []byte) (*QueryInstance, error) {
 	}
 	filename := this.getPartFileName(keyhash)
 	// 文件操作锁
-	lock, has := this.FileLock[filename]
+	lock, has := this.FileLock.Load(filename)
 	if !has {
 		lock = new(sync.Mutex)
-		this.FileLock[filename] = lock
+		this.FileLock.Store(filename, lock)
 	}
 	//fmt.Println("LOCK FILE - "+filename)
-	lock.Lock()
+	lock.(*sync.Mutex).Lock()
 	//fmt.Println(hash)
 	//fmt.Println(keyhash)
 	//fmt.Println(filename)

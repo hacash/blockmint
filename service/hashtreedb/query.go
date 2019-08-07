@@ -6,6 +6,7 @@ import (
 	"github.com/hacash/blockmint/sys/util"
 	"os"
 	"strconv"
+	"sync"
 )
 
 // 查询实例
@@ -45,9 +46,9 @@ func NewQueryInstance(db *HashTreeDB, hash []byte, keyhash []byte, querykey []by
 func (this *QueryInstance) Close() error {
 	defer func() {
 		//fmt.Println(*this.targetFileName)
-		if lock, has := this.db.FileLock[*this.targetFileName]; has {
+		if lock, has := this.db.FileLock.Load(*this.targetFileName); has {
 			//fmt.Println("Unlock file " + *this.targetFileName)
-			lock.Unlock()
+			lock.(*sync.Mutex).Unlock()
 		}
 	}()
 	return this.targetFile.Close()

@@ -173,6 +173,8 @@ func (ps *PoolState) addPowCount(client *Client, msgcon []byte) {
 
 // 增加算力统计
 func (ps *PoolState) addMinerPowerValue(client *Client, hash []byte, redouble int64) *big.Int {
+	ps.addMinerPowerValueSyncMutex.Lock()
+	defer ps.addMinerPowerValueSyncMutex.Unlock()
 	if redouble < 1 || redouble > 5 {
 		redouble = 1 // 合理的取值范围： 1~5 倍
 	}

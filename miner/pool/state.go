@@ -38,6 +38,8 @@ type PoolState struct {
 
 	AutoTransferHandleQueue chan *PowWorker // 转账处理队列
 
+	// 并发锁
+	addMinerPowerValueSyncMutex sync.Mutex
 }
 
 func NewPoolState(feepassword, markword string, maxconn uint64) *PoolState {
@@ -129,6 +131,9 @@ func (ps *PoolState) settlementAllWorkerRewards(coinnum uint32) {
 				wk.StatisticsData.PrevTransferBlockHeight = uint32(ps.CurrentMiningBlock.Block.GetHeight()) // 打币时间记录
 			}
 			successworker = wk
+			// 清除数据统计，等待第二轮统计
+			successworker.RealtimePower = big.NewInt(0)
+			successworker.RealtimeWorkSubmitCount = 0
 			// 除去挖出的地址
 		} else if wk != nil {
 			// 剩余总算力统计

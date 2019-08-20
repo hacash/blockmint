@@ -112,10 +112,10 @@ func (this *ChannelDB) Init(dir string) {
 func (this *ChannelDB) Read(channelNumber fields.Bytes16) (*ChannelStoreItemData, error) {
 
 	query, e1 := this.Treedb.CreateQuery(channelNumber) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return nil, e1
 	}
-	defer query.Close()
 	// read
 	result, _, e2 := query.Read()
 	if e2 != nil {
@@ -136,10 +136,10 @@ func (this *ChannelDB) Read(channelNumber fields.Bytes16) (*ChannelStoreItemData
 func (this *ChannelDB) Delete(channelNumber fields.Bytes16) error {
 
 	query, e1 := this.Treedb.CreateQuery(channelNumber)
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// delete
 	e2 := query.Remove()
 	if e2 != nil {
@@ -154,10 +154,10 @@ func (this *ChannelDB) Save(channelNumber fields.Bytes16, store *ChannelStoreIte
 
 	//fmt.Println( address[:] )
 	query, e1 := this.Treedb.CreateQuery(channelNumber) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// save
 	body, e2 := store.Serialize()
 	if e2 != nil {

@@ -60,10 +60,10 @@ func (this *DiamondDB) Init(dir string) {
 func (this *DiamondDB) Read(diamond fields.Bytes6) (fields.Address, error) {
 
 	query, e1 := this.Treedb.CreateQuery(diamond) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return nil, e1
 	}
-	defer query.Close()
 	// read
 	result, _, e2 := query.Read()
 
@@ -81,10 +81,10 @@ func (this *DiamondDB) Read(diamond fields.Bytes6) (fields.Address, error) {
 func (this *DiamondDB) SetBelong(diamond fields.Bytes6, address fields.Address) error {
 	//fmt.Println( address[:] )
 	query, e1 := this.Treedb.CreateQuery(diamond) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// save
 	_, e3 := query.Save(address)
 	if e3 != nil {
@@ -97,10 +97,10 @@ func (this *DiamondDB) SetBelong(diamond fields.Bytes6, address fields.Address) 
 // 删除
 func (this *DiamondDB) Delete(diamond fields.Bytes6) error {
 	query, e1 := this.Treedb.CreateQuery(diamond) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// save
 	e2 := query.Remove()
 	if e2 != nil {

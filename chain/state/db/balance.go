@@ -105,10 +105,10 @@ func (this *BalanceDB) SaveAmountByClearCreate(address fields.Address, value fie
 // 删除
 func (this *BalanceDB) Remove(address fields.Address) error {
 	query, e1 := this.Treedb.CreateQuery(address[1:]) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// save
 	e2 := query.Remove()
 	if e2 != nil {
@@ -120,10 +120,10 @@ func (this *BalanceDB) Remove(address fields.Address) error {
 func (this *BalanceDB) Delete(address fields.Address, store *BalanceStoreItemData) error {
 
 	query, e1 := this.Treedb.CreateQuery(address[1:]) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// save
 	e2 := query.Delete(store.Locitem)
 	if e2 != nil {
@@ -138,10 +138,10 @@ func (this *BalanceDB) Save(address fields.Address, store *BalanceStoreItemData)
 
 	//fmt.Println( address[:] )
 	query, e1 := this.Treedb.CreateQuery(address[1:]) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// save
 	body, e2 := store.Serialize()
 	if e2 != nil {
@@ -164,10 +164,10 @@ func (this *BalanceDB) Save(address fields.Address, store *BalanceStoreItemData)
 func (this *BalanceDB) Read(address fields.Address) (*BalanceStoreItemData, error) {
 
 	query, e1 := this.Treedb.CreateQuery(address[1:]) // drop addr type
+	defer query.Close()
 	if e1 != nil {
 		return nil, e1
 	}
-	defer query.Close()
 	// read
 	result, item, e2 := query.Read()
 	if e2 != nil {

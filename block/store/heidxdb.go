@@ -56,10 +56,10 @@ func (this *BlockHeightDB) Save(height uint64, partnum [2]byte, headptrnum uint3
 	//fmt.Println("this.treedb.CreateQuery(key) ", key)
 
 	query, e := this.treedb.CreateQuery(this.dealKey(height))
+	defer query.Close()
 	if e != nil {
 		return e
 	}
-	defer query.Close()
 	// save
 	item := BlockHeightDBItemData{
 		BlockHeadInfoFilePartition: partnum,
@@ -80,10 +80,10 @@ func (this *BlockHeightDB) Save(height uint64, partnum [2]byte, headptrnum uint3
 func (this *BlockHeightDB) Find(height uint64) (*BlockHeightDBItemData, error) {
 
 	query, e1 := this.treedb.CreateQuery(this.dealKey(height))
+	defer query.Close()
 	if e1 != nil {
 		return nil, e1
 	}
-	defer query.Close()
 	// read
 	result, _, e2 := query.Read()
 	//fmt.Println("result ", result)

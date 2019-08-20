@@ -26,10 +26,10 @@ func (this *TrsIdxDB) Init(filepath string) {
 
 func (this *TrsIdxDB) Save(hash []byte, saveval *TrsIdxOneFindItem) (*hashtreedb.IndexItem, error) {
 	query, e := this.treedb.CreateQuery(hash)
+	defer query.Close()
 	if e != nil {
 		return nil, e
 	}
-	defer query.Close()
 	// save
 	item, e1 := query.Save(saveval.Serialize())
 	if e1 != nil {
@@ -41,10 +41,10 @@ func (this *TrsIdxDB) Save(hash []byte, saveval *TrsIdxOneFindItem) (*hashtreedb
 
 func (this *TrsIdxDB) Find(hash []byte) (*TrsIdxOneFindItem, error) {
 	query, e1 := this.treedb.CreateQuery(hash)
+	defer query.Close()
 	if e1 != nil {
 		return nil, e1
 	}
-	defer query.Close()
 	// read
 	result, _, e2 := query.Read()
 	if e2 != nil {
@@ -69,10 +69,10 @@ func (this *TrsIdxDB) Find(hash []byte) (*TrsIdxOneFindItem, error) {
 
 func (this *TrsIdxDB) Delete(hash []byte) error {
 	query, e1 := this.treedb.CreateQuery(hash)
+	defer query.Close()
 	if e1 != nil {
 		return e1
 	}
-	defer query.Close()
 	// Remove
 	e2 := query.Remove()
 	if e2 != nil {

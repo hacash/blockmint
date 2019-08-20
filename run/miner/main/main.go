@@ -17,6 +17,7 @@ import (
 
 /**
  * go build -o miner_node_hacash run/miner/main/main.go && ./miner_node_hacash
+ * go build -o mmmhcx3 run/miner/main/main.go && ./mmmhcx3 run/miner/main/localtestcnf/3.yml
  */
 
 func main() {

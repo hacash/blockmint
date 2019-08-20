@@ -270,10 +270,10 @@ func (this *HashTreeDB) doCallTraversalCopy(ty uint8, itembytes []byte, get *Has
 	}
 	key := itembytes[0:get.HashSize]
 	query, e := this.CreateQuery(key)
+	defer query.Close()
 	if e != nil {
 		return // do nothing
 	}
-	defer query.Close()
 	if ty == 2 {
 		// copy
 		//fmt.Println(get.HashSize)

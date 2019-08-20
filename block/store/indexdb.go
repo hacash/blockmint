@@ -36,10 +36,10 @@ func (this *BlockIndexDB) Save(hash []byte, blockLoc *BlockLocation, block block
 func (this *BlockIndexDB) SaveByBlockHeadByte(hash []byte, blockLoc *BlockLocation, blockheadbytes []byte) (*hashtreedb.IndexItem, error) {
 
 	query, e := this.treedb.CreateQuery(hash)
+	defer query.Close()
 	if e != nil {
 		return nil, e
 	}
-	defer query.Close()
 	// new body
 	var bodybyte bytes.Buffer
 	bodybyte.Write(blockLoc.Serialize())
@@ -68,10 +68,10 @@ func (this *BlockIndexDB) Find(hash []byte) (*BlockLocation, block.Block, error)
 
 func (this *BlockIndexDB) FindBlockHeadBytes(hash []byte) (*BlockLocation, []byte, error) {
 	query, e1 := this.treedb.CreateQuery(hash)
+	defer query.Close()
 	if e1 != nil {
 		return nil, nil, e1
 	}
-	defer query.Close()
 	// read
 	result, _, e2 := query.Read()
 	if e2 != nil {

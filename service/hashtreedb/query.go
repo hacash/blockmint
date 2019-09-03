@@ -48,6 +48,7 @@ func (this *QueryInstance) Close() error {
 		//fmt.Println(*this.targetFileName)
 		if lock, has := this.db.FileLock.Load(*this.targetFileName); has {
 			//fmt.Println("Unlock file " + *this.targetFileName)
+			this.db.FileLock.Delete(*this.targetFileName)
 			lock.(*sync.Mutex).Unlock()
 		}
 	}()

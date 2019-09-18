@@ -36,6 +36,8 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 	var miner = miner2.GetGlobalInstanceHacashMiner()
 	curheight := miner.State.CurrentHeight()
 	minerblkhead := miner.State.GetBlockHead()
+	prev288_90height := uint64(curheight) - (288 * 30 * 3)
+	prev288_30height := uint64(curheight) - (288 * 30)
 	prev288_7height := uint64(curheight) - (288 * 7)
 	prev288height := uint64(curheight) / 288 * 288
 	num288 := uint64(curheight) - prev288height
@@ -56,11 +58,19 @@ func dealHome(response http.ResponseWriter, request *http.Request) {
 		diamondNumber,
 	))
 	// 出块统计
+	cost288_90miao := getMiao(minerblkhead, prev288_90height, 288*90)
+	cost288_30miao := getMiao(minerblkhead, prev288_30height, 288*30)
 	cost288_7miao := getMiao(minerblkhead, prev288_7height, 288*7)
 	cost288miao := getMiao(minerblkhead, prev288height, num288)
 	// fmt.Println(prev288height, num288, cost288miao)
 	responseStrAry = append(responseStrAry, fmt.Sprintf(
-		"block average time, last week: %s ( %ds/300s = %f), last from %d+%d: %s ( %ds/300s = %f)",
+		"block average time, last quarter: %s ( %ds/300s = %.2f), month: %s ( %ds/300s = %.4f), week: %s ( %ds/300s = %.4f), last from %d+%d: %s ( %ds/300s = %f)",
+		time.Unix(int64(cost288_90miao), 0).Format("04:05"),
+		cost288_90miao,
+		(float32(cost288_90miao)/300),
+		time.Unix(int64(cost288_30miao), 0).Format("04:05"),
+		cost288_30miao,
+		(float32(cost288_30miao)/300),
 		time.Unix(int64(cost288_7miao), 0).Format("04:05"),
 		cost288_7miao,
 		(float32(cost288_7miao)/300),

@@ -32,6 +32,8 @@ func main() {
 	//Test_opencl()
 	//Test_address_balance()
 	//Test_allAddressDiamonds()
+	//Test_allAddressAmount()
+	//Test_allChannelAmount()
 
 	StartHacash()
 

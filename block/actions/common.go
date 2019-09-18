@@ -37,11 +37,13 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 		return e2
 	}
 	//fmt.Println("EllipsisDecimalFor23SizeStore: ")
-	amtsub = amtsub.EllipsisDecimalFor23SizeStore()
-	amtadd = amtadd.EllipsisDecimalFor23SizeStore()
-	/*if amtsub1 != amtsub || amtadd1 != amtadd {
+	amtsub_1, ec1 := amtsub.EllipsisDecimalFor23SizeStore()
+	amtadd_1, ec2 := amtadd.EllipsisDecimalFor23SizeStore()
+	if ec1 || ec2 {
 		return fmt.Errorf("amount can not to store")
-	}*/
+	}
+	amtsub = amtsub_1
+	amtadd = amtadd_1
 	if amtsub.IsEmpty() {
 		state.BalanceDel(addr1) // 归零
 	} else {
@@ -60,10 +62,13 @@ func DoAddBalanceFromChainState(state state.ChainStateOperation, addr fields.Add
 	if e1 != nil {
 		return e1
 	}
-	amtsave := *amtnew.EllipsisDecimalFor23SizeStore()
+	amtsave, ec1 := amtnew.EllipsisDecimalFor23SizeStore()
+	if ec1 {
+		return fmt.Errorf("amount can not to store")
+	}
 	//addrrr, _ := base58check.Encode(addr)
 	//fmt.Println( "DoAddBalanceFromChainState: ++++++++++ ", addrrr, amtsave.ToFinString() )
-	state.BalanceSet(addr, amtsave)
+	state.BalanceSet(addr, *amtsave)
 	return nil
 }
 
@@ -79,9 +84,12 @@ func DoSubBalanceFromChainState(state state.ChainStateOperation, addr fields.Add
 	if e1 != nil {
 		return e1
 	}
-	amtnew1 := *amtnew.EllipsisDecimalFor23SizeStore()
+	amtnew1, ec1 := amtnew.EllipsisDecimalFor23SizeStore()
+	if ec1 {
+		return fmt.Errorf("amount can not to store")
+	}
 	//fmt.Println("amtnew1: " + amtnew1.ToFinString())
-	state.BalanceSet(addr, amtnew1)
+	state.BalanceSet(addr, *amtnew1)
 	return nil
 }
 
@@ -114,7 +122,7 @@ func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fie
 			continue
 		}
 		for {
-			if newunit<255 && mulnumint%10 == 0 {
+			if newunit < 255 && mulnumint%10 == 0 {
 				mulnumint /= 10
 				newunit++
 			} else {
@@ -126,7 +134,7 @@ func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fie
 		if newunit > 0 && newunit <= 255 {
 			newamt := fields.NewAmount(uint8(newunit), newNumeral)
 			coinnums[i] = newamt // 正常情况
-		}else{
+		} else {
 			coinnums[i] = amts[i] // 计算错误， 余额不变
 		}
 	}

@@ -16,6 +16,86 @@ import (
 	"strings"
 )
 
+// 测试读出锁定在通道内的余额
+func Test_allChannelAmount() {
+	TOTAL_AMT := fields.NewEmptyAmount()
+	baseChDir := "./database4/chainstate/channel/"
+	for fn := 0; fn < 16; fn++ {
+		amtfile, fe := os.OpenFile(baseChDir+fmt.Sprintf("chl%d.idx", fn), os.O_RDWR, 0777)
+		if fe != nil {
+			continue
+		}
+		diastat, _ := amtfile.Stat()
+		siglen := int64(100) //(16 + int64(db.ChannelDBItemMaxSize))
+		sigdata := make([]byte, siglen)
+		signum := diastat.Size() / siglen
+		//fmt.Println(signum)
+		//filedata := make([]byte, diastat.Size())
+		//amtfile.ReadAt(filedata, 0)
+		//fmt.Println( hex.EncodeToString(filedata))
+		//fmt.Println( "---", len(filedata), siglen)
+
+		for i := int64(0); i < signum; i++ {
+			amtfile.ReadAt(sigdata, i*siglen)
+			if sigdata[1] == 0 {
+				continue
+			}
+			chl := db.ChannelStoreItemData{}
+			//fmt.Println(hex.EncodeToString( sigdata  ))
+			chl.Parse(sigdata[16:], 0)
+			if chl.IsClosed == 0 { // 去掉关闭的通道
+				TOTAL_AMT, _ = TOTAL_AMT.Add(&chl.LeftAmount)
+				TOTAL_AMT, _ = TOTAL_AMT.Add(&chl.RightAmount)
+			}
+
+			fmt.Println("block height:", chl.BelongHeight, "closed:", chl.IsClosed, "id:", hex.EncodeToString(sigdata[0:16]),
+				"left:", chl.LeftAddress.ToReadable(), chl.LeftAmount.ToFinString(),
+				"rigth:", chl.RightAddress.ToReadable(), chl.RightAmount.ToFinString())
+
+		}
+
+	}
+
+	fmt.Println("total channel amount:", TOTAL_AMT.ToFinString())
+
+}
+
+// 测试读出所有地址的余额
+func Test_allAddressAmount() {
+	TOTAL_AMT := fields.NewEmptyAmount()
+
+	baseAmtDir := "./database4/chainstate/balance/"
+	for dir := 0; dir < 16; dir++ {
+		for fn := 0; fn < 16; fn++ {
+			amtfile, fe := os.OpenFile(baseAmtDir+fmt.Sprintf("%d/amt%d.idx", dir, fn), os.O_RDWR, 0777)
+			if fe != nil {
+				continue
+			}
+			diastat, _ := amtfile.Stat()
+			siglen := (20 + int64(db.BalanceDBItemMaxSize))
+			sigdata := make([]byte, siglen)
+			signum := diastat.Size() / siglen
+			//fmt.Println(signum)
+			for i := int64(0); i < signum; i++ {
+				amtfile.ReadAt(sigdata, i*siglen)
+				if sigdata[1] == 0 {
+					continue
+				}
+				bls := db.NewEmptyBalanceStoreItemData()
+				bls.Parse(sigdata[20:], 0)
+				TOTAL_AMT, _ = TOTAL_AMT.Add(&bls.Amount)
+
+				bf := bytes.NewBuffer([]byte{0})
+				bf.Write(sigdata[0:20])
+				addr := fields.Address(bf.Bytes())
+				fmt.Println(addr.ToReadable(), bls.Amount.ToFinString())
+			}
+		}
+	}
+
+	fmt.Println("total amount:", TOTAL_AMT.ToFinString())
+
+}
 
 // 测试打印全部的钻石关系
 func Test_allAddressDiamonds() {
@@ -27,14 +107,13 @@ func Test_allAddressDiamonds() {
 		panic(fe)
 	}
 
-
 	diastat, _ := diamondsfile.Stat()
 	signum := diastat.Size() / 6
 	diastr := make([]byte, 6)
 	basebts := []byte("WTYUIAHXVMEKBSZN")
 	asddressDiamonds := make(map[string][]string)
-	for i:=int64(0); i<signum; i ++ {
-		diamondsfile.ReadAt(diastr, i * 6)
+	for i := int64(0); i < signum; i++ {
+		diamondsfile.ReadAt(diastr, i*6)
 		if bytes.IndexByte(basebts, diastr[0]) == -1 {
 			continue
 		}
@@ -51,17 +130,15 @@ func Test_allAddressDiamonds() {
 	// 打印全部钻石所属
 	total_num := 0
 	for k, dias := range asddressDiamonds {
-		fmt.Print("\n"+k+": ")
+		fmt.Print("\n" + k + ": ")
 		for _, v := range dias {
-			fmt.Print(v+",")
+			fmt.Print(v + ",")
 			total_num++
 		}
 	}
 	fmt.Println("\n TOTAL: ", total_num)
 
-
 }
-
 
 //
 // 测试打印区块奖励地址
@@ -159,8 +236,6 @@ func Test_coinbaseAmt() {
 	//////// COUNT END
 }
 
-
-
 func Test_address_balance() {
 
 	// 批量查询地址余额
@@ -185,20 +260,7 @@ func Test_address_balance() {
 
 }
 
-
-
-
-func Test_others()  {
-
-
-
-
-
-
-
-
-
-
+func Test_others() {
 
 	//amt1, _ := fields.NewAmountFromFinString("HCX1:248")
 	//amt2 := fields.NewAmountSmall(1,248)

@@ -81,7 +81,7 @@ func Test_5(t *testing.T) {
 	hashone8, _ := hex.DecodeString("12a1633cafcc01ebfb6d78e39f687a1f0995c62fc95f51ead10a02ee0be551b5dce551b5dce551b5d1b5d")
 	fmt.Println(len(hashone8))
 	amt3 := fields.NewAmount(0, hashone8)
-	amt4 := amt3.EllipsisDecimalFor23SizeStore()
+	amt4, _ := amt3.EllipsisDecimalFor23SizeStore()
 	longnum3 := new(big.Int).SetBytes(amt3.Numeral).String()
 	longnum4 := new(big.Int).SetBytes(amt4.Numeral).String()
 	fmt.Println(longnum3)
@@ -98,7 +98,6 @@ func Test_5(t *testing.T) {
 	fmt.Println(len("fc916f213a3d7f1369313d5fa30f6168f9446a2d"))
 
 }
-
 
 func Test_loop_nice(t *testing.T) {
 

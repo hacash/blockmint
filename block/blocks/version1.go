@@ -289,6 +289,7 @@ func (block *Block_v1) VerifyNeedSigns() (bool, error) {
 func (block *Block_v1) ChangeChainState(blockstate state.ChainStateOperation) error {
 	txlen := len(block.Transactions)
 	totalfee := fields.NewEmptyAmount()
+	// 第一条交易为coinbase交易，客户交易从第二条开始
 	for i := 1; i < txlen; i++ {
 		tx := block.Transactions[i]
 		e := tx.ChangeChainState(blockstate)

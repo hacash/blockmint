@@ -95,7 +95,7 @@ func (this *BalanceDB) Init(dir string) {
 
 // 清空 重新创建
 func (this *BalanceDB) SaveAmountByClearCreate(address fields.Address, value fields.Amount) error {
-	storevalue := value.EllipsisDecimalFor23SizeStore() // ellipsis decimal
+	storevalue, _ := value.EllipsisDecimalFor23SizeStore() // ellipsis decimal
 	var store = NewEmptyBalanceStoreItemData()
 	store.Amount = *storevalue
 	// save

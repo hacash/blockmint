@@ -258,10 +258,10 @@ func (bill *Amount) ToFinString() string {
 }
 
 // 省略小数部分 为了存进 23 位空间里面
-func (bill *Amount) EllipsisDecimalFor23SizeStore() *Amount {
+func (bill *Amount) EllipsisDecimalFor23SizeStore() (*Amount, bool) {
 	maxnumlen := 23 - 1 - 1
 	if len(bill.Numeral) <= maxnumlen {
-		return bill
+		return bill, false
 	}
 	// 省略小数部分
 	longnumstr := new(big.Int).SetBytes(bill.Numeral).String()
@@ -291,7 +291,7 @@ func (bill *Amount) EllipsisDecimalFor23SizeStore() *Amount {
 				uint8(unit),
 				19 * sig,
 				cutbytes,
-			}
+			}, true // 改变了
 		} else if len(cutbytes) > maxnumlen {
 			baselen -= mvseek
 
@@ -300,7 +300,7 @@ func (bill *Amount) EllipsisDecimalFor23SizeStore() *Amount {
 		}
 	}
 	panic("Amount Ellipsis Decimal Error")
-	return nil
+	return nil, false
 }
 
 // 加法

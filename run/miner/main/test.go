@@ -175,6 +175,7 @@ func Test_database_store(height uint64) {
 	// 保存
 	sss := state.GetGlobalInstanceChainState()
 	ssstemp := state.NewTempChainState(sss)
+	defer ssstemp.Destroy() // 清理垃圾
 	blk.ChangeChainState(ssstemp)
 	sss.TraversalCopy(ssstemp)
 

@@ -369,8 +369,8 @@ func (pm *ProtocolManager) syncBlocksFormPeer(p *peer, startHeight uint64, peer_
 		pm.Log.Info("got blocks height [", msg.msg.FromHeight, ",", msg.msg.ToHeight, "] insert to chain")
 		data := msg.msg
 		// 解包区块，依次插入
-		segblocks := make([]block.Block, 0, 100)
-		segbodys := make([][]byte, 0, 100)
+		segblocks := make([]block.Block, 0, SyncBlockDataMaxBlockNumber)
+		segbodys := make([][]byte, 0, SyncBlockDataMaxBlockNumber)
 		stuffbytes := []byte(data.Datas)
 		seek := uint32(0)
 		for {
@@ -643,8 +643,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				blocks.Write(blkbytes)
 				blocksize += size
 				blocklen++
-				if blocklen >= 100 || blocksize >= 1024*1024 {
-					//fmt.Println("totalsize >= 512KB break ")
+				if blocklen >= SyncBlockDataMaxBlockNumber || blocksize >= 1024*1024 {
+					//fmt.Println("totalsize >= 1MB break ")
 					break
 				}
 			}
@@ -678,63 +678,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			p,
 			&data,
 		}
-
-		/*
-
-			// 检查
-			minerdb := pm.miner
-			if minerdb.State.CurrentHeight()+1 != data.FromHeight {
-				return nil
-			}
-
-			//fmt.Printf("SyncBlocksMsg, FromHeight: %d, ToHeight: %d,  \n", data.FromHeight, data.ToHeight)
-			go func() {
-				// 解包区块，依次插入
-				segblocks := make([]block.Block, 0, 100)
-				segbodys := make([][]byte, 0, 100)
-				stuffbytes := []byte(data.Datas)
-				seek := uint32(0)
-				for {
-					if seek >= uint32(len(stuffbytes)) {
-						break
-					}
-					blk, sk, e := blocks.ParseBlock(stuffbytes, seek)
-					if e != nil {
-						pm.syncMinerStatus(p) // 区块数据错误，重新同步
-						return
-					}
-					segblocks = append(segblocks, blk)
-					segbodys = append(segbodys, stuffbytes[seek:sk])
-					seek = sk
-				}
-				fmt.Printf("got blocks (%d > %d), inserting ... ", data.FromHeight, data.ToHeight)
-				insertCh := make(chan miner.DiscoveryNewBlockEvent, len(segblocks))
-				subhandle := minerdb.SubscribeInsertBlock(insertCh)
-				go func() { // 写入区块
-					for i := 0; i < len(segblocks); i++ {
-						//fmt.Println("minerdb.InsertBlock", segblocks[i].GetHeight())
-						minerdb.InsertBlock(segblocks[i], segbodys[i])
-					}
-				}()
-				for {
-					insert := <-insertCh
-					//fmt.Println("insert := <-insertCh ",insert.Block.GetHeight(), insert.Success)
-					if !insert.Success {
-						pm.removePeer(p.id) // 区块失败
-						break
-					}
-					if insert.Block.GetHeight() == data.ToHeight { // insert ok
-						subhandle.Unsubscribe()
-						//fmt.Println("subhandle.Unsubscribe() pm.syncMinerStatus(p)")
-						fmt.Printf("OK\n")
-						pm.onsyncminer = false // 完成
-						pm.syncMinerStatus(p)  // 再次同步
-						break
-					}
-				}
-			}()
-
-		*/
 
 	case msg.Code == GetSyncHashsMsg:
 		// 获取hash列表

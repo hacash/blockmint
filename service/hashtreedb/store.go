@@ -65,8 +65,16 @@ func NewHashTreeDB(FileAbsPath string, MaxValueSize uint32, HashSize uint32) *Ha
 }
 
 // 建立数据操作
-func (this *HashTreeDB) GetGcService(keyhash []byte) (*GarbageCollectionDB, error) {
+func (this *HashTreeDB) GetGcService(hash []byte) (*GarbageCollectionDB, error) {
+	keyhash := hash
+	if this.KeyReverse {
+		keyhash = ReverseHashOrder(hash) // 倒序
+	}
 	gcfile := this.getPartFileNameEx(keyhash, ".gc")
+	//if strings.Index(gcfile, "balance") > 0 {
+	//	fmt.Println(hash, keyhash)
+	//	fmt.Println("GetGcService.getPartFileNameEx.gcfile: ", gcfile)
+	//}
 	gc, got := this.gcPool[gcfile]
 	if got {
 		return gc, nil
@@ -282,7 +290,8 @@ func (this *HashTreeDB) doCallTraversalCopy(ty uint8, itembytes []byte, get *Has
 		query.Save(itembytes[get.HashSize:])
 	} else if ty == 3 {
 		// delete
-		query.Save([]byte{}) // save empty = delete mark
+		// query.Save([]byte{}) // save empty = delete mark
+		query.Remove()
 	}
 }
 

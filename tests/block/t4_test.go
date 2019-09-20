@@ -132,6 +132,7 @@ func Test_8(t *testing.T) {
 	baseamt := fields.NewAmountNumSmallCoin(0)
 
 	basestate := state.NewTempChainState(nil)
+	defer basestate.Destroy() // 清理垃圾
 
 	for i := uint64(0); ; i++ {
 		tmpstate := state.NewTempChainState(basestate)
@@ -155,7 +156,7 @@ func Test_8(t *testing.T) {
 		tmpstate.BalanceSet(acc3.Address, *baseamt)
 		tmpstate.BalanceSet(acc4.Address, *baseamt)
 		basestate.TraversalCopy(tmpstate)
-		tmpstate.Destroy()
+		tmpstate.Destroy() // 清理垃圾
 	}
 
 }

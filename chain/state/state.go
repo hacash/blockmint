@@ -132,7 +132,7 @@ func (this *ChainState) TraversalCopy(get *ChainState) {
 func (this *ChainState) Destroy() {
 	//fmt.Println("os.RemoveAll " + this.tempdir)
 	if this.tempdir != "" {
-		os.RemoveAll(this.tempdir) // 删除所有文件
+		go os.RemoveAll(this.tempdir) // 删除所有文件
 		this.tempdir = ""
 	}
 	//fmt.Println("os.RemoveAll --------- " + this.tempdir)

@@ -14,9 +14,9 @@ import (
 type QueryInstance struct {
 	db *HashTreeDB
 
+	operationHash []byte // 要操作的哈希
 	queryKeyHash  []byte // 去掉前缀文件分区，展开精度的key值
 	wideKeyHash   []byte // 包含前缀的key值
-	operationHash []byte // 要操作的哈希
 
 	targetFile     *os.File // 当前正在使用的文件
 	targetFileName *string  // 当前正在使用的文件
@@ -28,9 +28,9 @@ func NewQueryInstance(db *HashTreeDB, hash []byte, keyhash []byte, querykey []by
 
 	ins := &QueryInstance{
 		db,
+		hash,
 		querykey,
 		keyhash,
-		hash,
 		file,
 		filename,
 	}
@@ -62,6 +62,12 @@ func (this *QueryInstance) Save(value []byte) (*IndexItem, error) {
 		return nil, e1
 	}
 	return this.Write(item, value)
+}
+
+// 更新 item 索引数据
+func (this *QueryInstance) UpdateItem(item *IndexItem) (*IndexItem, error) {
+	_, e := this.targetFile.WriteAt(item.Serialize(), item.ItemFindOffset)
+	return item, e
 }
 
 // 储存写入（hash相同会覆盖）
@@ -112,7 +118,7 @@ func (this *QueryInstance) Write(item *IndexItem, valuebody []byte) (*IndexItem,
 	if item != nil && item.Type == 0 {
 		// 使用gc
 		if this.db.OpenGc {
-			gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
+			gcmng, e1 := this.db.GetGcService(this.operationHash)
 			if gcmng != nil && e1 == nil {
 				gcptr, ok, e := gcmng.Release()
 				if gcptr > 0 && ok && e == nil {
@@ -326,27 +332,35 @@ func (this *QueryInstance) Remove() error {
 	if e1 != nil {
 		return e1 // error
 	}
-	if item != nil && item.Type == 2 {
-		// fmt.Println(item.ItemHash)
-		if 0 == bytes.Compare(this.operationHash, item.ItemHash) {
-			return this.Delete(item) // 删除
+	if item != nil {
+		// delete mark
+		if this.db.DeleteMark {
+			// 清空数据内容而不删除key， 表示删除标记，用于db在copy cover 时删除目标数据库的条目
+			item.Type = 3 // 删除标记
+			this.UpdateItem(item) // 更新item索引数据，写入删除标记
+			//this.Write(item, []byte{}) // mark // 写入空byte表示清空 segment， 表示删除
+			return nil
+		}else if item.Type == 2 {
+			// fmt.Println(item.ItemHash)
+			if 0 == bytes.Compare(this.operationHash, item.ItemHash) {
+				return this.Delete(item) // 彻底删除数据
+			}
 		}
-	}
-	// delete mark
-	if item != nil && this.db.DeleteMark {
-		this.Write(item, []byte{}) // mark
 	}
 	return nil
 }
 
 // 删除
 func (this *QueryInstance) Delete(item *IndexItem) error {
-	tarptr := item.ValuePtrNum
+	// 重置数据条目空间【测试】
+	segsize := this.db.getSegmentSize()
+	this.targetFile.WriteAt(bytes.Repeat([]byte{0}, int(segsize)), int64(item.ValuePtrNum)*int64(segsize))
+	// 垃圾收集
 	if this.db.OpenGc {
 		// 使用gc
-		gcmng, e1 := this.db.GetGcService(this.wideKeyHash)
+		gcmng, e1 := this.db.GetGcService(this.operationHash)
 		if e1 == nil && gcmng != nil {
-			gcmng.Collect(tarptr) // gc collect
+			gcmng.Collect(item.ValuePtrNum) // gc collect // 垃圾空间收集
 		}
 		item.Type = uint8(0)
 		item.ValuePtrNum = 0
@@ -354,7 +368,7 @@ func (this *QueryInstance) Delete(item *IndexItem) error {
 		item.Type = uint8(3) // type = delete
 	}
 	// 修改指针删除
-	_, e := this.targetFile.WriteAt(item.Serialize(), item.ItemFindOffset)
+	_, e := this.UpdateItem(item)
 	if e != nil {
 		return e
 	}

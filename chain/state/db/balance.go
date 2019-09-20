@@ -31,6 +31,14 @@ func NewEmptyBalanceStoreItemData() *BalanceStoreItemData {
 	}
 }
 
+func NewBalanceStoreItemDataByAmount(amount *fields.Amount ) *BalanceStoreItemData {
+	return &BalanceStoreItemData{
+		LockHeight: 0,
+		BlankEmpty: fields.EmptyZeroBytes32,
+		Amount:     *amount,
+	}
+}
+
 func (this *BalanceStoreItemData) Parse(buf []byte, seek uint32) (uint32, error) {
 	seek, _ = this.LockHeight.Parse(buf, seek)
 	seek, _ = this.BlankEmpty.Parse(buf, seek)

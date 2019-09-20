@@ -11,6 +11,7 @@ import (
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/block/transactions"
 	"github.com/hacash/blockmint/chain/state"
+	"github.com/hacash/blockmint/chain/state/db"
 	"github.com/hacash/blockmint/config"
 	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner/difficulty"
@@ -137,9 +138,28 @@ func (this *HacashMiner) SetPrevDiamondHash(diamond_number uint32, blkhash []byt
 
 // 开始挖矿
 func (this *HacashMiner) Start() {
+
+	// 测试余额初始化，必须，否则报错
+	if this.State.GetBlockHead().GetHeight() == 0 {
+		addr1, _ := fields.CheckReadableAddress("12vi7DEZjh6KrK5PVmmqSgvuJPCsZMmpfi")
+		addr2, _ := fields.CheckReadableAddress("1LsQLqkd8FQDh3R7ZhxC5fndNf92WfhM19")
+		addr3, _ := fields.CheckReadableAddress("1NUgKsTgM6vQ5nxFHGz1C4METaYTPgiihh")
+		amt1, _ := fields.NewAmountFromFinString("ㄜ1:244")
+		amt2, _ := fields.NewAmountFromFinString("ㄜ12:244")
+		baldb := db.GetGlobalInstanceBalanceDB()
+		baldb.Save(*addr1, db.NewBalanceStoreItemDataByAmount(amt2))
+		baldb.Save(*addr2, db.NewBalanceStoreItemDataByAmount(amt1))
+		baldb.Save(*addr3, db.NewBalanceStoreItemDataByAmount(amt1))
+		//panic("000")
+	}
+
+	// 正式启动
 	go this.miningLoop()
 	go this.insertBlockLoop()
 }
+
+
+
 
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
@@ -608,6 +628,7 @@ func (this *HacashMiner) doInsertBlock(blk *DiscoveryNewBlockEvent) error {
 	}
 	// 验证交易
 	newBlockChainState := state.NewTempChainState(nil)
+	defer newBlockChainState.Destroy() // 清理垃圾
 	newBlockChainState.SetBlock(block) // 设置当前处理的区块
 	newBlockChainState.SetMiner(this)  // 矿工状态
 	blksterr := block.ChangeChainState(newBlockChainState)
@@ -683,6 +704,7 @@ func (this *HacashMiner) CreateNewBlock(minerAddress *fields.Address) (block.Blo
 	nextblock.Transactions = append(nextblock.Transactions, coinbase)
 	// 获取交易并验证
 	tempBlockState := state.NewTempChainState(nil)
+	defer tempBlockState.Destroy() // 清理垃圾
 	tempBlockState.SetBlock(nextblock) // 设置当前处理的区块
 	tempBlockState.SetMiner(this)
 	// 添加交易
@@ -690,6 +712,7 @@ func (this *HacashMiner) CreateNewBlock(minerAddress *fields.Address) (block.Blo
 	blockSize := uint32(block1def.ByteSizeBlockBeforeTransaction)
 	blockTotalFee := fields.NewEmptyAmount()
 	cacheNextTrs := make([]block.Transaction, 0)
+	var hxstate *state.ChainState = nil
 	for {
 		trs := this.TxPool.PopTxByHighestFee()
 		if trs == nil {
@@ -705,7 +728,10 @@ func (this *HacashMiner) CreateNewBlock(minerAddress *fields.Address) (block.Blo
 			this.TxPool.AddTx(trs)
 			break // over block size
 		}
-		hxstate := state.NewTempChainState(tempBlockState)
+		if hxstate != nil {
+			hxstate.Destroy() // 清理垃圾
+		}
+		hxstate = state.NewTempChainState(tempBlockState)
 		hxstate.SetBlock(nextblock) // 设置当前处理的区块
 		hxstate.SetMiner(this)
 		errun := trs.ChangeChainState(hxstate)
@@ -716,12 +742,10 @@ func (this *HacashMiner) CreateNewBlock(minerAddress *fields.Address) (block.Blo
 				cacheNextTrs = append(cacheNextTrs, trs)
 			}
 			// 出现其他错误则直接丢弃交易
-			hxstate.Destroy()
 			continue // error , give up tx
 		}
 		// ok copy state
 		tempBlockState.TraversalCopy(hxstate)
-		hxstate.Destroy()
 		nextblock.Transactions = append(nextblock.Transactions, trs)
 		nextblock.TransactionCount += 1
 		// 手续费

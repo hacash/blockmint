@@ -12,6 +12,8 @@ import (
 
 const ProtocolMaxMsgSize = 2 * 1024 * 1024 // Maximum cap on the size of a protocol message
 
+const SyncBlockDataMaxBlockNumber = 500 // 一次读取区块最大的数量上线
+
 // protocol message codes
 const (
 	// Protocol messages

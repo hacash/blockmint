@@ -7,6 +7,7 @@ import (
 	"github.com/hacash/blockmint/types/state"
 	"math"
 	"math/big"
+	"strings"
 )
 
 //////////////////////////////////////////////////////////
@@ -21,6 +22,9 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 	amt1 := state.Balance(addr1)
 	//fmt.Println("amt1: " + amt1.ToFinString())
 	if amt1.LessThan(&amt) {
+		//x, _ := amt.Sub(&amt1)
+		//print_xxxxxxx(addr1, x)
+		//fmt.Println("[balance not enough]", "addr1: ", addr1.ToReadable(), "amt: " + amt.ToFinString(), "amt1: " + amt1.ToFinString())
 		return fmt.Errorf("balance not enough")
 	}
 	amt2 := state.Balance(addr2)
@@ -44,12 +48,12 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 	}
 	amtsub = amtsub_1
 	amtadd = amtadd_1
-	if amtsub.IsEmpty() {
-		state.BalanceDel(addr1) // 归零
-	} else {
-		//fmt.Println("amtsub: " + amtsub.ToFinString())
-		state.BalanceSet(addr1, *amtsub)
-	}
+	//if amtsub.IsEmpty() {
+	//	state.BalanceDel(addr1) // 归零
+	//} else {
+	//fmt.Println("amtsub: " + amtsub.ToFinString())
+	state.BalanceSet(addr1, *amtsub)
+	//}
 	state.BalanceSet(addr2, *amtadd)
 	return nil
 }
@@ -77,6 +81,9 @@ func DoSubBalanceFromChainState(state state.ChainStateOperation, addr fields.Add
 	baseamt := state.Balance(addr)
 	//fmt.Println("baseamt: " + baseamt.ToFinString())
 	if baseamt.LessThan(&amt) {
+		//x, _ := amt.Sub(&baseamt)
+		//print_xxxxxxx(addr, x)
+		//fmt.Println("[balance not enough]", "block height: 0", "addr: ", addr.ToReadable(), "baseamt: " + baseamt.ToFinString(), "amt: " + amt.ToFinString())
 		return fmt.Errorf("balance not enough")
 	}
 	//fmt.Println("amt fee: " + amt.ToFinString())
@@ -118,7 +125,7 @@ func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fie
 		//fmt.Println(mulnumint)
 		newunit := int(amts[i].Unit) - 8
 		if newunit < 0 {
-			coinnums[i] = amts[i] // 数额极小， 余额不变
+			coinnums[i] = amts[i] // 数额极小， 忽略， 余额不变
 			continue
 		}
 		for {
@@ -145,4 +152,52 @@ func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fie
 
 	return coinnums[0], coinnums[1]
 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+///////  余额检查测试  ///////
+
+var amtxx *fields.Amount = nil
+var amts []*fields.Amount = nil
+func print_xxxxxxx(addr fields.Address, amtx *fields.Amount)  {
+	if amtxx == nil {
+		amtxx = fields.NewEmptyAmount()
+		amts = []*fields.Amount{
+			fields.NewEmptyAmount(),
+			fields.NewEmptyAmount(),
+			fields.NewEmptyAmount(),
+			fields.NewEmptyAmount(),
+		}
+	}
+	adname := addr.ToReadable()
+	amtxx, _ = amtxx.Add(amtx)
+	idx := -1
+	if strings.Index(adname, "1LsQL") > -1 {
+		idx = 0
+	}else if strings.Index(adname, "12vi7") > -1 {
+		idx = 1
+	}else if strings.Index(adname, "1NUgK") > -1 {
+		idx = 2
+	}else if strings.Index(adname, "1HE2qA") > -1 {
+		idx = 3
+	}else{
+		//panic(adname)
+	}
+	amts[idx], _ = amts[idx].Add(amtx)
+
+	fmt.Println("addr ", adname, " add ", amtx.ToFinString(), "addr amt", amts[idx].ToFinString(), " total amt:", amtxx.ToFinString())
+	for _, v := range amts {
+		fmt.Print(v.ToFinString()+", ")
+	}
+	fmt.Println("")
 }

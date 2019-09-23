@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	maxPartFileSize = 1 // 400 MB
+	maxPartFileSize = 400 // 400 MB
 
 )
 

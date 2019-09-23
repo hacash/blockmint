@@ -118,9 +118,9 @@ func Test_allAddressDiamonds() {
 			continue
 		}
 		// 查询钻石
-		addr, _ := diamondDB.Read(diastr)
-		if addr != nil {
-			key := addr.ToReadable()
+		store, _ := diamondDB.Read(diastr)
+		if store != nil {
+			key := store.Address.ToReadable()
 			if _, ok := asddressDiamonds[key]; !ok {
 				asddressDiamonds[key] = make([]string, 0, 16)
 			}

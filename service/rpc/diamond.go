@@ -3,6 +3,7 @@ package rpc
 import (
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/chain/state/db"
+	"strconv"
 )
 
 //////////////////////////////////////////////////////////////
@@ -20,12 +21,14 @@ func getDiamond(params map[string]string) map[string]string {
 	}
 
 	dmdb := db.GetGlobalInstanceDiamondDB()
-	addr, e1 := dmdb.Read(fields.Bytes6(dmstr))
-	if e1 != nil || addr == nil {
+	store, e1 := dmdb.Read(fields.Bytes6(dmstr))
+	if e1 != nil || store == nil {
 		result["fail"] = "not find."
 		return result
 	}
 	// 0
-	result["address"] = addr.ToReadable()
+	result["block_height"] = strconv.FormatUint(uint64(store.BlockHeight), 10)
+	result["number"] = strconv.Itoa(int(store.Number))
+	result["address"] = store.Address.ToReadable()
 	return result
 }

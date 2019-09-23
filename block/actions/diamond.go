@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/hacash/blockmint/block/fields"
+	"github.com/hacash/blockmint/chain/state/db"
 	"github.com/hacash/blockmint/types/block"
 	"github.com/hacash/blockmint/types/state"
 	"github.com/hacash/x16rs"
@@ -115,7 +116,7 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	blkhei := blk.GetHeight()
 	// 检查区块高度值是否为5的倍数
 	// {BACKTOPOOL} 表示扔回交易池等待下个区块再次处理
-	if blkhei % 5 != 0 {
+	if blkhei%5 != 0 {
 		return fmt.Errorf("{BACKTOPOOL} Diamond must be in block height multiple of 5.")
 	}
 	// 查询钻石是否已经存在
@@ -139,7 +140,11 @@ func (act *Action_4_DiamondCreate) ChangeChainState(state state.ChainStateOperat
 	}
 	// 存入钻石
 	//fmt.Println(act.Address.ToReadable())
-	state.DiamondSet(act.Diamond, act.Address)
+	var diastore db.DiamondStoreItemData
+	diastore.BlockHeight = fields.VarInt5(blkhei)
+	diastore.Number = act.Number
+	diastore.Address = act.Address
+	state.DiamondSet(act.Diamond, &diastore) // 保存
 	// 设置矿工状态
 	state.SetPrevDiamondHash(uint32(act.Number), blkhash)
 	//标记本区块已经包含钻石
@@ -215,16 +220,18 @@ func (act *Action_5_DiamondTransfer) ChangeChainState(state state.ChainStateOper
 		return fmt.Errorf("Cannot transfer to self.")
 	}
 	// 查询钻石是否已经存在
-	hasaddr := state.Diamond(act.Diamond)
-	if hasaddr == nil {
+	diaitem := state.Diamond(act.Diamond)
+	if diaitem == nil {
 		return fmt.Errorf("Diamond <%s> not exist.", string(act.Diamond))
 	}
+	item := diaitem.(*db.DiamondStoreItemData)
 	// 检查所属
-	if bytes.Compare(hasaddr, act.trs.GetAddress()) != 0 {
+	if bytes.Compare(item.Address, act.trs.GetAddress()) != 0 {
 		return fmt.Errorf("Diamond <%s> not belong to trs address.", string(act.Diamond))
 	}
 	// 转移钻石
-	state.DiamondSet(act.Diamond, act.Address)
+	item.Address = act.Address
+	state.DiamondSet(act.Diamond, item)
 	return nil
 }
 
@@ -233,10 +240,9 @@ func (act *Action_5_DiamondTransfer) RecoverChainState(state state.ChainStateOpe
 		panic("Action belong to transaction not be nil !")
 	}
 	// 回退钻石
-	state.DiamondSet(act.Diamond, act.trs.GetAddress())
+	state.DiamondBelong(act.Diamond, act.trs.GetAddress())
 	return nil
 }
-
 
 ///////////////////////////////////////////////////////////////
 
@@ -265,11 +271,11 @@ func (elm *Action_6_OutfeeQuantityDiamondTransfer) Size() uint32 {
 		elm.FromAddress.Size() +
 		elm.ToAddress.Size() +
 		elm.DiamondCount.Size() +
-		uint32(len(elm.Diamonds)) * 6
+		uint32(len(elm.Diamonds))*6
 }
 
 func (elm *Action_6_OutfeeQuantityDiamondTransfer) Serialize() ([]byte, error) {
-	if int(elm.DiamondCount) != len(elm.Diamonds){
+	if int(elm.DiamondCount) != len(elm.Diamonds) {
 		return nil, fmt.Errorf("diamonds number quantity count error")
 	}
 	var kindByte = make([]byte, 2)
@@ -294,7 +300,7 @@ func (elm *Action_6_OutfeeQuantityDiamondTransfer) Parse(buf []byte, seek uint32
 	seek, _ = elm.ToAddress.Parse(buf, seek)
 	seek, _ = elm.DiamondCount.Parse(buf, seek)
 	elm.Diamonds = make([]fields.Bytes6, int(elm.DiamondCount))
-	for i:=0; i<int(elm.DiamondCount); i++ {
+	for i := 0; i < int(elm.DiamondCount); i++ {
 		elm.Diamonds[i] = fields.Bytes6{}
 		seek, _ = elm.Diamonds[i].Parse(buf, seek)
 	}
@@ -312,7 +318,7 @@ func (act *Action_6_OutfeeQuantityDiamondTransfer) ChangeChainState(state state.
 		panic("Action belong to transaction not be nil !")
 	}
 	// 数量检查
-	if int(act.DiamondCount) != len(act.Diamonds){
+	if int(act.DiamondCount) != len(act.Diamonds) {
 		return fmt.Errorf("Diamonds number quantity count error")
 	}
 	// 自己不能转给自己
@@ -320,19 +326,23 @@ func (act *Action_6_OutfeeQuantityDiamondTransfer) ChangeChainState(state state.
 		return fmt.Errorf("Cannot transfer to self.")
 	}
 	// 批量转移钻石
-	for i:=0; i<len(act.Diamonds); i++ {
+	for i := 0; i < len(act.Diamonds); i++ {
 		diamond := act.Diamonds[i]
+		// fmt.Println("--- " + string(diamond))
 		// 查询钻石是否已经存在
-		hasaddr := state.Diamond(diamond)
-		if hasaddr == nil {
-			return fmt.Errorf("Diamond <%s> not exist.", string(diamond))
+		diaitem := state.Diamond(diamond)
+		if diaitem == nil {
+			//panic("Quantity Diamond <%s> not exist. " + string(diamond))
+			return fmt.Errorf("Quantity Diamond <%s> not exist.", string(diamond))
 		}
+		item := diaitem.(*db.DiamondStoreItemData)
 		// 检查所属
-		if bytes.Compare(hasaddr, act.FromAddress) != 0 {
+		if bytes.Compare(item.Address, act.FromAddress) != 0 {
 			return fmt.Errorf("Diamond <%s> not belong to address '%s'", string(diamond), act.FromAddress.ToReadable())
 		}
 		// 转移钻石
-		state.DiamondSet(diamond, act.ToAddress)
+		item.Address = act.ToAddress
+		state.DiamondSet(diamond, item)
 	}
 	return nil
 }
@@ -342,9 +352,9 @@ func (act *Action_6_OutfeeQuantityDiamondTransfer) RecoverChainState(state state
 		panic("Action belong to transaction not be nil !")
 	}
 	// 批量回退钻石
-	for i:=0; i<len(act.Diamonds); i++ {
+	for i := 0; i < len(act.Diamonds); i++ {
 		diamond := act.Diamonds[i]
-		state.DiamondSet(diamond, act.FromAddress)
+		state.DiamondBelong(diamond, act.FromAddress)
 	}
 	return nil
 }

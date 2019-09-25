@@ -261,7 +261,7 @@ func (bill *Amount) ToFinString() string {
 func (bill *Amount) EllipsisDecimalFor23SizeStore() (*Amount, bool) {
 	maxnumlen := 23 - 1 - 1
 	if len(bill.Numeral) <= maxnumlen {
-		return bill, false
+		return bill, false // 数据没变
 	}
 	// 省略小数部分
 	longnumstr := new(big.Int).SetBytes(bill.Numeral).String()

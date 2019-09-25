@@ -211,7 +211,7 @@ func (act *Action_3_ClosePaymentChannel) ChangeChainState(state state.ChainState
 			leftAmount, rightAmount = *a1, *a2
 		}
 	}
-	// 增加余额
+	// 增加余额（将锁定的金额和利息从通道中提取出来）
 	DoAddBalanceFromChainState(state, paychan.LeftAddress, leftAmount)
 	DoAddBalanceFromChainState(state, paychan.RightAddress, rightAmount)
 	// 暂时保留通道用于数据回退
@@ -246,11 +246,11 @@ func (act *Action_3_ClosePaymentChannel) RecoverChainState(state state.ChainStat
 			leftAmount, rightAmount = *a1, *a2
 		}
 	}
-	// 减除余额
+	// 减除余额（重新将金额放入通道）
 	DoSubBalanceFromChainState(state, paychan.LeftAddress, leftAmount)
 	DoSubBalanceFromChainState(state, paychan.RightAddress, rightAmount)
 	// 恢复通道状态
-	paychan.IsClosed = fields.VarInt1(0) // 标记通道开启状态
+	paychan.IsClosed = fields.VarInt1(0) // 重新标记通道为开启状态
 	state.ChannelCreate(act.ChannelId, paychan)
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/hacash/blockmint/types/state"
 	"math"
 	"math/big"
-	"strings"
 )
 
 //////////////////////////////////////////////////////////
@@ -105,7 +104,8 @@ func DoSubBalanceFromChainState(state state.ChainStateOperation, addr fields.Add
 // 2500个区块万分之一的复利计算
 func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fields.Amount, insnum uint64) (*fields.Amount, *fields.Amount) {
 	if insnum == 0 {
-		panic("insnum cannot be 0.")
+		//panic("insnum cannot be 0.")
+		return amt1, amt2
 	}
 	if len(amt1.Numeral) > 4 || len(amt2.Numeral) > 4 {
 		panic("amount numeral bytes too long.")
@@ -154,16 +154,43 @@ func DoAppendCompoundInterest1Of10000By2500Height(amt1 *fields.Amount, amt2 *fie
 
 }
 
+/*
+func init() {
 
+	amt1, _ := fields.NewAmountFromFinString("ㄜ1:248")
+	amt2, _ := fields.NewAmountFromFinString("ㄜ1:248")
 
+	amt5, amt6 := DoAppendCompoundInterest1Of10000By2500Height(amt1, amt2, 1200)
 
+	fmt.Println("DoAppendCompoundInterest1Of10000By2500Height: ", amt5.ToFinString(), amt6.ToFinString())
+}
+*/
 
+/*
+func init1() {
 
+	amt1, _ := fields.NewAmountFromFinString("ㄜ5:250")
+	amt2, _ := fields.NewAmountFromFinString("ㄜ5:250")
+	amt3, _ := fields.NewAmountFromFinString("ㄜ55799:246")
+	amt4, _ := fields.NewAmountFromFinString("ㄜ5279999:244")
 
+	amt5, amt6 := DoAppendCompoundInterest1Of10000By2500Height(amt1, amt2, 0)
+	amt7, amt8 := DoAppendCompoundInterest1Of10000By2500Height(amt3, amt4, 1)
 
+	tt1, _ := amt5.Sub(amt1)
+	tt2, _ := amt6.Sub(amt2)
+	tt3, _ := amt7.Sub(amt3)
+	tt4, _ := amt8.Sub(amt4)
 
+	totalsub, _ := tt1.Add(tt2)
+	totalsub, _ = totalsub.Add(tt3)
+	totalsub, _ = totalsub.Add(tt4)
 
+	fmt.Println("yangjie: ", totalsub.ToFinString())
+}
+*/
 
+/*
 
 ///////  余额检查测试  ///////
 
@@ -201,3 +228,5 @@ func print_xxxxxxx(addr fields.Address, amtx *fields.Amount)  {
 	}
 	fmt.Println("")
 }
+
+*/

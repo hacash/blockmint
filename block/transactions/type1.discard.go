@@ -405,6 +405,10 @@ func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) GetFee() []byte {
 	return feebts
 }
 
-func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) GetActions() []typesblock.Action{
+func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) GetActions() []typesblock.Action {
 	return trs.Actions
+}
+
+func (trs *Transaction_1_DO_NOT_USE_WITH_BUG) GetTimestamp() uint64 { // 时间戳
+	return uint64(trs.Timestamp)
 }

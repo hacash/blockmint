@@ -180,7 +180,7 @@ func (trs *Transaction_0_Coinbase) FeePurity() uint64 {
 
 // 查询
 func (trs *Transaction_0_Coinbase) GetAddress() []byte {
-	return []byte{}
+	return trs.Address
 }
 
 func (trs *Transaction_0_Coinbase) GetFee() []byte {
@@ -188,6 +188,10 @@ func (trs *Transaction_0_Coinbase) GetFee() []byte {
 	return bts
 }
 
-func (trs *Transaction_0_Coinbase) GetActions() []block.Action{
+func (trs *Transaction_0_Coinbase) GetActions() []block.Action {
 	return nil
+}
+
+func (trs *Transaction_0_Coinbase) GetTimestamp() uint64 { // 时间戳
+	return 0
 }

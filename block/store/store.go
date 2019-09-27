@@ -183,6 +183,14 @@ func (this *BlocksDataStore) ReadHead(hash []byte) (block.Block, error) {
 	return blkhead, nil
 }
 
+func (this *BlocksDataStore) ReadHeadBytes(hash []byte) ([]byte, error) {
+	_, blkheadbyte, e := this.indexdb.FindBlockHeadBytes(hash)
+	if e != nil {
+		return nil, e
+	}
+	return blkheadbyte, nil
+}
+
 func (this *BlocksDataStore) ReadTransaction(hash []byte, getbody bool, getblockhead bool) (*TrsFindResult, error) {
 
 	finditem, e := this.trsdb.Find(hash)

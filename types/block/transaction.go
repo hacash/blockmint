@@ -34,4 +34,5 @@ type Transaction interface {
 	GetAddress() []byte
 	GetFee() []byte
 	GetActions() []Action
+	GetTimestamp() uint64 // 时间戳
 }

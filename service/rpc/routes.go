@@ -22,6 +22,8 @@ func initRoutes() {
 
 	queryRoutes["blocks"] = getBlockAbstractList  // 查询区块信息
 	queryRoutes["lastblock"] = getLastBlockHeight // 查询最新区块高度
+	queryRoutes["blockintro"] = getBlockIntro     // 查询区块简介
+	queryRoutes["trsintro"] = getTransactionIntro // 查询区块简介
 
 	queryRoutes["getalltransferlogbyblockheight"] = getAllTransferLogByBlockHeight // 扫描区块 获取所有转账信息
 

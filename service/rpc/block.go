@@ -8,10 +8,105 @@ import (
 	"github.com/hacash/blockmint/block/fields"
 	"github.com/hacash/blockmint/block/store"
 	"github.com/hacash/blockmint/block/transactions"
+	"github.com/hacash/blockmint/core/coin"
 	"github.com/hacash/blockmint/miner"
+	"github.com/hacash/blockmint/types/block"
 	"strconv"
 	"strings"
 )
+
+// 通过 高度 或 hx 获取区块简介
+func getBlockIntro(params map[string]string) map[string]string {
+	result := make(map[string]string)
+	var isgettxhxs = false // 是否获取区块交易hash列表
+	if _, ok0 := params["gettrshxs"]; ok0 {
+		isgettxhxs = true
+	}
+	blkid, ok1 := params["id"]
+	if !ok1 {
+		result["err"] = "param id must."
+		return result
+	}
+	blkdb := store.GetGlobalInstanceBlocksDataStore()
+	var blockhx = []byte{}
+	var blockbytes = []byte{}
+	if blkhei, err := strconv.ParseUint(blkid, 10, 0); err == nil {
+		bhx, bodys, e := blkdb.GetBlockBytesByHeight(blkhei, true, isgettxhxs, 0)
+		if e != nil {
+			result["err"] = e.Error()
+			return result
+		}
+		blockhx = bhx
+		blockbytes = bodys
+	} else if bhx, e := hex.DecodeString(blkid); e == nil && len(bhx) == 32 {
+		blockhx = bhx
+		var e error
+		if isgettxhxs {
+			blockbytes, e = blkdb.ReadBlockBytes(bhx)
+		} else {
+			blockbytes, e = blkdb.ReadHeadBytes(bhx)
+		}
+		if e != nil {
+			result["err"] = e.Error()
+			return result
+		}
+	} else {
+		result["err"] = "block id <" + blkid + "> not find."
+		result["ret"] = "1"
+		return result
+	}
+	// 解析区块
+	var tarblock block.Block
+	var err error
+	if isgettxhxs {
+		tarblock, _, err = blocks.ParseBlock(blockbytes, 0)
+	} else {
+		tarblock, _, err = blocks.ParseBlockHead(blockbytes, 0)
+	}
+	if err != nil {
+		result["err"] = err.Error()
+		return result
+	}
+	// 区块返回数据
+	result["jsondata"] = fmt.Sprintf(
+		`{"hash":"%s","height":%d,"prevhash":"%s","mrklroot":"%s","timestamp":%d,"txcount":%d,"reward":"%s"`,
+		hex.EncodeToString(blockhx),
+		tarblock.GetHeight(),
+		hex.EncodeToString(tarblock.GetPrevHash()),
+		hex.EncodeToString(tarblock.GetMrklRoot()),
+		tarblock.GetTimestamp(),
+		tarblock.GetTransactionCount(),
+		coin.BlockCoinBaseReward(tarblock.GetHeight()).ToFinString(), // 奖励数量
+	)
+	// 区块hx列表
+	if isgettxhxs {
+		var blktxhxsary []string
+		var blktxhxsstr = ""
+		var rwdaddr fields.Address // 奖励地址
+		for i, trs := range tarblock.GetTransactions() {
+			if i == 0 {
+				rwdaddr = fields.Address(trs.GetAddress())
+				blktxhxsary = append(blktxhxsary, "[coinbase]")
+			} else {
+				blktxhxsary = append(blktxhxsary, hex.EncodeToString(trs.HashNoFee()))
+			}
+		}
+		blktxhxsstr = strings.Join(blktxhxsary, `","`)
+		if len(blktxhxsstr) > 0 {
+			blktxhxsstr = `"` + blktxhxsstr + `"`
+		}
+		result["jsondata"] += fmt.Sprintf(
+			`,"nonce":%d,"difficulty":%d,"rwdaddr":"%s","trshxs":[%s]`,
+			tarblock.GetNonce(),
+			tarblock.GetDifficulty(),
+			rwdaddr.ToReadable(),
+			blktxhxsstr,
+		)
+	}
+	// 收尾并返回
+	result["jsondata"] += "}"
+	return result
+}
 
 // 获取最新区块高度
 func getLastBlockHeight(params map[string]string) map[string]string {

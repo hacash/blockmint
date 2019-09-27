@@ -419,6 +419,10 @@ func (trs *Transaction_2_Simple) GetFee() []byte {
 	return feebts
 }
 
-func (trs *Transaction_2_Simple) GetActions() []typesblock.Action{
+func (trs *Transaction_2_Simple) GetActions() []typesblock.Action {
 	return trs.Actions
+}
+
+func (trs *Transaction_2_Simple) GetTimestamp() uint64 { // 时间戳
+	return uint64(trs.Timestamp)
 }

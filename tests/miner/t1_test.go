@@ -66,3 +66,10 @@ func Test_t3(t *testing.T) {
 	}
 
 }
+
+func Test_t33(t *testing.T) {
+
+	address, _ := base58check2.Decode("13337681iZShfzYDkNBmjnaoAfchsrFQpD")
+	fmt.Println(address)
+
+}

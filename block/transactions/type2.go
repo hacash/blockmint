@@ -93,17 +93,18 @@ func (trs *Transaction_2_Simple) Serialize() ([]byte, error) {
 }
 
 func (trs *Transaction_2_Simple) SerializeNoSign() ([]byte, error) {
-	return trs.SerializeNoSignEx(false)
+	return trs.SerializeNoSignEx(true)
 }
 
-func (trs *Transaction_2_Simple) SerializeNoSignEx(nofee bool) ([]byte, error) {
+// 序列化不包含签名内容的所有其它数据
+func (trs *Transaction_2_Simple) SerializeNoSignEx(hasfee bool) ([]byte, error) {
 	var buffer = new(bytes.Buffer)
 	buffer.Write([]byte{trs.Type()}) // type
 	b1, _ := trs.Timestamp.Serialize()
 	buffer.Write(b1)
 	b2, _ := trs.Address.Serialize()
 	buffer.Write(b2)
-	if !nofee {
+	if hasfee { // 是否需要 fee 字段
 		b3, _ := trs.Fee.Serialize()
 		buffer.Write(b3) // 费用付出者签名 需要fee字段， 否则不需要
 	}
@@ -193,9 +194,10 @@ func (trs *Transaction_2_Simple) HashNoFee() []byte {
 	}
 	return trs.hashnofee
 }
+
 func (trs *Transaction_2_Simple) HashNoFeeFresh() []byte {
-	notFee := true
-	stuff, _ := trs.SerializeNoSignEx(notFee)
+	is_has_fee := false
+	stuff, _ := trs.SerializeNoSignEx(is_has_fee)
 	digest := sha3.Sum256(stuff)
 	trs.hashnofee = digest[:]
 	return trs.hashnofee

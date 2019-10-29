@@ -18,6 +18,7 @@ import (
 /**
  * go build -o miner_node_hacash run/miner/main/main.go && ./miner_node_hacash
  * go build -o mmmhcx3 run/miner/main/main.go && ./mmmhcx3 run/miner/main/localtestcnf/3.yml
+ * go build -o mmmhcx4 github.com/hacash/blockmint/run/miner/main/ && ./mmmhcx4 run/miner/main/localtestcnf/4.yml
  */
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
 	// config
 	config.LoadConfigFile()
 
+	Test_1BitcoinMoveToHacashNeverBack()
 	//Test_coinbaseAmt()
 	//Test_coinbaseAddress(16231)
 	//Test_opencl()
@@ -35,7 +37,7 @@ func main() {
 	//Test_allAddressAmount()
 	//Test_allChannelAmount()
 
-	StartHacash()
+	//StartHacash()
 
 }
 

@@ -31,6 +31,10 @@ func getTransactionIntro(params map[string]string) map[string]string {
 		result["err"] = err.Error()
 		return result
 	}
+	if trsres == nil {
+		result["err"] = "transaction not fond."
+		return result
+	}
 	// 解析 actions
 	var actions = trsres.Transaction.GetActions()
 	var actions_ary []string

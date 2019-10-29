@@ -68,6 +68,7 @@ func (act *Action_1_SimpleTransfer) ChangeChainState(state state.ChainStateOpera
 	//addr2 := make([]byte, 21)
 	//copy(addr2, act.Address)
 	//fmt.Println("addr2 - - - - - - - "+hex.EncodeToString( addr2 ))
+	// 不能自己转给自己
 
 	// 不能小于等于零
 	if !act.Amount.IsPositive() {

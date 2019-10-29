@@ -16,6 +16,18 @@ import (
 	"strings"
 )
 
+// 测试 1BitcoinMoveToHacashNeverBack
+func Test_1BitcoinMoveToHacashNeverBack() {
+	//                        1Aq1iP9ddFSnsj3PyTuGA2N2fZtdvxVSbc
+	//bts, _ := b58decode("1Aq1iP9ddFSnsj3PyTuGA2N2fZtdvxVSbc")
+	//fmt.Println(len(bts), bts)
+	//addr := fields.Address(bts)
+	//fmt.Println(addr.ToReadable())
+	//                           1BitcoinMoveToHacashNeverBackKKKKK
+	base58check.DecodeTestPrint("1RuinBitcoin2HacashNeverBack9LWSaa")
+
+}
+
 // 测试读出锁定在通道内的余额
 func Test_allChannelAmount() {
 	TOTAL_AMT := fields.NewEmptyAmount()

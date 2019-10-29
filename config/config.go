@@ -83,7 +83,8 @@ func LoadConfigFile() {
 			f.Close()
 		}
 	}
-	fmt.Printf("load config file \"%s\"\n", cnffile)
+	str_time := time.Now().Format("2006/01/02 15:04:05")
+	fmt.Printf("load config file: \"%s\", current time: %s\n", cnffile, str_time)
 	// 加载配置
 	configor.Load(&Config, cnffile)
 	//fmt.Printf("config: %#v\n\n", Config)

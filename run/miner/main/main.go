@@ -28,7 +28,7 @@ func main() {
 	// config
 	config.LoadConfigFile()
 
-	Test_1BitcoinMoveToHacashNeverBack()
+	//Test_1BitcoinMoveToHacashNeverBack()
 	//Test_coinbaseAmt()
 	//Test_coinbaseAddress(16231)
 	//Test_opencl()
@@ -37,7 +37,7 @@ func main() {
 	//Test_allAddressAmount()
 	//Test_allChannelAmount()
 
-	//StartHacash()
+	StartHacash()
 
 }
 

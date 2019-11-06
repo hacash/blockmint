@@ -16,8 +16,7 @@ func DoSimpleTransferFromChainState(state state.ChainStateOperation, addr1 field
 	//fmt.Println("addr1:", base58check.Encode(addr1), "addr2:", base58check.Encode(addr2), "amt:", amt.ToFinString())
 
 	if bytes.Compare(addr1, addr2) == 0 {
-		return fmt.Errorf("Can't transfer to myself.") // 不能转账给自己
-		// return nil // 自己转给自己，不改变状态，白费手续费
+		return nil // 允许自己转给自己，但不改变状态，只是白费手续费
 	}
 	amt1 := state.Balance(addr1)
 	//fmt.Println("amt1: " + amt1.ToFinString())

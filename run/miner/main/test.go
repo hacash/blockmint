@@ -280,7 +280,7 @@ func Test_others() {
 	//actions.DoAppendCompoundInterest1Of10000By2500Height(amt1, amt2, 142)
 
 	//fmt.Println( x16rs.CheckDiamondDifficulty(1, []byte{0,0,255,255}) )
-	//fmt.Println( x16rs.CheckDiamondDifficulty(2048*256*2 + 2048+1, []byte{0,0,254,255}) )
+	//fmt.Println( x16rs.CheckDiamondDifficulty(3277*256*2 + 3277+1, []byte{0,0,254,255}) )
 
 	//sss := state.GetGlobalInstanceChainState()
 	//cid, _ := hex.DecodeString("f89d8e27bf6c5c8c6b236221210593ee")

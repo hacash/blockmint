@@ -25,9 +25,9 @@ type DiamondMiner struct {
 	blkminer *miner.HacashMiner
 
 	// 有几个地址，每次随机取一个
-	supervene   uint32 // 多核支持，多少核心同时挖掘
-	rewards     []fields.Address
-	feeAccount  *account.Account // 手续费地址
+	supervene  uint32 // 多核支持，多少核心同时挖掘
+	rewards    []fields.Address
+	feeAccount *account.Account // 手续费地址
 
 	// 停止并启动下一轮挖矿
 	statCh     chan *ReStartMinerStat
@@ -93,16 +93,16 @@ func (dm *DiamondMiner) DoMining(stat *ReStartMinerStat) error {
 	successCh := make(chan []byte)
 	stopMark := byte(0)
 
- 	// 钻石接受地址
+	// 钻石接受地址
 	target_addr := dm.GetRandomMinerRewardAddress()
 	target_addr_readable := target_addr.ToReadable()
 	nonce_segment := 4294967294 / dm.supervene // 分片
 	fmt.Printf("--❂--❂-- do diamond mining, supervene:%d, number:%d, prevhash:<%s>, feeaddr:%s, rewardaddr:%s\n", dm.supervene, stat.Number+1, hex.EncodeToString(stat.PrevHash), dm.feeAccount.Address.ToReadable(), target_addr_readable)
-	for i:=uint32(0); i<dm.supervene; i++ {
+	for i := uint32(0); i < dm.supervene; i++ {
 		// 开启挖矿线程
 		go func(i uint32, target_addr fields.Address) {
 			nc_start := nonce_segment * i
-			nc_end  := nc_start + nonce_segment
+			nc_end := nc_start + nonce_segment
 			nonce, diastr := x16rs.MinerHacashDiamond(nc_start, nc_end, int(stat.Number+1), &stopMark, stat.PrevHash, target_addr)
 			//fmt.Println(hex.EncodeToString(nonce), diastr, addr.ToReadable())
 			if dm.CheckDiamond(stat, nonce, target_addr, diastr) {
@@ -195,10 +195,9 @@ func (dm *DiamondMiner) CreateAndSendTransaction(stat *ReStartMinerStat, diamond
 
 	if err != nil {
 		fmt.Println(err)
-	}else{
+	} else {
 		fmt.Printf("--❂--❂-- put trs <%s> to mem pool.\n", hex.EncodeToString(newTrs.HashNoFee()))
 	}
-
 
 }
 

@@ -57,6 +57,5 @@ func GetGenesisBlock() block.Block {
 	//bbb, _ := genesisBlock.Serialize()
 	//fmt.Println( hex.EncodeToString(bbb) )
 
-
 	return genesis
 }

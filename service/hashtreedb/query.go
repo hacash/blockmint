@@ -336,11 +336,11 @@ func (this *QueryInstance) Remove() error {
 		// delete mark
 		if this.db.DeleteMark {
 			// 清空数据内容而不删除key， 表示删除标记，用于db在copy cover 时删除目标数据库的条目
-			item.Type = 3 // 删除标记
+			item.Type = 3         // 删除标记
 			this.UpdateItem(item) // 更新item索引数据，写入删除标记
 			//this.Write(item, []byte{}) // mark // 写入空byte表示清空 segment， 表示删除
 			return nil
-		}else if item.Type == 2 {
+		} else if item.Type == 2 {
 			// fmt.Println(item.ItemHash)
 			if 0 == bytes.Compare(this.operationHash, item.ItemHash) {
 				return this.Delete(item) // 彻底删除数据

@@ -315,7 +315,7 @@ func (pm *ProtocolManager) DoSyncMinerStatus(p *peer) {
 	if err != nil {
 		pm.regainStatusToSimple() // 恢复状态
 		pm.Log.Note("start mining ...")
-		pm.miner.StartMining()    // 开始挖矿
+		pm.miner.StartMining() // 开始挖矿
 		pm.Log.Error("check block fork error:", err)
 		return
 	}

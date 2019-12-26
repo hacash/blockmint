@@ -165,6 +165,9 @@ func (this *BlocksDataStore) ReadBlockBytes(hash []byte) ([]byte, error) {
 	if e != nil {
 		return nil, e
 	}
+	if blkloc == nil || blkhead == nil {
+		return nil, nil // not find
+	}
 	var resbuf bytes.Buffer
 	resbuf.Write(blkhead)
 	blkbodybytes, e1 := this.datadb.ReadBlockBody(blkloc, 0)

@@ -24,7 +24,7 @@ func Test_1BitcoinMoveToHacashNeverBack() {
 	//addr := fields.Address(bts)
 	//fmt.Println(addr.ToReadable())
 	//                           1BitcoinMoveToHacashNeverBackKKKKK
-	base58check.DecodeTestPrint("1RuinBitcoin2HacashNeverBack9LWSaa")
+	// base58check.DecodeTestPrint("1RuinBitcoin2HacashNeverBack9LWSaa")
 
 }
 

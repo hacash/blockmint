@@ -31,7 +31,7 @@ func NewEmptyBalanceStoreItemData() *BalanceStoreItemData {
 	}
 }
 
-func NewBalanceStoreItemDataByAmount(amount *fields.Amount ) *BalanceStoreItemData {
+func NewBalanceStoreItemDataByAmount(amount *fields.Amount) *BalanceStoreItemData {
 	return &BalanceStoreItemData{
 		LockHeight: 0,
 		BlankEmpty: fields.EmptyZeroBytes32,

@@ -158,9 +158,6 @@ func (this *HacashMiner) Start() {
 	go this.insertBlockLoop()
 }
 
-
-
-
 // 开始挖矿
 func (this *HacashMiner) StartMining() {
 	//this.Log.Noise("hacash miner will start mining by call func StartMining()")
@@ -704,7 +701,7 @@ func (this *HacashMiner) CreateNewBlock(minerAddress *fields.Address) (block.Blo
 	nextblock.Transactions = append(nextblock.Transactions, coinbase)
 	// 获取交易并验证
 	tempBlockState := state.NewTempChainState(nil)
-	defer tempBlockState.Destroy() // 清理垃圾
+	defer tempBlockState.Destroy()     // 清理垃圾
 	tempBlockState.SetBlock(nextblock) // 设置当前处理的区块
 	tempBlockState.SetMiner(this)
 	// 添加交易

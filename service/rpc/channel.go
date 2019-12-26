@@ -23,7 +23,7 @@ func getChannel(params map[string]string) map[string]string {
 		return result
 	}
 	total_amount := fields.NewEmptyAmount()
-	for i:=0; i<len(idlist); i++ {
+	for i := 0; i < len(idlist); i++ {
 		idstr := idlist[i]
 
 		if len(idstr) != 32 {
@@ -42,7 +42,7 @@ func getChannel(params map[string]string) map[string]string {
 			result["fail"] = "not find."
 			return result
 		}
-		totalamt, _ := store.LeftAmount.Add( &store.RightAmount )
+		totalamt, _ := store.LeftAmount.Add(&store.RightAmount)
 		if len(idlist) == 1 {
 			// 只有一条数据则返回详情
 			result["is_closed"] = strconv.Itoa(int(store.IsClosed))
@@ -53,7 +53,7 @@ func getChannel(params map[string]string) map[string]string {
 			result["right_amount"] = store.RightAmount.ToFinString()
 			result["total_amount"] = totalamt.ToFinString()
 			return result
-		}else{
+		} else {
 			// 否则返回加总统计
 			total_amount, _ = total_amount.Add(totalamt)
 		}

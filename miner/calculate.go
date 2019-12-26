@@ -28,10 +28,6 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 	_, bigintdiff, _, _ := this.State.NextHeightTargetDifficultyCompact()
 	blockheight := newBlock.GetHeight()
 	targethashdiff := difficulty.BigToHash(blockheight, bigintdiff)
-	minerloopnum := int(blockheight/50000 + 1)
-	if minerloopnum > 16 {
-		minerloopnum = 16 // 8年时间上升到16次
-	}
 	//ttt, _ := hex.DecodeString("0000f00f27700000000000000000000000000000000000000000000000000000")
 	//targethashdiff = ttt
 	//fmt.Println(targethashdiff)
@@ -56,7 +52,7 @@ func (this *HacashMiner) calculateNextBlock(newBlock block.Block, coinbase *tran
 		go func(i uint8) {
 			//fmt.Println([]byte{i})
 			// 开始挖矿
-			success, nonce_bytes, _ := x16rs.MinerNonceHashX16RS(minerloopnum, false, stopsign, 1, 4294967294, targethashdiff, basestuff)
+			success, nonce_bytes, _ := x16rs.MinerNonceHashX16RS(blockheight, false, stopsign, 1, 4294967294, targethashdiff, basestuff)
 			nonce := binary.BigEndian.Uint32(nonce_bytes)
 			this.Log.Info("end supercpu", i, nonce)
 			//fmt.Println("end supercpu", i, nonce)

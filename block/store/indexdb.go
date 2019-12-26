@@ -58,6 +58,9 @@ func (this *BlockIndexDB) Find(hash []byte) (*BlockLocation, block.Block, error)
 	if e != nil {
 		return nil, nil, e
 	}
+	if hdbytes == nil {
+		return nil, nil, nil // not find
+	}
 	var block, _, e3 = blocks.ParseBlockHead(hdbytes, 0)
 	if e3 != nil {
 		return nil, nil, e3
@@ -76,6 +79,9 @@ func (this *BlockIndexDB) FindBlockHeadBytes(hash []byte) (*BlockLocation, []byt
 	result, _, e2 := query.Read()
 	if e2 != nil {
 		return nil, nil, e2
+	}
+	if result == nil {
+		return nil, nil, nil // not find
 	}
 	if uint32(len(result)) < valueSizeSet {
 		return nil, nil, err.New("file store error")

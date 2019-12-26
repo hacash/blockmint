@@ -12,6 +12,7 @@ import (
 	"github.com/hacash/blockmint/p2p"
 	txpool2 "github.com/hacash/blockmint/service/txpool"
 	"github.com/hacash/blockmint/types/block"
+	"golang.org/x/net/websocket"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -194,6 +195,7 @@ func parseRequestQuery(request *http.Request) map[string]string {
 func RunHttpRpcService() {
 
 	initRoutes()
+	http.Handle("/websocket", websocket.Handler(webSocketHandler))
 
 	http.HandleFunc("/", dealHome)           //设置访问的路由
 	http.HandleFunc("/query", dealQuery)     //设置访问的路由

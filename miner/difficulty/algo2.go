@@ -14,7 +14,6 @@ var (
 	version_v2_height = uint64(288 * 160)
 )
 
-
 // 封装的版本   对外接口
 
 func CalculateNextTarget(
@@ -35,7 +34,6 @@ func CalculateNextTarget(
 	return BigToHash256_v1(b1), b1, u1
 }
 
-
 func Uint32ToBig(currentHeight uint64, diff_num uint32) *big.Int {
 	// 使用新版
 	if currentHeight >= version_v2_height {
@@ -44,7 +42,6 @@ func Uint32ToBig(currentHeight uint64, diff_num uint32) *big.Int {
 	// 最旧版
 	return Uint32ToBig_v1(diff_num)
 }
-
 
 func Uint32ToHash(currentHeight uint64, diff_num uint32) []byte {
 	// 使用新版
@@ -82,20 +79,7 @@ func BigToHash(currentHeight uint64, bignum *big.Int) []byte {
 	return BigToHash256_v1(bignum)
 }
 
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
 
 // 计算下一阶段区块难度
 func DifficultyCalculateNextTarget_v2(
@@ -107,7 +91,6 @@ func DifficultyCalculateNextTarget_v2(
 	changeblocknum uint64,
 	printInfo *string,
 ) ([]byte, *big.Int, uint32) {
-
 
 	powTargetTimespan := time.Second * time.Duration(eachblocktime*changeblocknum) // 一分钟一个快
 	// 如果新区块height不是 288 的整数倍，则不需要更新，仍然是最后一个区块的 bits
@@ -138,7 +121,7 @@ func DifficultyCalculateNextTarget_v2(
 	// 打印数据
 	if printInfo != nil {
 		actual_t, target_t := uint64(actualTimespan.Seconds()), uint64(powTargetTimespan.Seconds())
-		nhs := strings.TrimRight( hex.EncodeToString(nextHash), "0")
+		nhs := strings.TrimRight(hex.EncodeToString(nextHash), "0")
 		printStr := fmt.Sprintf("==== new ==== difficulty calculate next target at height %d ==== %ds/%ds ==== %ds/%ds ==== %d -> %d ==== "+nhs+" ====",
 			currentHeight,
 			actual_t/changeblocknum,
@@ -152,7 +135,6 @@ func DifficultyCalculateNextTarget_v2(
 
 	return nextHash, newTarget, nextBits
 }
-
 
 func DifficultyUint32ToBig(diff_num uint32) *big.Int {
 	hashbyte := DifficultyUint32ToHash(diff_num)
@@ -170,11 +152,11 @@ func DifficultyUint32ToHash(diff_num uint32) []byte {
 	binary.BigEndian.PutUint32(diff_byte, diff_num)
 
 	// 还原
-	originally_bits_1 := bytes.Repeat([]byte{0}, 255 - int(diff_byte[0]))
+	originally_bits_1 := bytes.Repeat([]byte{0}, 255-int(diff_byte[0]))
 	//fmt.Println("originally_bits_1:", len(originally_bits_1), originally_bits_1)
-	originally_bits_2 := BytesToBits([]byte{diff_byte[1],diff_byte[2],diff_byte[3]})
+	originally_bits_2 := BytesToBits([]byte{diff_byte[1], diff_byte[2], diff_byte[3]})
 	//fmt.Println("originally_bits_2:", len(originally_bits_2), originally_bits_2)
-	originally_yushu :=  256 - len(originally_bits_1) - len(originally_bits_2)
+	originally_yushu := 256 - len(originally_bits_1) - len(originally_bits_2)
 	originally_bits_3 := []byte{}
 	if originally_yushu > 0 {
 		originally_bits_3 = bytes.Repeat([]byte{0}, originally_yushu)
@@ -218,16 +200,16 @@ func DifficultyHashToUint32(hash_byte []byte) uint32 {
 	//fmt.Println(len(hash_bits), hash_bits)
 	headzero := 0
 	for _, v := range hash_bits {
-		if v!=0{
+		if v != 0 {
 			break
-		}else{
+		} else {
 			headzero++
 		}
 	}
-	hash_bits = append(hash_bits, bytes.Repeat([]byte{1}, 3*8 + 12)...)
+	hash_bits = append(hash_bits, bytes.Repeat([]byte{1}, 3*8+12)...)
 	//fmt.Println(len(hash_bits), hash_bits)
 	//fmt.Println(headzero, headzero+3*8)
-	hash_bits_2 := BitsToBytes(hash_bits[headzero: headzero+3*8])
+	hash_bits_2 := BitsToBytes(hash_bits[headzero : headzero+3*8])
 	//fmt.Println(len(hash_bits_2), hash_bits_2)
 	//
 	diff_byte := make([]byte, 4)
@@ -241,6 +223,3 @@ func DifficultyHashToUint32(hash_byte []byte) uint32 {
 
 	return diff_number
 }
-
-
-

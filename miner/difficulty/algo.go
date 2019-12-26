@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 // 计算下一阶段区块难度
 func CalculateNextTargetDifficulty(
 	currentBits uint32,
@@ -18,7 +17,7 @@ func CalculateNextTargetDifficulty(
 	eachblocktime uint64,
 	changeblocknum uint64,
 	printInfo *string,
-	) (*big.Int, uint32) {
+) (*big.Int, uint32) {
 
 	powTargetTimespan := time.Second * time.Duration(eachblocktime*changeblocknum) // 一分钟一个快
 	// 如果新区块height不是 288 的整数倍，则不需要更新，仍然是最后一个区块的 bits
@@ -65,7 +64,6 @@ func Uint32ToBig_v1(number uint32) *big.Int {
 	return new(big.Int).SetBytes(resbytes)
 }
 
-
 func HashToBig_v1(hash []byte) *big.Int {
 	return new(big.Int).SetBytes(hash)
 }
@@ -83,9 +81,9 @@ func Uint32ToHash_v1(number uint32) []byte {
 	binary.BigEndian.PutUint32(numbts, number)
 	//fmt.Println(numbts)
 	headzero := 255 - numbts[0]
-	bitary := bytes.Repeat([]byte{0}, int(headzero) )
+	bitary := bytes.Repeat([]byte{0}, int(headzero))
 	bitary = append(bitary, 1)
-	bitary = append(bitary, BytesToBits(numbts[1:])... )
+	bitary = append(bitary, BytesToBits(numbts[1:])...)
 	resbytes := BitsToBytes(bitary)
 	//fmt.Println(bitary)
 	return resbytes
@@ -94,7 +92,7 @@ func Uint32ToHash_v1(number uint32) []byte {
 func BigToHash256_v1(bignum *big.Int) []byte {
 	bigbytes := bignum.Bytes()
 	bytes32 := bytes.Repeat([]byte{0}, 32)
-	start := 32-len(bigbytes)
+	start := 32 - len(bigbytes)
 	if start < 0 {
 		start = 0
 	}
@@ -105,7 +103,7 @@ func BigToHash256_v1(bignum *big.Int) []byte {
 func BigToUint32_v1(bignum *big.Int) uint32 {
 
 	bytes32 := BigToHash256_v1(bignum)
-	return Hash256ToUint32_v1( bytes32 )
+	return Hash256ToUint32_v1(bytes32)
 }
 
 //
@@ -125,10 +123,10 @@ func Hash256ToUint32_v1(hash []byte) uint32 {
 	if headzero > rightcut {
 		headzero = rightcut
 	}
-	valbits := bits[headzero:headzero+8*3]
+	valbits := bits[headzero : headzero+8*3]
 	valbytes := BitsToBytes(valbits)
 	results := make([]byte, 0, 4)
-	results = append(results, 255 - headzero)
+	results = append(results, 255-headzero)
 	results = append(results, valbytes...)
 	return binary.BigEndian.Uint32(results)
 }
@@ -136,12 +134,11 @@ func Hash256ToUint32_v1(hash []byte) uint32 {
 // 256进制变2进制
 func BitsToBytes(bits []byte) []byte {
 	retults := make([]byte, 0, len(bits)/8)
-	for i:=0; i<len(bits)/8; i++ {
+	for i := 0; i < len(bits)/8; i++ {
 		retults = append(retults, BitsToByte(bits[i*8:i*8+8]))
 	}
 	return retults
 }
-
 
 // 256进制变2进制
 func BytesToBits(stuff []byte) []byte {
@@ -151,8 +148,6 @@ func BytesToBits(stuff []byte) []byte {
 	}
 	return results
 }
-
-
 
 // 256进制变2进制
 func BitsToByte(bits []byte) byte {
@@ -168,24 +163,15 @@ func BitsToByte(bits []byte) byte {
 	return b
 }
 
-
 func ByteToBits(b byte) []byte {
 	return []byte{
-		(byte) ((b >> 7) & 0x1),
-		(byte) ((b >> 6) & 0x1),
-		(byte) ((b >> 5) & 0x1),
-		(byte) ((b >> 4) & 0x1),
-		(byte) ((b >> 3) & 0x1),
-		(byte) ((b >> 2) & 0x1),
-		(byte) ((b >> 1) & 0x1),
-		(byte) ((b >> 0) & 0x1),
+		(byte)((b >> 7) & 0x1),
+		(byte)((b >> 6) & 0x1),
+		(byte)((b >> 5) & 0x1),
+		(byte)((b >> 4) & 0x1),
+		(byte)((b >> 3) & 0x1),
+		(byte)((b >> 2) & 0x1),
+		(byte)((b >> 1) & 0x1),
+		(byte)((b >> 0) & 0x1),
 	}
 }
-
-
-
-
-
-
-
-

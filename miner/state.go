@@ -182,13 +182,12 @@ func (this *MinerState) FetchLoad() {
 
 	////// 2019-05-16 BUG 修复 //////
 	pdbhhex := hex.EncodeToString(this.prevDiamondBlockHash)
-	if (this.prevDiamondNumber==0 || this.prevDiamondNumber==1) && (strings.HasSuffix(pdbhhex, "ca335af48") || strings.HasSuffix(pdbhhex, "00000000")) {
+	if (this.prevDiamondNumber == 0 || this.prevDiamondNumber == 1) && (strings.HasSuffix(pdbhhex, "ca335af48") || strings.HasSuffix(pdbhhex, "00000000")) {
 		// 恢复
 		this.prevDiamondNumber = 0
 		this.prevDiamondBlockHash = genesis.HashFresh() // 默认值：创世区块hash
 		this.FlushSave()
 	}
 	///////////// END //////////////
-
 
 }

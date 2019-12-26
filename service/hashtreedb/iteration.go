@@ -9,12 +9,10 @@ import (
 // 不安全的迭代器
 type UnsafeIteration struct {
 	sigmentSize uint32
-
 }
 
-
 // 迭代器
-func (this *HashTreeDB) CreateUnsafeIteration() (*UnsafeIteration) {
+func (this *HashTreeDB) CreateUnsafeIteration() *UnsafeIteration {
 
 	if this.FilePartitionLevel > 0 {
 		panic("unsupported operations for TraversalCopy: FilePartitionLevel must be 0")

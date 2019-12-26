@@ -50,5 +50,3 @@ func Test_gc(t *testing.T) {
 	//db1.Save(hashone10, loc, block1)
 
 }
-
-

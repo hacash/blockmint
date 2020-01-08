@@ -40,6 +40,7 @@ func webSocketHandlerSyncBlock(ws *websocket.Conn)  {
 			return
 		}
 		if blkbodybts == nil {
+			ws.Write([]byte("notyet"))
 			return
 		}
 		totaldatas.Write( blkbodybts )

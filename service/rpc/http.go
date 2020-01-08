@@ -14,7 +14,6 @@ import (
 	"github.com/hacash/blockmint/types/block"
 	"golang.org/x/net/websocket"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -195,7 +194,9 @@ func parseRequestQuery(request *http.Request) map[string]string {
 func RunHttpRpcService() {
 
 	initRoutes()
-	http.Handle("/websocket", websocket.Handler(webSocketHandler))
+
+	http.Handle("/ws/download", websocket.Handler(webSocketHandlerDownloadBlocks))
+	http.Handle("/ws/sync", websocket.Handler(webSocketHandlerSyncBlock))
 
 	http.HandleFunc("/", dealHome)           //设置访问的路由
 	http.HandleFunc("/query", dealQuery)     //设置访问的路由
@@ -210,7 +211,7 @@ func RunHttpRpcService() {
 
 	err := http.ListenAndServe(":"+port, nil) //设置监听的端口
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		fmt.Println("ListenAndServe: ", err)
 	} else {
 		fmt.Println("RunHttpRpcService on " + port)
 	}

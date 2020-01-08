@@ -11,7 +11,54 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-func webSocketHandler(ws *websocket.Conn) {
+func webSocketHandlerSyncBlock(ws *websocket.Conn)  {
+
+	defer ws.Close()
+
+	var err error
+	var reply string
+
+	if err = websocket.Message.Receive(ws, &reply); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(reply)
+
+	if strings.HasPrefix(reply, "syncblock") {
+		para := strings.Split(reply, " ")
+		if len(para) != 2 {
+			return
+		}
+		target_height, e2 := strconv.ParseUint(para[1], 10, 0)
+		if e2 != nil {
+			return
+		}
+		// read
+		totaldatas := bytes.NewBuffer([]byte{0, 0, 0, 0})
+		blockstore := store.GetGlobalInstanceBlocksDataStore()
+		_, blkbodybts, e2 := blockstore.GetBlockBytesByHeight(target_height, true, true, 0)
+		if e2 != nil {
+			return
+		}
+		if blkbodybts == nil {
+			return
+		}
+		totaldatas.Write( blkbodybts )
+		resdatas := totaldatas.Bytes()
+		// set len
+		binary.BigEndian.PutUint32( resdatas[0:4], uint32(len(blkbodybts)) )
+		// return
+		ws.Write( resdatas )
+		// ok end
+		return
+
+	}
+}
+
+
+
+func webSocketHandlerDownloadBlocks(ws *websocket.Conn) {
 
 	var err error
 	for {

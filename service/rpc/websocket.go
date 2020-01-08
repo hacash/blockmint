@@ -49,7 +49,7 @@ func webSocketHandlerSyncBlock(ws *websocket.Conn)  {
 		binary.BigEndian.PutUint32( resdatas[0:4], uint32(len(blkbodybts)) )
 		// return
 		ws.Write( resdatas )
-		fmt.Printf(reply + ", send block %d", target_height)
+		fmt.Printf(reply + ", send block %d\n", target_height)
 		// ok end
 		return
 
